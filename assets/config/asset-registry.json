@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "assets": {
+    "cards.sheet": {"path":"assets/cards/sheet/card-sheet.png"},
+    "cards.back": {"path":"assets/cards/back/card-back.png"},
+    "cards.generated": {"pattern":"assets/cards/generated/{id}.png"},
+    "background.match.normal": {"path":"assets/backgrounds/normal/game-normal.png"},
+    "background.match.corrupted": {"path":"assets/backgrounds/corrupted/game-corrupted.png"},
+    "background.settlement": {"path":"assets/backgrounds/settlement/settlement.png"},
+    "effect.koikoi.text": {"path":"assets/effects/koikoi/koikoi-text.png"},
+    "effect.agari.text": {"path":"assets/effects/agari/agari-text.png"},
+    "effect.callout.background": {"path":"assets/effects/shared/callout-burst.png","usage":"text-bounds-only","overlayOn":"background.match.normal"},
+    "reserve.callout": {"path":"assets/reserve/callout-reserve.png","usage":"reserved-unused"}
+  }
+}
