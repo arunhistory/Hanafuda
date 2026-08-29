@@ -88,6 +88,11 @@ function decorateFinalSettlement(card) {
         note.textContent = "同点のため、最終同点スコアへ先に到達した側を勝者として判定しました。";
         card.querySelector(".screen-actions")?.before(note);
     }
+    const firstHiddenAttempt = session?.kind === "cpu" && session.mode === "impossible" && !isUnlocked();
+    if (firstHiddenAttempt) {
+        card.querySelector("[data-action='cpu-reconfigure']")?.remove();
+        card.querySelector("[data-action='cpu-same']")?.remove();
+    }
 }
 function decorateSettlement() {
     const card = app.querySelector(".settlement-card");
