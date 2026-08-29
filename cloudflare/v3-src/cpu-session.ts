@@ -33,7 +33,22 @@ export class HanafudaCpuSession {
     const created=await engineCall(this.env,{op:"create_internal",rounds,cpuProfile:modeCode(mode),firstDealer:-1,koiEnabled});
     if(!created.ok||!created.data?.ok||!created.data?.gameId)return json({ok:false,code:"ENGINE_CREATE_FAILED"},502);
     await this.state.storage.put({initialized:true,closed:false,tokenHash:await sha256Hex(token),mode,rounds,koiEnabled,gameId:created.data.gameId,version:Number(created.data.version),modeSessionId,modeSessionToken,pendingTransition:false,createdAt:Date.now()});
-    return json({ok:true,version:Number(created.data.version),snapshot:created.data.snapshot,mode,rounds,koiEnabled});
+
+    const events=[{actor:"system",snapshot:created.data.snapshot,version:Number(created.data.version)}];
+    let modeTransition:any=null;
+    if(Number(created.data.snapshot?.phase)===5){
+      const check=await engineCall(this.env,{op:"mode_check",gameId:String(created.data.gameId),seat:0,modeSession:await this.modeSession()});
+      if(check.ok&&check.data?.ok&&check.data?.modeTransition?.transition==="impossible"){
+        modeTransition=check.data.modeTransition;
+        await this.state.storage.put({pendingTransition:true,forcedRounds:Number(modeTransition.forcedRounds??6)});
+      }
+    }else if(Number(created.data.snapshot?.turn)===1&&CPU_PHASES.has(Number(created.data.snapshot?.phase))){
+      const cpu=await this.runCpu(events);
+      if(!cpu.ok)return cpu.response;
+      modeTransition=cpu.modeTransition??null;
+    }
+    const finalEvent=events[events.length-1];
+    return json({ok:true,version:Number(finalEvent.version),snapshot:finalEvent.snapshot,events,modeTransition,mode,rounds,koiEnabled});
   }
 
   async modeSession(){return {sessionId:String(await this.state.storage.get("modeSessionId")??""),token:String(await this.state.storage.get("modeSessionToken")??"")};}
@@ -116,7 +131,7 @@ export async function routeCpu(req:Request,env:any,url:URL){
     const response=await stub.fetch("https://cpu/init",{method:"POST",body:JSON.stringify({op:"init",token,mode,rounds,koiEnabled,modeSessionId,modeSessionToken})});
     const data=await response.json().catch(()=>null);
     if(!response.ok||!data?.ok)return json(data??{ok:false,code:"CPU_SESSION_INIT_FAILED"},response.status||502);
-    return json({ok:true,sessionId:id.toString(),token,version:data.version,snapshot:data.snapshot,mode,rounds,koiEnabled});
+    return json({ok:true,sessionId:id.toString(),token,version:data.version,snapshot:data.snapshot,events:data.events??[],modeTransition:data.modeTransition??null,mode,rounds,koiEnabled});
   }
   const sessionId=String(body?.sessionId??""),token=String(body?.token??"");
   if(!validOpaqueToken(sessionId)||!validOpaqueToken(token))return json({ok:false,code:"INVALID_SESSION"},400);
