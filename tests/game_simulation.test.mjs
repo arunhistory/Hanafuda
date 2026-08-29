@@ -20,7 +20,7 @@ function xr(value){let x=value>>>0;x^=(x<<13)>>>0;x^=x>>>17;x^=(x<<5)>>>0;return
 function shuffled(seed){let state=(seed>>>0)||0x9e3779b9;const deck=Array.from({length:48},(_,i)=>i);for(let i=47;i>0;i--){state=xr(state);const j=state%(i+1);[deck[i],deck[j]]=[deck[j],deck[i]];}return deck;}
 function month(card){return Math.floor(card/4)+1;}
 function special(hand){const counts=Array(13).fill(0);for(const card of hand)counts[month(card)]++;if(counts.some(n=>n===4))return true;let pairs=0;for(let m=1;m<=12;m++){if(counts[m]===2)pairs++;else if(counts[m]!==0)return false;}return pairs===4;}
-function firstDeal(seed){const deck=shuffled(seed),field=[],child=[],dealer=[];let p=0;for(let group=0;group<4;group++){field.push(deck[p++],deck[p++]);child.push(deck[p++],deck[p++]);dealer.push(deck[p++],deck[p++]);}return {deck,field,child,dealer};}
+function firstDeal(seed){const deck=shuffled(seed),field=[],child=[],dealer=[];let p=0;for(let i=0;i<8;i++){field.push(deck[p++]);child.push(deck[p++]);dealer.push(deck[p++]);}return {deck,field,child,dealer};}
 function hasFieldFour(field){const counts=Array(13).fill(0);for(const card of field)if(++counts[month(card)]>=4)return true;return false;}
 
 let dealOrderVerified=false;
@@ -38,7 +38,7 @@ for(let seed=1;seed<=500&&!dealOrderVerified;seed++){
   dealOrderVerified=true;
 }
 if(!dealOrderVerified)throw new Error('no deterministic deal-order test seed found');
-console.log('PASS standard 2-field/2-child/2-dealer recipient order with one-card state sequence');
+console.log('PASS one-card field-child-dealer deal order repeated eight times');
 
 for(const koiEnabled of [0,1]){
   for(let seed=1;seed<=200;seed++){
