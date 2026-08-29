@@ -102,9 +102,10 @@ export class HanafudaOnlineRoom {
     const seat=await this.authSeat(url.searchParams.get("token")??"");if(seat<0)return json({ok:false,code:"UNAUTHORIZED"},401);
     const currentStatus=String(await this.state.storage.get("status")??"");if(currentStatus==="timeout"||currentStatus==="closed")return json({ok:false,code:"ROOM_CLOSED"},410);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1],connectionId=randomToken();
-    const prior=this.socketFor(seat);try{prior?.close(4001,"replaced");}catch{}
+    const prior=this.socketFor(seat);
     this.state.acceptWebSocket(server,[`seat:${seat}`,`conn:${connectionId}`]);server.serializeAttachment({seat,connectionId});
     await this.state.storage.put({[this.disconnectKey(seat)]:0,[this.connectedOnceKey(seat)]:true,[this.connectionKey(seat)]:connectionId});
+    try{prior?.close(4001,"replaced");}catch{}
     const becameReady=await this.maybeActivateConnections();await this.scheduleNextAlarm();
     const snap=await this.snapshotFor(seat),status=String(await this.state.storage.get("status")??"");
     server.send(JSON.stringify({type:"connected",seat,status,rules:await this.state.storage.get("rules"),epoch:await this.state.storage.get("epoch")??null,version:Number(await this.state.storage.get("version")??-1),connectionsReady:(await this.state.storage.get("connectionsReady"))===true,snapshot:snap?.snapshot??null}));
