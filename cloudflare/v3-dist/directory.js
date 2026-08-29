@@ -197,11 +197,66 @@ export class HanafudaDirectory {
     }
 }
 export async function routeOnlineV3(req, env, url) {
+    if (url.pathname === "/api/online/create") {
+        if (req.method !== "POST")
+            return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+        let body;
+        try {
+            body = await bodyJson(req);
+        }
+        catch (e) {
+            return json({ ok: false, code: e?.message === "REQUEST_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_JSON" }, 400);
+        }
+        const rules = parseRuleSet(body?.rules);
+        if (!rules)
+            return json({ ok: false, code: "INVALID_RULESET" }, 400);
+        for (let attempt = 0; attempt < 8; attempt++) {
+            const code = roomCode(), hostToken = randomToken(), stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+            const response = await stub.fetch("https://room/create", { method: "POST", body: JSON.stringify({ op: "create", hostToken, rules }) });
+            if (response.status === 409)
+                continue;
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.ok)
+                return json(data ?? { ok: false, code: "ROOM_CREATE_FAILED" }, response.status || 502);
+            return json({ ok: true, roomCode: code, hostToken, rules: data.rules ?? rules });
+        }
+        return json({ ok: false, code: "ROOM_CODE_EXHAUSTED" }, 503);
+    }
     if (url.pathname === "/api/online/inspect" && req.method === "GET") {
         const code = String(url.searchParams.get("room") ?? "").toUpperCase();
         if (!validRoomCode(code))
             return json({ ok: false, code: "INVALID_ROOM_CODE" }, 400);
         return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch("https://room/inspect", { method: "POST", body: JSON.stringify({ op: "inspect" }) });
+    }
+    if (url.pathname === "/api/online/join") {
+        if (req.method !== "POST")
+            return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+        let body;
+        try {
+            body = await bodyJson(req);
+        }
+        catch (e) {
+            return json({ ok: false, code: e?.message === "REQUEST_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_JSON" }, 400);
+        }
+        const code = String(body?.roomCode ?? "").toUpperCase();
+        if (!validRoomCode(code))
+            return json({ ok: false, code: "INVALID_ROOM_CODE" }, 400);
+        const guestToken = randomToken(), stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+        const response = await stub.fetch("https://room/join", { method: "POST", body: JSON.stringify({ op: "join", guestToken }) });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok)
+            return json(data ?? { ok: false, code: "ROOM_JOIN_FAILED" }, response.status || 502);
+        return json({ ...data, roomCode: code, guestToken });
+    }
+    if (url.pathname === "/api/online/connect") {
+        if (req.method !== "GET")
+            return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+        const code = String(url.searchParams.get("room") ?? "").toUpperCase(), token = String(url.searchParams.get("token") ?? "");
+        if (!validRoomCode(code) || !validOpaqueToken(token))
+            return json({ ok: false, code: "INVALID_SESSION" }, 400);
+        const target = new URL(req.url);
+        target.pathname = "/connect";
+        return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(new Request(target.toString(), req));
     }
     if (url.pathname === "/api/online/random/connect") {
         if (req.method !== "GET")
@@ -220,8 +275,8 @@ export async function routeOnlineV3(req, env, url) {
     try {
         body = await bodyJson(req);
     }
-    catch {
-        return json({ ok: false, code: "INVALID_JSON" }, 400);
+    catch (e) {
+        return json({ ok: false, code: e?.message === "REQUEST_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_JSON" }, 400);
     }
     const code = String(body?.roomCode ?? "").toUpperCase(), token = String(body?.token ?? "");
     if (!validRoomCode(code) || !validOpaqueToken(token))
