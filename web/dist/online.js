@@ -189,18 +189,23 @@ function handleOnlineMessage(msg) {
         return;
     if (msg?.type === "connected" || msg?.type === "state") {
         stopOnlineWarning();
-        const prior = snapshot, priorVersion = session.version, incomingVersion = Number(msg.version);
+        const prior = snapshot, priorVersion = session.version, priorEpoch = session.epoch, incomingVersion = Number(msg.version), incomingEpoch = msg.epoch ? String(msg.epoch) : priorEpoch;
+        const epochChanged = !!priorEpoch && !!incomingEpoch && incomingEpoch !== priorEpoch;
         if (msg.epoch)
-            session.epoch = String(msg.epoch);
+            session.epoch = incomingEpoch;
         if (Number.isSafeInteger(incomingVersion))
             session.version = incomingVersion;
+        if (epochChanged) {
+            roundHistory = [];
+            currentRound = -1;
+        }
         if (msg.snapshot) {
             snapshot = msg.snapshot;
             onlineReconfigureState = "none";
-            if (msg.actionEvent && (!Number.isSafeInteger(incomingVersion) || incomingVersion > priorVersion))
+            if (msg.actionEvent && !epochChanged && (!Number.isSafeInteger(incomingVersion) || incomingVersion > priorVersion))
                 recordHistory(msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
             renderMatch();
-            void animateNewRoundIfNeeded(!prior);
+            void animateNewRoundIfNeeded(!prior || epochChanged);
         }
     }
     else if (msg?.type === "postmatch_choice") {
