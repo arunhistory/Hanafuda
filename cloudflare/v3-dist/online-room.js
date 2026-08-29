@@ -3,8 +3,7 @@ const LIVE_ROOM_STATES = new Set(["starting", "active", "round_settlement", "com
 export class HanafudaOnlineRoom {
     state;
     env;
-    sockets;
-    constructor(state, env) { this.state = state; this.env = env; this.sockets = new Map(); }
+    constructor(state, env) { this.state = state; this.env = env; }
     async fetch(req) {
         const url = new URL(req.url);
         if (req.method === "GET" && url.pathname.endsWith("/connect"))
@@ -37,6 +36,28 @@ export class HanafudaOnlineRoom {
             return this.close(body);
         return json({ ok: false, code: "UNKNOWN_OPERATION" }, 404);
     }
+    connectionKey(seat) { return seat === 0 ? "connectionIdHost" : "connectionIdGuest"; }
+    disconnectKey(seat) { return seat === 0 ? "disconnectHost" : "disconnectGuest"; }
+    connectedOnceKey(seat) { return seat === 0 ? "connectedOnceHost" : "connectedOnceGuest"; }
+    socketFor(seat) { const sockets = this.state.getWebSockets(`seat:${seat}`); if (!Array.isArray(sockets) || !sockets.length)
+        return null; return sockets.find((s) => s?.readyState === 1) ?? sockets[0]; }
+    attachment(socket) {
+        try {
+            const a = socket.deserializeAttachment?.();
+            if (a && (a.seat === 0 || a.seat === 1) && typeof a.connectionId === "string")
+                return { seat: a.seat, connectionId: a.connectionId };
+        }
+        catch { }
+        try {
+            const tags = this.state.getTags(socket);
+            const seatRaw = tags.find(t => t.startsWith("seat:"))?.slice(5), connectionId = tags.find(t => t.startsWith("conn:"))?.slice(5) ?? "";
+            const seat = Number(seatRaw);
+            if ((seat === 0 || seat === 1) && connectionId)
+                return { seat, connectionId };
+        }
+        catch { }
+        return null;
+    }
     async create(body) {
         if (await this.state.storage.get("initialized"))
             return json({ ok: false, code: "ROOM_EXISTS" }, 409);
@@ -47,7 +68,8 @@ export class HanafudaOnlineRoom {
             initialized: true, status: "waiting", hostHash: await sha256Hex(hostToken), guestHash: null, rules,
             gameId: null, epoch: null, version: -1, turnSeat: -1, turnDeadline: 0, graceDeadline: 0,
             disconnectHost: 0, disconnectGuest: 0, connectedOnceHost: false, connectedOnceGuest: false,
-            connectionsReady: false, connectionDeadline: 0, postmatchChoice: null, postmatchProcessing: false, createdAt: Date.now()
+            connectionIdHost: null, connectionIdGuest: null, connectionsReady: false, connectionDeadline: 0,
+            postmatchChoice: null, postmatchProcessing: false, createdAt: Date.now()
         });
         return json({ ok: true, rules });
     }
@@ -81,7 +103,7 @@ export class HanafudaOnlineRoom {
         await this.state.storage.put({
             guestHash: await sha256Hex(guestToken), status, gameId, epoch, version, turnSeat: Number(hostSnapshot?.turn ?? -1),
             turnDeadline: 0, graceDeadline: 0, connectionDeadline: Date.now() + 120_000, connectionsReady: false,
-            connectedOnceGuest: false, postmatchChoice: null, postmatchProcessing: false
+            connectedOnceGuest: false, connectionIdGuest: null, postmatchChoice: null, postmatchProcessing: false
         });
         await this.maybeActivateConnections();
         await this.scheduleNextAlarm();
@@ -104,15 +126,11 @@ export class HanafudaOnlineRoom {
         const result = await engineCall(this.env, { op: "snapshot", gameId, seat });
         return result.ok && result.data?.ok ? result.data : null;
     }
-    async closeEngine(gameId) {
-        const id = gameId ?? String(await this.state.storage.get("gameId") ?? "");
-        if (!id)
-            return;
-        try {
-            await engineCall(this.env, { op: "close", gameId: id });
-        }
-        catch { }
+    async closeEngine(gameId) { const id = gameId ?? String(await this.state.storage.get("gameId") ?? ""); if (!id)
+        return; try {
+        await engineCall(this.env, { op: "close", gameId: id });
     }
+    catch { } }
     async maybeActivateConnections() {
         if ((await this.state.storage.get("connectionsReady")) === true)
             return false;
@@ -122,8 +140,7 @@ export class HanafudaOnlineRoom {
         let status = String(await this.state.storage.get("status") ?? "");
         if (status === "starting")
             status = "active";
-        const snapshot = (await this.snapshotFor(0))?.snapshot ?? null;
-        const active = status === "active" && ONLINE_ACTIVE_PHASES.has(Number(snapshot?.phase));
+        const snapshot = (await this.snapshotFor(0))?.snapshot ?? null, active = status === "active" && ONLINE_ACTIVE_PHASES.has(Number(snapshot?.phase));
         await this.state.storage.put({ connectionsReady: true, connectionDeadline: 0, status, turnSeat: active ? Number(snapshot?.turn ?? -1) : -1, turnDeadline: active ? Date.now() + 60_000 : 0, graceDeadline: 0 });
         await this.scheduleNextAlarm();
         return true;
@@ -137,66 +154,74 @@ export class HanafudaOnlineRoom {
         const currentStatus = String(await this.state.storage.get("status") ?? "");
         if (currentStatus === "timeout" || currentStatus === "closed")
             return json({ ok: false, code: "ROOM_CLOSED" }, 410);
-        const pair = new WebSocketPair(), client = pair[0], server = pair[1];
-        server.accept();
-        const prior = this.sockets.get(seat);
+        const pair = new WebSocketPair(), client = pair[0], server = pair[1], connectionId = randomToken();
+        const prior = this.socketFor(seat);
         try {
             prior?.close(4001, "replaced");
         }
         catch { }
-        this.sockets.set(seat, server);
-        await this.state.storage.put(seat === 0 ? "disconnectHost" : "disconnectGuest", 0);
-        await this.state.storage.put(seat === 0 ? "connectedOnceHost" : "connectedOnceGuest", true);
+        this.state.acceptWebSocket(server, [`seat:${seat}`, `conn:${connectionId}`]);
+        server.serializeAttachment({ seat, connectionId });
+        await this.state.storage.put({ [this.disconnectKey(seat)]: 0, [this.connectedOnceKey(seat)]: true, [this.connectionKey(seat)]: connectionId });
         const becameReady = await this.maybeActivateConnections();
         await this.scheduleNextAlarm();
-        server.addEventListener("message", (event) => this.onMessage(seat, event));
-        server.addEventListener("close", () => this.onDisconnect(seat, server));
-        server.addEventListener("error", () => this.onDisconnect(seat, server));
         const snap = await this.snapshotFor(seat), status = String(await this.state.storage.get("status") ?? "");
         server.send(JSON.stringify({ type: "connected", seat, status, rules: await this.state.storage.get("rules"), epoch: await this.state.storage.get("epoch") ?? null, version: Number(await this.state.storage.get("version") ?? -1), connectionsReady: (await this.state.storage.get("connectionsReady")) === true, snapshot: snap?.snapshot ?? null }));
         if (becameReady)
             await this.broadcastState(status);
         return new Response(null, { status: 101, webSocket: client });
     }
-    async onMessage(seat, event) {
-        let message;
+    async webSocketMessage(socket, message) {
+        const a = this.attachment(socket);
+        if (!a)
+            return;
+        let parsed;
         try {
-            message = JSON.parse(String(event.data));
+            const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+            parsed = JSON.parse(text);
         }
         catch {
             return;
         }
-        if (message?.type === "ping")
+        if (parsed?.type === "ping")
             try {
-                this.sockets.get(seat)?.send(JSON.stringify({ type: "pong", t: Date.now() }));
+                socket.send(JSON.stringify({ type: "pong", t: Date.now() }));
             }
             catch { }
     }
-    async onDisconnect(seat, socket) {
-        if (this.sockets.get(seat) !== socket)
+    async webSocketClose(socket) { const a = this.attachment(socket); if (a)
+        await this.onDisconnect(a.seat, a.connectionId); }
+    async webSocketError(socket) { const a = this.attachment(socket); if (a)
+        await this.onDisconnect(a.seat, a.connectionId); }
+    async onDisconnect(seat, connectionId) {
+        const key = this.connectionKey(seat), current = String(await this.state.storage.get(key) ?? "");
+        if (!current || !timingSafe(current, connectionId))
             return;
-        this.sockets.delete(seat);
+        await this.state.storage.put(key, null);
         const status = String(await this.state.storage.get("status") ?? "");
         if (!LIVE_ROOM_STATES.has(status))
             return;
         if ((await this.state.storage.get("connectionsReady")) === true) {
             const deadline = Date.now() + 60_000;
-            await this.state.storage.put(seat === 0 ? "disconnectHost" : "disconnectGuest", deadline);
+            await this.state.storage.put(this.disconnectKey(seat), deadline);
             this.broadcastSame({ type: "disconnect", seat, reconnectSeconds: 60 });
         }
         await this.scheduleNextAlarm();
     }
-    broadcastSame(value) { const text = JSON.stringify(value); for (const socket of this.sockets.values())
+    broadcastSame(value) { const text = JSON.stringify(value); for (const socket of this.state.getWebSockets())
         try {
             socket.send(text);
         }
         catch { } }
     async broadcastState(statusOverride, actionEvent = null) {
-        const status = statusOverride ?? String(await this.state.storage.get("status") ?? ""), version = Number(await this.state.storage.get("version") ?? -1), rules = await this.state.storage.get("rules"), epoch = await this.state.storage.get("epoch") ?? null;
-        for (const [seat, socket] of this.sockets) {
+        const status = statusOverride ?? String(await this.state.storage.get("status") ?? ""), version = Number(await this.state.storage.get("version") ?? -1), rules = await this.state.storage.get("rules"), epoch = await this.state.storage.get("epoch") ?? null, connectionsReady = (await this.state.storage.get("connectionsReady")) === true;
+        for (const socket of this.state.getWebSockets()) {
+            const a = this.attachment(socket);
+            if (!a)
+                continue;
             try {
-                const snap = await this.snapshotFor(seat);
-                socket.send(JSON.stringify({ type: "state", status, version, epoch, rules, connectionsReady: (await this.state.storage.get("connectionsReady")) === true, snapshot: snap?.snapshot ?? null, actionEvent: actionEvent ?? null }));
+                const snap = await this.snapshotFor(a.seat);
+                socket.send(JSON.stringify({ type: "state", status, version, epoch, rules, connectionsReady, snapshot: snap?.snapshot ?? null, actionEvent: actionEvent ?? null }));
             }
             catch { }
         }
@@ -310,7 +335,7 @@ export class HanafudaOnlineRoom {
                 this.broadcastSame({ type: "postmatch_choice", choice, seat });
                 return json({ ok: true, locked: true, choice, status: "reconfiguring" });
             }
-            await this.state.storage.put({ postmatchChoice: choice, postmatchSeat: seat, status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0, postmatchProcessing: false });
+            await this.state.storage.put({ postmatchChoice: choice, postmatchSeat: seat, status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0, connectionIdHost: null, connectionIdGuest: null, postmatchProcessing: false });
             await this.closeEngine(oldGameId);
             await this.scheduleNextAlarm();
             this.broadcastSame({ type: "postmatch_choice", choice, seat });
@@ -349,18 +374,18 @@ export class HanafudaOnlineRoom {
         const seat = await this.authSeat(String(body?.token ?? ""));
         if (seat < 0)
             return json({ ok: false, code: "UNAUTHORIZED" }, 401);
-        await this.state.storage.put({ status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, connectionDeadline: 0, disconnectHost: 0, disconnectGuest: 0 });
+        await this.state.storage.put({ status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, connectionDeadline: 0, disconnectHost: 0, disconnectGuest: 0, connectionIdHost: null, connectionIdGuest: null });
         await this.closeEngine();
         await this.scheduleNextAlarm();
         this.broadcastSame({ type: "closed", reason: String(body?.reason ?? "leave") });
         this.closeSockets(1000, "closed");
         return json({ ok: true });
     }
-    closeSockets(code, reason) { for (const socket of this.sockets.values())
+    closeSockets(code, reason) { for (const socket of this.state.getWebSockets())
         try {
             socket.close(code, reason);
         }
-        catch { } this.sockets.clear(); }
+        catch { } }
     async scheduleNextAlarm() {
         const data = await this.state.storage.get(["status", "connectionDeadline", "turnDeadline", "graceDeadline", "disconnectHost", "disconnectGuest"]), status = String(data.get("status") ?? "");
         if (!LIVE_ROOM_STATES.has(status)) {
@@ -391,5 +416,11 @@ export class HanafudaOnlineRoom {
         }
         await this.scheduleNextAlarm();
     }
-    async timeout(reason) { await this.state.storage.put({ status: "timeout", turnSeat: -1, connectionDeadline: 0, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0 }); await this.closeEngine(); this.broadcastSame({ type: "timeout", reason }); this.closeSockets(4000, "timeout"); await this.state.storage.deleteAlarm(); }
+    async timeout(reason) {
+        await this.state.storage.put({ status: "timeout", turnSeat: -1, connectionDeadline: 0, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0, connectionIdHost: null, connectionIdGuest: null });
+        await this.closeEngine();
+        this.broadcastSame({ type: "timeout", reason });
+        this.closeSockets(4000, "timeout");
+        await this.state.storage.deleteAlarm();
+    }
 }
