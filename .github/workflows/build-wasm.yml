@@ -1,0 +1,53 @@
+name: Build Hanafuda WASM
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - implementation/webapp-v1
+    paths:
+      - '.github/workflows/build-wasm.yml'
+      - 'src/core/**'
+      - 'tools/build_wasm.sh'
+      - 'tools/build_engine_wasm.sh'
+      - 'tests/core.test.mjs'
+      - 'tests/game_simulation.test.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/webapp-v1
+          fetch-depth: 0
+      - name: Verify compiler
+        run: |
+          clang++ --version
+          wasm-ld --version
+      - name: Build public and authoritative WASM
+        run: |
+          bash tools/build_wasm.sh
+          bash tools/build_engine_wasm.sh
+      - name: Run rule and simulation tests
+        run: |
+          node tests/core.test.mjs
+          node tests/game_simulation.test.mjs
+      - name: Record hashes
+        run: |
+          sha256sum assets/wasm/hanafuda_core.wasm assets/wasm/hanafuda_engine.wasm
+      - name: Commit generated WASM if changed
+        run: |
+          if git diff --quiet -- assets/wasm/hanafuda_core.wasm assets/wasm/hanafuda_engine.wasm; then
+            echo 'Generated WASM is already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/wasm/hanafuda_core.wasm assets/wasm/hanafuda_engine.wasm
+          git commit -m 'Build Hanafuda WASM artifacts [skip ci]'
+          git push origin HEAD:implementation/webapp-v1
