@@ -96,7 +96,7 @@
 }
 .staged-settlement .screen-actions {
   opacity: 0;
-  animation: settlementControlsReveal .42s ease 2.72s both;
+  animation: settlementControlsReveal .42s ease 3.18s both;
 }
 
 @keyframes settlementHeaderReveal {
