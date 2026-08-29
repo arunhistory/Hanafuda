@@ -6,6 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dir=path.join(root,'cloudflare','v3-src');
 const files=fs.readdirSync(dir).filter(x=>x.endsWith('.ts')).sort();
 const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
+const cpuSessionSrc=fs.readFileSync(path.join(dir,'cpu-session.ts'),'utf8');
 const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const onlineRoomSrc=fs.readFileSync(path.join(dir,'online-room.ts'),'utf8');
 const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);');
@@ -29,7 +30,9 @@ const checks=[
   ['forced challenge has explicit transition handshake',src.includes('/api/cpu/transition')&&src.includes('transition_ack')&&src.includes('pendingTransition')],
   ['challenge creates private CPU profile only after transition',src.includes('cpuProfile:3')&&src.includes('CHALLENGE_ENGINE_CREATE_FAILED')],
   ['developer challenge cannot grant normal unlock',src.includes('challengeTestOnly:testOnly')&&src.includes('challengeTestOnly')],
-  ['direct hidden mode requires local unlock signal and official origin',src.includes('body?.unlocked!==true')&&src.includes('req.headers.get("Origin")!==env.APP_ORIGIN')&&src.includes('MODE_LOCKED')],
+  ['direct hidden mode requires local unlock signal and official origin',cpuSessionSrc.includes('unlocked=body?.unlocked===true')&&cpuSessionSrc.includes('directImpossible&&(!unlocked||req.headers.get("Origin")!==env.APP_ORIGIN)')&&cpuSessionSrc.includes('MODE_LOCKED')],
+  ['unlock state is passed into the CPU session',cpuSessionSrc.includes('koiEnabled,unlocked,modeSessionId')&&cpuSessionSrc.includes('developer,unlocked,pendingTransition')],
+  ['unlocked normal sessions skip repeat mode evaluation while developer mode overrides',cpuSessionSrc.includes('async modeEvaluationEnabled()')&&cpuSessionSrc.includes('state.get("developer")===true||state.get("unlocked")!==true')&&cpuSessionSrc.includes('ms&&await this.modeEvaluationEnabled()')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['random matchmaking is WebSocket event-driven',src.includes('/api/online/random/connect')&&src.includes('new WebSocketPair()')&&src.includes('type:"matched"')&&!src.includes('op==="poll"')&&!src.includes('op==="enqueue"')],
   ['matchmaking sockets use Durable Object hibernation API',directorySrc.includes('this.state.acceptWebSocket(server')&&directorySrc.includes('this.state.getWebSockets(`ticket:${ticket}`)')&&directorySrc.includes('serializeAttachment')&&directorySrc.includes('webSocketMessage(')&&!directorySrc.includes('server.accept()')&&!directorySrc.includes('server.addEventListener(')],
