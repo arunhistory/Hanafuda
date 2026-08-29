@@ -177,20 +177,21 @@ function connectOnlineSocket(s) {
     s.socket = ws;
     ws.onmessage = event => { try {
         const msg = JSON.parse(String(event.data));
-        handleOnlineMessage(msg);
+        void handleOnlineMessage(msg);
     }
     catch { } };
     ws.onclose = () => { if (session === s)
         toast("通信が切断されました。1分以内に再接続します。"), setTimeout(() => { if (session === s && s.socket?.readyState === WebSocket.CLOSED)
             connectOnlineSocket(s); }, 1800); };
 }
-function handleOnlineMessage(msg) {
+async function handleOnlineMessage(msg) {
     if (!session || session.kind !== "online")
         return;
     if (msg?.type === "connected" || msg?.type === "state") {
         stopOnlineWarning();
         const prior = snapshot, priorVersion = session.version, priorEpoch = session.epoch, incomingVersion = Number(msg.version), incomingEpoch = msg.epoch ? String(msg.epoch) : priorEpoch;
         const epochChanged = !!priorEpoch && !!incomingEpoch && incomingEpoch !== priorEpoch;
+        const isNewAction = !!msg.actionEvent && !epochChanged && (!Number.isSafeInteger(incomingVersion) || incomingVersion > priorVersion);
         if (msg.epoch)
             session.epoch = incomingEpoch;
         if (Number.isSafeInteger(incomingVersion))
@@ -202,10 +203,13 @@ function handleOnlineMessage(msg) {
         if (msg.snapshot) {
             snapshot = msg.snapshot;
             onlineReconfigureState = "none";
-            if (msg.actionEvent && !epochChanged && (!Number.isSafeInteger(incomingVersion) || incomingVersion > priorVersion))
+            if (isNewAction) {
                 recordHistory(msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
+                if (!settings.skipNormalAnimations)
+                    await animateEvent(msg.actionEvent);
+            }
             renderMatch();
-            void animateNewRoundIfNeeded(!prior || epochChanged);
+            await animateNewRoundIfNeeded(!prior || epochChanged);
         }
     }
     else if (msg?.type === "postmatch_choice") {
