@@ -25,6 +25,24 @@ function applyMatchPresentation(){
   if(final&&session?.kind==="cpu"&&session.mode==="impossible")final.classList.add("hidden-final");
 }
 
+function actionGhost(card:number,kind:"played"|"drawn",actor:number){
+  const img=document.createElement("img");
+  img.className=`action-ghost ${kind} ${actor===playerSeat()?"from-player":"from-opponent"}`;
+  img.src=assets.card(card);
+  img.alt="";
+  img.setAttribute("aria-hidden","true");
+  document.body.append(img);
+  img.addEventListener("animationend",()=>img.remove(),{once:true});
+  setTimeout(()=>img.remove(),1100);
+}
+
+function animateAuthoritativeAction(event:ActionEvent){
+  if(settings.skipNormalAnimations||currentScreen()!=="match")return;
+  const actor=Number(event.actor);
+  if(Number.isInteger(event.playedCard))actionGhost(event.playedCard!,"played",actor);
+  if(Number.isInteger(event.drawnCard))setTimeout(()=>actionGhost(event.drawnCard!,"drawn",actor),180);
+}
+
 function syncHistoryDepth(){
   if(navigationSyncing)return;
   const depth=stack.length;
@@ -66,6 +84,11 @@ function installHierarchyNavigation(){
   },true);
   window.addEventListener("popstate",()=>void leaveCurrentHierarchyFromBrowser());
 }
+
+window.addEventListener("hanafuda-audio-hook",event=>{
+  const detail=(event as CustomEvent<{name?:string;event?:ActionEvent}>).detail;
+  if(detail?.name==="card-action"&&detail.event)animateAuthoritativeAction(detail.event);
+});
 
 const experienceObserver=new MutationObserver(()=>{
   applyMatchPresentation();
