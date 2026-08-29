@@ -12,6 +12,45 @@
   100% { opacity: 1; transform: translate3d(0,0,0) rotate(0) scale(1); filter: blur(0); }
 }
 
+.action-ghost {
+  position: fixed;
+  z-index: 1300;
+  width: clamp(46px,7vw,82px);
+  aspect-ratio: 1 / 2;
+  object-fit: contain;
+  pointer-events: none;
+  left: 50%;
+  top: 50%;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.42));
+  will-change: transform,opacity,filter;
+}
+
+.action-ghost.played.from-player { animation: playedFromPlayer .64s cubic-bezier(.17,.74,.17,1) both; }
+.action-ghost.played.from-opponent { animation: playedFromOpponent .64s cubic-bezier(.17,.74,.17,1) both; }
+.action-ghost.drawn.from-player,
+.action-ghost.drawn.from-opponent { animation: drawnFromDeck .58s cubic-bezier(.16,.76,.2,1) both; }
+
+@keyframes playedFromPlayer {
+  0% { opacity: .15; transform: translate3d(-50%,46vh,0) rotate(8deg) scale(.78); }
+  22% { opacity: 1; }
+  72% { transform: translate3d(-50%,-7vh,0) rotate(-1deg) scale(1.08); }
+  100% { opacity: 0; transform: translate3d(-50%,-11vh,0) rotate(0) scale(.98); }
+}
+
+@keyframes playedFromOpponent {
+  0% { opacity: .15; transform: translate3d(-50%,-54vh,0) rotate(-8deg) scale(.78); }
+  22% { opacity: 1; }
+  72% { transform: translate3d(-50%,-7vh,0) rotate(1deg) scale(1.08); }
+  100% { opacity: 0; transform: translate3d(-50%,-11vh,0) rotate(0) scale(.98); }
+}
+
+@keyframes drawnFromDeck {
+  0% { opacity: .1; transform: translate3d(31vw,-9vh,0) rotateY(82deg) rotate(5deg) scale(.72); filter: blur(2px) drop-shadow(0 12px 18px rgba(0,0,0,.42)); }
+  28% { opacity: 1; }
+  72% { transform: translate3d(-50%,-4vh,0) rotateY(0) rotate(-1deg) scale(1.1); filter: blur(0) drop-shadow(0 12px 18px rgba(0,0,0,.42)); }
+  100% { opacity: 0; transform: translate3d(-50%,-10vh,0) scale(.98); }
+}
+
 .settlement-card.hidden-final {
   position: relative;
   isolation: isolate;
@@ -61,6 +100,7 @@
   .board.dealing .field-card-button .card,
   .board.dealing .hand-card-button .card,
   .board.dealing .opponent-zone .hand-row > .card,
+  .action-ghost,
   .settlement-card.hidden-final,
   .settlement-card.hidden-final::before,
   .settlement-card.hidden-final::after {
