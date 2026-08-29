@@ -58,6 +58,9 @@ jobs:
             exit 1
           fi
 
+      - name: Record deployment artifact hashes
+        run: sha256sum cloudflare/v3-dist/*.js
+
       - name: Commit generated gateway artifacts if changed
         run: |
           if git status --porcelain -- cloudflare/v3-dist | grep -q .; then
