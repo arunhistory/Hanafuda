@@ -5,8 +5,9 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'web','index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'web','styles.css'),'utf8');
+const experienceCss=fs.readFileSync(path.join(root,'web','experience.css'),'utf8');
 const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(root,'web','src',x),'utf8')).join('\n');
-const jsFiles=['core.js','views.js','cpu.js','online.js'];
+const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js'];
 const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=>fs.readFileSync(path.join(root,'web','dist',x),'utf8')).join('\n');
 
 const checks=[
@@ -25,13 +26,16 @@ const checks=[
   ['hidden trigger internals are absent from public frontend',!ts.includes('playerTotal')&&!ts.includes('cpuTotal')&&!ts.includes('should_force_impossible')],
   ['developer secret or developer header is absent from frontend',!ts.includes('DEVELOPER_MODE_KEY')&&!ts.includes('x-hanafuda-developer')],
   ['forced transition uses explicit CPU transition endpoint',ts.includes('/api/cpu/transition')&&ts.includes('showCollapse()')],
+  ['forced transition cannot be manually accelerated',ts.includes('button.disabled=true')&&ts.includes('scheduleForcedTransition()')&&ts.includes('hold=settings.skipNormalAnimations?1600:4300')],
   ['first hidden encounter name is obscured',ts.includes('hiddenFirstEncounter?"▧▒░█?▒":"人知不能"')],
   ['local unlock is written only from server grant path',ts.includes('if(started.data.unlockGranted===true)grantUnlock()')&&ts.includes('if(result.data.unlockGranted===true)grantUnlock()')&&!ts.includes('grantUnlock();\n  await sendAction')],
-  ['shuffle runs for every newly detected round',ts.includes('currentRound!==snapshot.roundIndex')&&ts.includes('await showShuffle()')],
+  ['shuffle runs for every newly detected round',ts.includes('currentRound!==snapshot.roundIndex')&&(ts.includes('await showShuffle()')||ts.includes('await showShuffle(force)'))],
+  ['initial shuffle uses blueprint 2.0-2.5 second window',ts.includes('initial?2250:1250')&&experienceCss.includes('.shuffle-layer.long-shuffle')],
   ['deal is one-card staggered',css.includes('--deal-index')&&ts.includes('style="--deal-index:${i}"')],
   ['capture animation exists',ts.includes('showCaptureTrail')&&css.includes('@keyframes captureFly')],
   ['koi and agari use registered text assets',ts.includes('effect.koikoi.text')&&ts.includes('effect.agari.text')],
-  ['settlement order includes yaku base multiplier round cumulative',['成立役','基礎点','こいこい倍率','局得点','累計点'].every(x=>ts.includes(x))],
+  ['important callout text is held beyond one second',ts.includes('await delay(1850)')],
+  ['settlement order includes yaku base multiplier round cumulative next dealer',['成立役','基礎点','こいこい倍率','局得点','累計点','次局親'].every(x=>ts.includes(x))],
   ['audio is hooks only',ts.includes('hanafuda-audio-hook')&&!html.includes('<audio')&&!ts.includes('new Audio(')],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
   ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
