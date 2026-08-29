@@ -105,9 +105,18 @@ async function sendAction(action, payload = {}) {
             const result = await api("/api/online/action", { roomCode: session.roomCode, token: session.token, epoch: session.epoch, version: session.version, action, ...payload });
             if (!result.ok || !result.data?.ok)
                 throw new Error(result.data?.code || "ACTION_FAILED");
-            session.version = Number(result.data.version);
-            snapshot = result.data.snapshot;
-            recordHistory(result.data.actionEvent, "player");
+            const responseVersion = Number(result.data.version), alreadyApplied = Number.isSafeInteger(responseVersion) && session.version >= responseVersion;
+            if (!alreadyApplied) {
+                if (Number.isSafeInteger(responseVersion))
+                    session.version = responseVersion;
+                snapshot = result.data.snapshot;
+                const event = result.data.actionEvent;
+                if (event) {
+                    recordHistory(event, "player");
+                    if (!settings.skipNormalAnimations)
+                        await animateEvent(event);
+                }
+            }
         }
         renderMatch();
         await animateNewRoundIfNeeded(false);
