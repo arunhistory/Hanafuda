@@ -69,12 +69,32 @@ function applyRulesDetail() {
     else
         rules.insertAdjacentHTML("beforeend", detailedRulesHtml());
 }
+function decorateFinalSettlement(card) {
+    card.classList.add("enhanced-final");
+    if (card.dataset.finalDecorated === "1" || !snapshot)
+        return;
+    card.dataset.finalDecorated = "1";
+    const title = card.querySelector("h2");
+    if (title) {
+        const kicker = document.createElement("div");
+        kicker.className = "final-kicker";
+        kicker.textContent = "全局終了";
+        title.before(kicker);
+    }
+    const [mine, theirs] = perspectiveScores(snapshot);
+    if (mine === theirs && (snapshot.matchWinner === 0 || snapshot.matchWinner === 1)) {
+        const note = document.createElement("p");
+        note.className = "final-tiebreak-note";
+        note.textContent = "同点のため、最終同点スコアへ先に到達した側を勝者として判定しました。";
+        card.querySelector(".screen-actions")?.before(note);
+    }
+}
 function decorateSettlement() {
     const card = app.querySelector(".settlement-card");
     if (!card)
         return;
     if (card.classList.contains("final")) {
-        card.classList.add("enhanced-final");
+        decorateFinalSettlement(card);
         return;
     }
     const breakdown = card.querySelector(".settlement-breakdown");
