@@ -66,7 +66,7 @@ function applyMatchPresentation(){
   if(final&&session?.kind==="cpu"&&session.mode==="impossible")final.classList.add("hidden-final");
 }
 
-function actionGhost(card:number,kind:"played"|"drawn"|"captured",actor:number){
+function actionGhost(card:number,kind:"played"|"drawn",actor:number){
   const img=document.createElement("img");
   img.className=`action-ghost ${kind} ${actor===playerSeat()?"from-player":"from-opponent"}`;
   img.src=assets.card(card);
@@ -74,7 +74,7 @@ function actionGhost(card:number,kind:"played"|"drawn"|"captured",actor:number){
   img.setAttribute("aria-hidden","true");
   document.body.append(img);
   img.addEventListener("animationend",()=>img.remove(),{once:true});
-  setTimeout(()=>img.remove(),1300);
+  setTimeout(()=>img.remove(),1100);
 }
 
 function animateAuthoritativeAction(event:ActionEvent){
@@ -82,8 +82,6 @@ function animateAuthoritativeAction(event:ActionEvent){
   const actor=Number(event.actor);
   if(Number.isInteger(event.playedCard))actionGhost(event.playedCard!,"played",actor);
   if(Number.isInteger(event.drawnCard))setTimeout(()=>actionGhost(event.drawnCard!,"drawn",actor),180);
-  const captures=Array.isArray(event.capturedCards)?event.capturedCards.filter(Number.isInteger):[];
-  captures.forEach((card,index)=>setTimeout(()=>actionGhost(Number(card),"captured",actor),360+index*85));
 }
 
 function syncHistoryDepth(){
