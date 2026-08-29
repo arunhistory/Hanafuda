@@ -8,6 +8,10 @@ const files=fs.readdirSync(dir).filter(x=>x.endsWith('.ts')).sort();
 const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
 const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const onlineRoomSrc=fs.readFileSync(path.join(dir,'online-room.ts'),'utf8');
+const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);');
+const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',[replacementPrior]);
+const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',[replacementAccept]);
+const replacementClose=onlineRoomSrc.indexOf('prior?.close(4001,"replaced")',[replacementStore]);
 const checks=[
   ['internal Supabase boundary',src.includes('"x-hanafuda-internal":internal')],
   ['no service-role secret in Cloudflare source',!src.includes('SUPABASE_SERVICE_ROLE_KEY')],
@@ -24,6 +28,7 @@ const checks=[
   ['matchmaking sockets use Durable Object hibernation API',directorySrc.includes('this.state.acceptWebSocket(server')&&directorySrc.includes('this.state.getWebSockets(`ticket:${ticket}`)')&&directorySrc.includes('serializeAttachment')&&directorySrc.includes('webSocketMessage(')&&!directorySrc.includes('server.accept()')&&!directorySrc.includes('server.addEventListener(')],
   ['online room sockets use Durable Object hibernation API',onlineRoomSrc.includes('this.state.acceptWebSocket(server')&&onlineRoomSrc.includes('this.state.getWebSockets(`seat:${seat}`)')&&onlineRoomSrc.includes('serializeAttachment({seat,connectionId})')&&onlineRoomSrc.includes('webSocketMessage(')&&onlineRoomSrc.includes('webSocketClose(')&&onlineRoomSrc.includes('webSocketError(')&&!onlineRoomSrc.includes('server.accept()')&&!onlineRoomSrc.includes('server.addEventListener(')&&!onlineRoomSrc.includes('sockets:Map<number,any>')],
   ['replaced online sockets cannot create false disconnects',onlineRoomSrc.includes('connectionIdHost')&&onlineRoomSrc.includes('connectionIdGuest')&&onlineRoomSrc.includes('timingSafe(current,connectionId)')],
+  ['new online connection becomes authoritative before old socket closes',replacementPrior>=0&&replacementAccept>replacementPrior&&replacementStore>replacementAccept&&replacementClose>replacementStore],
   ['legacy polling endpoint is explicitly rejected',src.includes('MATCHMAKING_WEBSOCKET_REQUIRED')&&src.includes('},410)')],
   ['matchmaking cleanup uses DO alarm not cron',src.includes('async alarm()')&&src.includes('setAlarm')&&src.includes('waiting:')&&src.includes('MATCHMAKING_TIMEOUT')&&!src.toLowerCase().includes('cron')],
   ['turn warning uses 60+30 seconds',src.includes('Date.now()+60_000')&&src.includes('graceDeadline:now+30_000')],
