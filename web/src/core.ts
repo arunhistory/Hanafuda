@@ -3,7 +3,7 @@ const SETTINGS_KEY = "hanafuda.settings.v1";
 const UNLOCK_KEY = "hanafuda.impossible.unlocked.v1";
 
 type CpuMode = "beginner" | "amateur" | "pro" | "impossible";
-type UiScreen = "home" | "cpu-setup" | "online" | "settings" | "rules" | "match";
+type UiScreen = "home" | "cpu-setup" | "online" | "settings" | "rules" | "yaku" | "match";
 type Seat = 0 | 1;
 
 type Settings = {
