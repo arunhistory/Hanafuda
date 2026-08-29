@@ -6,11 +6,10 @@ let forcedTransitionTimer:number|undefined;
 let forcedTransitionKey="";
 
 function dealSequenceIndex(kind:"field"|"player"|"opponent",index:number,s:Snapshot){
-  const group=Math.floor(index/2),within=index%2;
-  if(kind==="field")return group*6+within;
+  if(kind==="field")return index*3;
   const seat=kind==="player"?playerSeat():opponentSeat();
-  const offset=seat===s.dealer?4:2;
-  return group*6+offset+within;
+  const offset=seat===s.dealer?2:1;
+  return index*3+offset;
 }
 
 function applyDealSequence(){
