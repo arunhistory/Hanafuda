@@ -44,6 +44,18 @@ function startOnlineWarning(){
   },250);
 }
 
+function detailedRulesHtml(){
+  return `<div class="rules-detail" data-rules-detail="1"><h3>札の取り方</h3><p>手札から1枚出した後、山札の先頭を1枚めくります。どちらの札も同じ月の場札がある場合は取得処理を行います。</p><ul><li>同じ月が0枚：その札を場に置きます。</li><li>同じ月が1枚：出した札と場札を取得します。</li><li>同じ月が2枚：取る1枚を選び、2枚を取得します。</li><li>同じ月が3枚：4枚すべてを取得します。</li></ul><p>取得できる札がある場合、意図的に場へ捨てることはできません。山札からめくった札も同じ規則で処理します。</p><h3>配札時の特殊成立</h3><p>手四・くっつきは60点でその局を終了します。双方が同時に成立した場合は0対0の流局として1局を消化し、親は変わりません。</p><h3>親と局の進行</h3><p>最初の親はランダムです。通常決着では前局の勝者が次局の親になります。流局では親を継続します。対局は設定した1〜12局を消化し、累計得点で勝敗を決めます。</p><h3>こいこい後</h3><p>こいこいは1局につき1回までです。双方の残り手札が3枚未満になった時点では選択できません。こいこい後に得点した側の局得点は2倍で、7点以上などによる追加倍率はありません。</p><h3>最終同点</h3><p>最終累計点が同点の場合、その最終同点スコアへ先に到達した側を勝者とします。</p><h3>オンライン対戦</h3><p>部屋参加前に局数とこいこい設定を確認できます。対局開始後のルールは固定です。1手の持ち時間は60秒で、その後30秒の延長警告があります。実通信が切断した場合は1分以内の再接続を待ちます。</p></div>`;
+}
+
+function applyRulesDetail(){
+  const rules=app.querySelector<HTMLElement>(".rules-copy");
+  if(!rules||rules.querySelector("[data-rules-detail='1']"))return;
+  const marker=rules.querySelector(".notice");
+  if(marker)marker.insertAdjacentHTML("beforebegin",detailedRulesHtml());
+  else rules.insertAdjacentHTML("beforeend",detailedRulesHtml());
+}
+
 function applyMatchPresentation(){
   if(session?.kind==="cpu"&&session.mode==="impossible"&&isUnlocked())hiddenFirstEncounter=false;
   applyDealSequence();
@@ -123,8 +135,10 @@ window.addEventListener("pagehide",()=>stopOnlineWarning());
 
 const experienceObserver=new MutationObserver(()=>{
   applyMatchPresentation();
+  applyRulesDetail();
   syncHistoryDepth();
 });
 experienceObserver.observe(app,{childList:true,subtree:true});
 installHierarchyNavigation();
 applyMatchPresentation();
+applyRulesDetail();
