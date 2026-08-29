@@ -14,7 +14,7 @@ const checks=[
   ['authoritative action events propagate to CPU and online clients',src.includes('actionEvent:result.data?.actionEvent??null')&&src.includes('broadcastState(roomStatus,actionEvent)')&&src.includes('actionEvent:actionEvent??null')],
   ['forced challenge has explicit transition handshake',src.includes('/api/cpu/transition')&&src.includes('transition_ack')&&src.includes('pendingTransition')],
   ['challenge creates private CPU profile only after transition',src.includes('cpuProfile:3')&&src.includes('CHALLENGE_ENGINE_CREATE_FAILED')],
-  ['developer challenge cannot grant normal unlock',src.includes('challengeTestOnly:testOnly')&&src.includes('challengeTestOnly')),
+  ['developer challenge cannot grant normal unlock',src.includes('challengeTestOnly:testOnly')&&src.includes('challengeTestOnly')],
   ['direct hidden mode requires local unlock signal and official origin',src.includes('body?.unlocked!==true')&&src.includes('req.headers.get("Origin")!==env.APP_ORIGIN')&&src.includes('MODE_LOCKED')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['matchmaking cleanup uses DO alarm not cron',src.includes('async alarm()')&&src.includes('setAlarm')&&src.includes('waiting:')&&src.includes('match:')&&src.includes('ticketrule:')&&!src.toLowerCase().includes('cron')],
