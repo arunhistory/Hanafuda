@@ -1,0 +1,45 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const html=fs.readFileSync(path.join(root,'web','index.html'),'utf8');
+const css=fs.readFileSync(path.join(root,'web','styles.css'),'utf8');
+const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(root,'web','src',x),'utf8')).join('\n');
+const jsFiles=['core.js','views.js','cpu.js','online.js'];
+const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=>fs.readFileSync(path.join(root,'web','dist',x),'utf8')).join('\n');
+
+const checks=[
+  ['web app has no manifest or service worker',!html.includes('manifest')&&!ts.includes('serviceWorker')],
+  ['footer copyright is directly above ad slot',/class="copyright">©ある〜ん<\/div>\s*<div class="ad-bar"/.test(html)],
+  ['ad bar reserves safe-area-aware layout',css.includes('--footer-height')&&css.includes('env(safe-area-inset-bottom)')],
+  ['responsive portrait and landscape rules exist',css.includes('@media (max-width:720px)')&&css.includes('@media (orientation:landscape)')],
+  ['settings are compact and scroll-safe',css.includes('.settings-grid')&&css.includes('max-height:min(78dvh,720px);overflow:auto')],
+  ['back navigation uses stack not hardwired home',ts.includes('if(stack.length>1)stack.pop()')&&ts.includes('function goHome()')],
+  ['pause menu includes all required items',['再開','役の得点と組み合わせ','現状','履歴','ルール確認','設定','諦める'].every(x=>ts.includes(x))],
+  ['give up has confirmation',ts.includes('対局を諦めますか？')&&ts.includes('confirm-giveup')],
+  ['history is current-round memory only',ts.includes('let roundHistory:string[]=[]')&&ts.includes('roundHistory=[];currentRound=-1')&&!ts.includes('localStorage.setItem("history')],
+  ['history records played drawn captured yaku koi',ts.includes('を出した')&&ts.includes('山札から')&&ts.includes('を取得')&&ts.includes('役成立:')&&ts.includes('こいこい')],
+  ['asset runtime uses registry purpose ids',ts.includes('asset-registry.json')&&ts.includes('background.match.normal')&&ts.includes('cards.generated')&&!css.includes('../assets/')],
+  ['normal CPU list excludes hidden mode until local unlock',ts.includes('isUnlocked()?["beginner","amateur","pro","impossible"]:["beginner","amateur","pro"]')],
+  ['hidden trigger thresholds are absent from public frontend',!ts.includes('1000')&&!ts.includes('playerTotal')&&!ts.includes('cpuTotal')&&!ts.includes('should_force_impossible')],
+  ['developer secret or developer header is absent from frontend',!ts.includes('DEVELOPER_MODE_KEY')&&!ts.includes('x-hanafuda-developer')],
+  ['forced transition uses explicit CPU transition endpoint',ts.includes('/api/cpu/transition')&&ts.includes('showCollapse()')],
+  ['first hidden encounter name is obscured',ts.includes('hiddenFirstEncounter?"▧▒░█?▒":"人知不能"')],
+  ['local unlock is written only from server grant path',ts.includes('if(started.data.unlockGranted===true)grantUnlock()')&&ts.includes('if(result.data.unlockGranted===true)grantUnlock()')&&!ts.includes('grantUnlock();\n  await sendAction')],
+  ['shuffle runs for every newly detected round',ts.includes('currentRound!==snapshot.roundIndex')&&ts.includes('await showShuffle()')],
+  ['deal is one-card staggered',css.includes('--deal-index')&&ts.includes('style="--deal-index:${i}"')],
+  ['capture animation exists',ts.includes('showCaptureTrail')&&css.includes('@keyframes captureFly')],
+  ['koi and agari use registered text assets',ts.includes('effect.koikoi.text')&&ts.includes('effect.agari.text')],
+  ['settlement order includes yaku base multiplier round cumulative',['成立役','基礎点','こいこい倍率','局得点','累計点'].every(x=>ts.includes(x))],
+  ['audio is hooks only',ts.includes('hanafuda-audio-hook')&&!html.includes('<audio')&&!ts.includes('new Audio(')],
+  ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
+  ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
+  ['online actions carry epoch and version',ts.includes('epoch:session.epoch,version:session.version')],
+  ['online websocket handles warning disconnect timeout',ts.includes('turn_warning')&&ts.includes('disconnect')&&ts.includes('timeout')],
+  ['no mid-match state persisted',!ts.includes('localStorage.setItem("session')&&!ts.includes('localStorage.setItem("snapshot')],
+  ['page exit attempts authoritative cleanup',ts.includes('pagehide')&&ts.includes('/api/cpu/close')&&ts.includes('/api/online/close')],
+  ['compiled javascript exists and parses',js.length>1000],
+];
+for(const [name,ok] of checks)console.log(ok?'PASS':'FAIL',name);
+if(checks.some(([,ok])=>!ok))process.exit(1);
