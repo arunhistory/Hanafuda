@@ -34,7 +34,7 @@ static int collect_matches(uint8_t c,uint8_t out[3]){int n=0,m=card_month(c);for
 static void capture_selected(int p,uint8_t played,int field_idx){uint8_t f=S.field[field_idx];field_remove_index(field_idx);captured_add(p,played);captured_add(p,f);}
 static void capture_all_three(int p,uint8_t played,uint8_t idxs[3]){for(int i=0;i<3;i++)for(int j=i+1;j<3;j++)if(idxs[j]>idxs[i]){uint8_t t=idxs[i];idxs[i]=idxs[j];idxs[j]=t;}captured_add(p,played);for(int i=0;i<3;i++){uint8_t f=S.field[idxs[i]];field_remove_index(idxs[i]);captured_add(p,f);}}
 static int field_has_four_month(){int cnt[13]={0};for(int i=0;i<S.field_n;i++){int m=card_month(S.field[i]);if(m>=1&&m<=12){cnt[m]++;if(cnt[m]>=4)return 1;}}return 0;}
-static void deal_once(){const int child=1-S.dealer;for(int group=0;group<4;group++){for(int i=0;i<2;i++)field_add(draw_raw());for(int i=0;i<2;i++)S.hand[child][S.hand_n[child]++]=draw_raw();for(int i=0;i<2;i++)S.hand[S.dealer][S.hand_n[S.dealer]++]=draw_raw();}}
+static void deal_once(){const int child=1-S.dealer;for(int i=0;i<8;i++){field_add(draw_raw());S.hand[child][S.hand_n[child]++]=draw_raw();S.hand[S.dealer][S.hand_n[S.dealer]++]=draw_raw();}}
 static void update_score_stamp(int p){S.stamp_counter++;S.score_stamp[p]=S.stamp_counter;}
 static void finish_match_if_needed(){if(S.round_index<S.total_rounds)return;S.status=2;S.phase=PHASE_MATCH_COMPLETE;if(S.total_score[0]>S.total_score[1])S.match_winner=0;else if(S.total_score[1]>S.total_score[0])S.match_winner=1;else if(S.score_stamp[0]&&S.score_stamp[1]&&S.score_stamp[0]!=S.score_stamp[1])S.match_winner=S.score_stamp[0]<S.score_stamp[1]?0:1;else S.match_winner=255;}
 static void begin_round(){clear_round();S.status=0;S.phase=PHASE_PLAY;S.turn=S.dealer;for(int tries=0;tries<32;tries++){clear_round();S.status=0;S.phase=PHASE_PLAY;S.turn=S.dealer;shuffle_deck();deal_once();if(field_has_four_month()){S.redeal_count++;continue;}S.special_result[0]=(uint8_t)special_hand(S.hand[0],8);S.special_result[1]=(uint8_t)special_hand(S.hand[1],8);if(S.special_result[0]||S.special_result[1]){if(S.special_result[0]&&S.special_result[1]){S.last_round_winner=2;S.last_round_points=0;S.status=1;S.phase=PHASE_ROUND_SETTLEMENT;return;}int w=S.special_result[0]?0:1;S.total_score[w]+=60;update_score_stamp(w);S.last_round_winner=(uint8_t)w;S.last_round_points=60;S.dealer=(uint8_t)w;S.status=1;S.phase=PHASE_ROUND_SETTLEMENT;return;}return;}S.last_round_winner=2;S.last_round_points=0;S.status=1;S.phase=PHASE_ROUND_SETTLEMENT;}
@@ -56,7 +56,7 @@ static int public_cpu_koi(int actor,int difficulty,uint32_t seed){
 }
 
 extern "C" {
-__attribute__((visibility("default"))) int game_state_size(){return (int)sizeof(GameState);} 
+__attribute__((visibility("default"))) int game_state_size(){return (int)sizeof(GameState);}
 __attribute__((visibility("default"))) uint8_t* game_state_ptr(){return (uint8_t*)&S;}
 __attribute__((visibility("default"))) uint8_t* game_io_buffer(){return io_buffer;}
 __attribute__((visibility("default"))) int game_load(const uint8_t* p,int n){if(n!=(int)sizeof(GameState))return ERR_STATE;uint8_t* d=(uint8_t*)&S;for(int i=0;i<n;i++)d[i]=p[i];return(S.magic==MAGIC&&S.version==1)?OK:ERR_STATE;}
