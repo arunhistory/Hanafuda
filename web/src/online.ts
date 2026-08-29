@@ -52,17 +52,22 @@ async function startOnlineSession(code:string,token:string,seat:Seat,rules:{roun
 }
 function connectOnlineSocket(s:OnlineSession){
   const url=new URL(API_BASE.replace(/^http/,"ws")+"/api/online/connect");url.searchParams.set("room",s.roomCode);url.searchParams.set("token",s.token);const ws=new WebSocket(url);s.socket=ws;
-  ws.onmessage=event=>{try{const msg=JSON.parse(String(event.data));handleOnlineMessage(msg);}catch{}};ws.onclose=()=>{if(session===s)toast("通信が切断されました。1分以内に再接続します。"),setTimeout(()=>{if(session===s&&s.socket?.readyState===WebSocket.CLOSED)connectOnlineSocket(s);},1800);};
+  ws.onmessage=event=>{try{const msg=JSON.parse(String(event.data));void handleOnlineMessage(msg);}catch{}};ws.onclose=()=>{if(session===s)toast("通信が切断されました。1分以内に再接続します。"),setTimeout(()=>{if(session===s&&s.socket?.readyState===WebSocket.CLOSED)connectOnlineSocket(s);},1800);};
 }
-function handleOnlineMessage(msg:any){
+async function handleOnlineMessage(msg:any){
   if(!session||session.kind!=="online")return;
   if(msg?.type==="connected"||msg?.type==="state"){
     stopOnlineWarning();
     const prior=snapshot,priorVersion=session.version,priorEpoch=session.epoch,incomingVersion=Number(msg.version),incomingEpoch=msg.epoch?String(msg.epoch):priorEpoch;
     const epochChanged=!!priorEpoch&&!!incomingEpoch&&incomingEpoch!==priorEpoch;
+    const isNewAction=!!msg.actionEvent&&!epochChanged&&(!Number.isSafeInteger(incomingVersion)||incomingVersion>priorVersion);
     if(msg.epoch)session.epoch=incomingEpoch;if(Number.isSafeInteger(incomingVersion))session.version=incomingVersion;
     if(epochChanged){roundHistory=[];currentRound=-1;}
-    if(msg.snapshot){snapshot=msg.snapshot;onlineReconfigureState="none";if(msg.actionEvent&&!epochChanged&&(!Number.isSafeInteger(incomingVersion)||incomingVersion>priorVersion))recordHistory(msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");renderMatch();void animateNewRoundIfNeeded(!prior||epochChanged);}
+    if(msg.snapshot){
+      snapshot=msg.snapshot;onlineReconfigureState="none";
+      if(isNewAction){recordHistory(msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");if(!settings.skipNormalAnimations)await animateEvent(msg.actionEvent);}
+      renderMatch();await animateNewRoundIfNeeded(!prior||epochChanged);
+    }
   }else if(msg?.type==="postmatch_choice"){
     if(msg.choice==="reconfigure"){onlineReconfigureState=session.seat===0?"host":"guest";renderMatch();}
     else if(msg.choice==="home")void closeMatch(true);
