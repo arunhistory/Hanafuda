@@ -193,12 +193,21 @@ async function animateNewRoundIfNeeded(force) {
     roundHistory = [];
     if (settings.skipNormalAnimations)
         return;
-    await showShuffle(force);
-    const board = app.querySelector(".board");
-    board?.classList.add("dealing");
-    await delay(Math.min(1200, 700 + snapshot.hand.length * 55));
-    board?.classList.remove("dealing");
-    emitAudioHook("deal");
+    const corruptedShift = session?.kind === "cpu" && session.mode === "impossible";
+    if (corruptedShift)
+        app.classList.add("corrupted-round-shift");
+    try {
+        await showShuffle(force);
+        const board = app.querySelector(".board");
+        board?.classList.add("dealing");
+        await delay(Math.min(1200, 700 + snapshot.hand.length * 55));
+        board?.classList.remove("dealing");
+        emitAudioHook("deal");
+    }
+    finally {
+        if (corruptedShift)
+            app.classList.remove("corrupted-round-shift");
+    }
 }
 async function animateEvent(event) {
     if (event.capturedCards?.length)
@@ -257,6 +266,7 @@ async function closeMatch(homeAfter = false) {
     hiddenFirstEncounter = false;
     onlineReconfigureState = "none";
     roundHistory = [];
+    app.classList.remove("corrupted-round-shift");
     try {
         if (closing?.kind === "cpu")
             await api("/api/cpu/close", { sessionId: closing.sessionId, token: closing.token });
