@@ -94,8 +94,14 @@ async function beginImpossibleTransition(){
 async function animateNewRoundIfNeeded(force:boolean){
   if(!snapshot)return;const changed=force||currentRound!==snapshot.roundIndex;if(!changed)return;currentRound=snapshot.roundIndex;roundHistory=[];
   if(settings.skipNormalAnimations)return;
-  await showShuffle(force);
-  const board=app.querySelector(".board");board?.classList.add("dealing");await delay(Math.min(1200,700+snapshot.hand.length*55));board?.classList.remove("dealing");emitAudioHook("deal");
+  const corruptedShift=session?.kind==="cpu"&&session.mode==="impossible";
+  if(corruptedShift)app.classList.add("corrupted-round-shift");
+  try{
+    await showShuffle(force);
+    const board=app.querySelector(".board");board?.classList.add("dealing");await delay(Math.min(1200,700+snapshot.hand.length*55));board?.classList.remove("dealing");emitAudioHook("deal");
+  }finally{
+    if(corruptedShift)app.classList.remove("corrupted-round-shift");
+  }
 }
 async function animateEvent(event:ActionEvent){
   if(event.capturedCards?.length)toast(`取得: ${event.capturedCards.map(cardName).join("・")}`);
@@ -121,7 +127,7 @@ async function showCollapse(){
 function delay(ms:number){return new Promise<void>(resolve=>setTimeout(resolve,ms));}
 
 async function closeMatch(homeAfter=false){
-  const closing=session;session=null;snapshot=null;modal=null;pendingModeTransition=false;hiddenFirstEncounter=false;onlineReconfigureState="none";roundHistory=[];
+  const closing=session;session=null;snapshot=null;modal=null;pendingModeTransition=false;hiddenFirstEncounter=false;onlineReconfigureState="none";roundHistory=[];app.classList.remove("corrupted-round-shift");
   try{
     if(closing?.kind==="cpu")await api("/api/cpu/close",{sessionId:closing.sessionId,token:closing.token});
     if(closing?.kind==="online"){closing.socket?.close();await api("/api/online/close",{roomCode:closing.roomCode,token:closing.token,reason:"client_leave"});}
