@@ -43,6 +43,16 @@ function animateAuthoritativeAction(event:ActionEvent){
   if(Number.isInteger(event.drawnCard))setTimeout(()=>actionGhost(event.drawnCard!,"drawn",actor),180);
 }
 
+const baseRecordHistory=recordHistory;
+recordHistory=(event:ActionEvent,actor?:string)=>{
+  const before=roundHistory.length;
+  baseRecordHistory(event,actor);
+  if(roundHistory.length<=before)return;
+  const newest=roundHistory[roundHistory.length-1];
+  const previous=roundHistory[roundHistory.length-2];
+  if(previous===newest)roundHistory.pop();
+};
+
 function syncHistoryDepth(){
   if(navigationSyncing)return;
   const depth=stack.length;
