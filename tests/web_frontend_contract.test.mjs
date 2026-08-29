@@ -35,6 +35,8 @@ const checks=[
   ['audio is hooks only',ts.includes('hanafuda-audio-hook')&&!html.includes('<audio')&&!ts.includes('new Audio(')],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
   ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
+  ['random matchmaking is websocket event-driven',ts.includes('/api/online/random/connect')&&ts.includes('type==="matched"')&&!ts.includes('for(let i=0;i<24&&!r.data.matched')&&!ts.includes('/api/online/random",{ticket')],
+  ['random matchmaking can be cancelled without polling',ts.includes('function cancelRandomMatch')&&ts.includes('type:"cancel"')&&ts.includes('マッチング中止')],
   ['online actions carry epoch and version',ts.includes('epoch:session.epoch,version:session.version')],
   ['online websocket handles warning disconnect timeout',ts.includes('turn_warning')&&ts.includes('disconnect')&&ts.includes('timeout')],
   ['no mid-match state persisted',!ts.includes('localStorage.setItem("session')&&!ts.includes('localStorage.setItem("snapshot')],
