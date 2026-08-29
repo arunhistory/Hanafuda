@@ -21,7 +21,7 @@ async function startCpu() {
             modeSessionId = mode.data.sessionId;
             modeSessionToken = mode.data.token;
         }
-        const started = await api("/api/cpu/start", settings.mode === "impossible" ? { mode: "impossible", rounds: settings.rounds, koiEnabled: settings.koiEnabled, unlocked: isUnlocked() } : { mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken, unlocked: isUnlocked() });
+        const started = await api("/api/cpu/start", settings.mode === "impossible" ? { mode: "impossible", rounds: settings.rounds, koiEnabled: settings.koiEnabled, unlocked: isUnlocked() } : { mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken });
         if (!started.ok || !started.data?.ok)
             throw new Error(started.data?.code || "CPU_START_FAILED");
         session = { kind: "cpu", sessionId: started.data.sessionId, token: started.data.token, version: Number(started.data.version), mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken };
