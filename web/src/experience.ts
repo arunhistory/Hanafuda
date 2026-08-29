@@ -2,6 +2,8 @@ let observedDepth=stack.length;
 let navigationSyncing=false;
 let onlineWarningDeadline=0;
 let onlineWarningTimer:number|undefined;
+let forcedTransitionTimer:number|undefined;
+let forcedTransitionKey="";
 
 function dealSequenceIndex(kind:"field"|"player"|"opponent",index:number,s:Snapshot){
   const group=Math.floor(index/2),within=index%2;
@@ -56,10 +58,47 @@ function applyRulesDetail(){
   else rules.insertAdjacentHTML("beforeend",detailedRulesHtml());
 }
 
+function decorateSettlement(){
+  const card=app.querySelector<HTMLElement>(".settlement-card");
+  if(!card)return;
+  if(card.classList.contains("final")){
+    card.classList.add("enhanced-final");
+    return;
+  }
+  if(settings.skipNormalAnimations)return;
+  card.classList.add("staged-settlement");
+  card.querySelectorAll<HTMLElement>(".settlement-breakdown > div").forEach((row,index)=>row.style.setProperty("--settle-index",String(index)));
+}
+
+function cancelForcedTransition(resetKey=false){
+  if(forcedTransitionTimer!==undefined){window.clearTimeout(forcedTransitionTimer);forcedTransitionTimer=undefined;}
+  if(resetKey)forcedTransitionKey="";
+}
+
+function scheduleForcedTransition(){
+  const s=session;
+  const snap=snapshot;
+  if(!(s?.kind==="cpu"&&s.mode!=="impossible"&&pendingModeTransition&&snap?.phase===5)){
+    cancelForcedTransition(true);
+    return;
+  }
+  const key=`${s.sessionId}:${s.version}:${snap.roundIndex}`;
+  if(forcedTransitionKey===key)return;
+  cancelForcedTransition(false);
+  forcedTransitionKey=key;
+  const hold=settings.skipNormalAnimations?1600:3800;
+  forcedTransitionTimer=window.setTimeout(()=>{
+    forcedTransitionTimer=undefined;
+    if(session===s&&pendingModeTransition&&snapshot?.phase===5)void beginImpossibleTransition();
+  },hold);
+}
+
 function applyMatchPresentation(){
   if(session?.kind==="cpu"&&session.mode==="impossible"&&isUnlocked())hiddenFirstEncounter=false;
   applyDealSequence();
   renderOnlineWarning();
+  decorateSettlement();
+  scheduleForcedTransition();
   const menu=app.querySelector<HTMLButtonElement>("[data-action='pause']");
   if(menu)menu.textContent="☰ メニュー";
   const final=app.querySelector<HTMLElement>(".settlement-card.final");
@@ -95,7 +134,7 @@ function syncHistoryDepth(){
 async function leaveCurrentHierarchyFromBrowser(){
   if(modal){modal=null;if(currentScreen()==="match")renderMatch();else void render();history.pushState({hanafuda:true,depth:stack.length},"");return;}
   if(stack.length<=1)return;
-  navigationSyncing=true;stack.pop();observedDepth=stack.length;stopOnlineWarning();
+  navigationSyncing=true;stack.pop();observedDepth=stack.length;stopOnlineWarning();cancelForcedTransition(true);
   if(session)await closeMatch(false);else await render();
   navigationSyncing=false;
 }
@@ -113,7 +152,7 @@ window.addEventListener("hanafuda-audio-hook",event=>{
   const detail=(event as CustomEvent<{name?:string;event?:ActionEvent}>).detail;
   if(detail?.name==="card-action"&&detail.event)animateAuthoritativeAction(detail.event);
 });
-window.addEventListener("pagehide",()=>stopOnlineWarning());
+window.addEventListener("pagehide",()=>{stopOnlineWarning();cancelForcedTransition(true);});
 
 const experienceObserver=new MutationObserver(()=>{applyMatchPresentation();applyRulesDetail();syncHistoryDepth();});
 experienceObserver.observe(app,{childList:true,subtree:true});
