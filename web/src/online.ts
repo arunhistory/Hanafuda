@@ -46,6 +46,7 @@ function randomOnline(){
   ws.onclose=()=>{if(matchmakingSocket!==ws)return;matchmakingSocket=null;busy=false;if(!matched)toast("マッチングを終了しました。");if(currentScreen()==="online")void render();};
 }
 async function startOnlineSession(code:string,token:string,seat:Seat,rules:{rounds:number;koiEnabled:boolean},initial:any){
+  stopOnlineWarning();
   const provisional:OnlineSession={kind:"online",roomCode:code,token,seat,version:Number(initial?.version??-1),epoch:String(initial?.epoch??""),rules,socket:null};session=provisional;snapshot=initial?.snapshot??null;roundHistory=[];currentRound=-1;stack=["home","online","match"];
   connectOnlineSocket(provisional);if(snapshot){renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=`<main class="${screenClass()}"><section class="hero"><h1>待機中</h1><p>ルームコード ${escapeHtml(code)}</p><p>相手の参加と接続を待っています。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
 }
@@ -56,16 +57,24 @@ function connectOnlineSocket(s:OnlineSession){
 function handleOnlineMessage(msg:any){
   if(!session||session.kind!=="online")return;
   if(msg?.type==="connected"||msg?.type==="state"){
-    if(msg.epoch)session.epoch=String(msg.epoch);if(Number.isSafeInteger(Number(msg.version)))session.version=Number(msg.version);if(msg.snapshot){const prior=snapshot;snapshot=msg.snapshot;onlineReconfigureState="none";if(msg.actionEvent)recordHistory(msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");renderMatch();void animateNewRoundIfNeeded(!prior);}
+    stopOnlineWarning();
+    const prior=snapshot,priorVersion=session.version,incomingVersion=Number(msg.version);
+    if(msg.epoch)session.epoch=String(msg.epoch);if(Number.isSafeInteger(incomingVersion))session.version=incomingVersion;
+    if(msg.snapshot){snapshot=msg.snapshot;onlineReconfigureState="none";if(msg.actionEvent&&(!Number.isSafeInteger(incomingVersion)||incomingVersion>priorVersion))recordHistory(msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");renderMatch();void animateNewRoundIfNeeded(!prior);}
   }else if(msg?.type==="postmatch_choice"){
     if(msg.choice==="reconfigure"){onlineReconfigureState=session.seat===0?"host":"guest";renderMatch();}
     else if(msg.choice==="home")void closeMatch(true);
   }else if(msg?.type==="rules_changed"){
     if(msg.rules)session.rules=msg.rules;
-  }else if(msg?.type==="turn_warning")toast("持ち時間60秒を超えました。あと30秒です。");
-  else if(msg?.type==="timeout"){toast("通信タイムアウトのため対局を終了します。");void closeMatch(true);}
-  else if(msg?.type==="disconnect")toast("対戦相手の通信が切断されました。復帰を待っています。");
-  else if(msg?.type==="closed")void closeMatch(true);
+  }else if(msg?.type==="turn_warning"){
+    startOnlineWarning();toast("持ち時間60秒を超えました。あと30秒です。");
+  }else if(msg?.type==="timeout"){
+    stopOnlineWarning();toast("通信タイムアウトのため対局を終了します。");void closeMatch(true);
+  }else if(msg?.type==="disconnect"){
+    stopOnlineWarning();toast("対戦相手の通信が切断されました。復帰を待っています。");
+  }else if(msg?.type==="closed"){
+    stopOnlineWarning();void closeMatch(true);
+  }
 }
 async function onlinePostmatch(choice:"reconfigure"|"same"|"home"){
   if(!session||session.kind!=="online")return;const s=session;
@@ -73,7 +82,7 @@ async function onlinePostmatch(choice:"reconfigure"|"same"|"home"){
   if(!r.ok||!r.data?.ok){toast(r.data?.code||"終了後処理に失敗しました");return;}
   const lockedChoice=String(r.data.choice??choice) as "reconfigure"|"same"|"home";
   if(r.data.locked&&lockedChoice!==choice)toast(`先着の選択「${lockedChoice}」が適用されました`);
-  if(lockedChoice==="home"){await closeMatch(true);return;}
+  if(lockedChoice==="home"){stopOnlineWarning();await closeMatch(true);return;}
   if(lockedChoice==="reconfigure"){onlineReconfigureState=s.seat===0?"host":"guest";renderMatch();return;}
   if(lockedChoice==="same"&&r.data.snapshot){const prior=snapshot;s.epoch=String(r.data.epoch??s.epoch);s.version=Number(r.data.version??s.version);snapshot=r.data.snapshot;onlineReconfigureState="none";roundHistory=[];currentRound=-1;renderMatch();await animateNewRoundIfNeeded(!prior||prior.phase===6);}
 }
@@ -86,6 +95,7 @@ async function applyOnlineReconfigure(){
 }
 
 window.addEventListener("pagehide",()=>{
+  stopOnlineWarning();
   const waiting=matchmakingSocket;matchmakingSocket=null;if(waiting){try{if(waiting.readyState===WebSocket.OPEN)waiting.send(JSON.stringify({type:"cancel"}));}catch{}try{waiting.close(1000,"pagehide");}catch{}}
   const s=session;if(!s)return;
   if(s.kind==="cpu")navigator.sendBeacon?.(`${API_BASE}/api/cpu/close`,new Blob([JSON.stringify({sessionId:s.sessionId,token:s.token})],{type:"text/plain;charset=UTF-8"}));
