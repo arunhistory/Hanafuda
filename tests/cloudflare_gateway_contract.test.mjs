@@ -9,9 +9,9 @@ const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
 const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const onlineRoomSrc=fs.readFileSync(path.join(dir,'online-room.ts'),'utf8');
 const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);');
-const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',[replacementPrior]);
-const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',[replacementAccept]);
-const replacementClose=onlineRoomSrc.indexOf('prior?.close(4001,"replaced")',[replacementStore]);
+const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',replacementPrior);
+const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',replacementAccept);
+const replacementClose=onlineRoomSrc.indexOf('prior?.close(4001,"replaced")',replacementStore);
 const postmatchStart=onlineRoomSrc.indexOf('async postmatch(body:any)');
 const postmatchLock=onlineRoomSrc.indexOf('await this.state.storage.put({postmatchChoice:choice',postmatchStart);
 const postmatchRematchCreate=onlineRoomSrc.indexOf('op:"create_internal"',postmatchLock);
@@ -19,6 +19,10 @@ const checks=[
   ['internal Supabase boundary',src.includes('"x-hanafuda-internal":internal')],
   ['no service-role secret in Cloudflare source',!src.includes('SUPABASE_SERVICE_ROLE_KEY')],
   ['room rules are rounds+koi only',src.includes('k!=="rounds"&&k!=="koiEnabled"')],
+  ['v3 owns online create join and connect routes',directorySrc.includes('url.pathname==="/api/online/create"')&&directorySrc.includes('url.pathname==="/api/online/join"')&&directorySrc.includes('url.pathname==="/api/online/connect"')],
+  ['online create validates exact RuleSet before room creation',directorySrc.includes('const rules=parseRuleSet(body?.rules);if(!rules)return json({ok:false,code:"INVALID_RULESET"},400);')&&directorySrc.includes('JSON.stringify({op:"create",hostToken,rules})')],
+  ['online join validates room code and creates only server token',directorySrc.includes('if(!validRoomCode(code))return json({ok:false,code:"INVALID_ROOM_CODE"},400);')&&directorySrc.includes('const guestToken=randomToken(),stub=env.ROOMS.get')&&directorySrc.includes('JSON.stringify({op:"join",guestToken})')],
+  ['online connect validates room code and opaque token at v3 gateway',directorySrc.includes('if(!validRoomCode(code)||!validOpaqueToken(token))return json({ok:false,code:"INVALID_SESSION"},400);')&&directorySrc.includes('target.pathname="/connect"')],
   ['guest pre-join inspection exists',src.includes('/api/online/inspect')&&src.includes('op==="inspect"')],
   ['authoritative online actions exist',src.includes('/api/online/action')&&src.includes('expectedVersion')],
   ['authoritative action events propagate to CPU and online clients',src.includes('actionEvent:result.data?.actionEvent??null')&&src.includes('broadcastState(roomStatus,actionEvent)')&&src.includes('actionEvent:actionEvent??null')],
