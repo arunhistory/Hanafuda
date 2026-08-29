@@ -42,7 +42,9 @@ export function ruleKey(r) { return `${r.rounds}:${r.koiEnabled ? 1 : 0}`; }
 export function validRoomCode(v) { return /^[A-Z2-9]{6}$/.test(v); }
 export function roomStatusForPhase(phase) { return phase === 5 ? "round_settlement" : phase === 6 ? "complete" : "active"; }
 export async function engineCall(env, payload) {
-    const url = String(env.SUPABASE_ENGINE_URL ?? "");
+    const mainUrl = String(env.SUPABASE_ENGINE_URL ?? "");
+    const closeUrl = String(env.SUPABASE_ENGINE_CLOSE_URL ?? "");
+    const url = payload?.op === "close" ? (closeUrl || mainUrl) : mainUrl;
     const internal = String(env.HANA_INTERNAL ?? "");
     if (!url || !internal)
         throw new Error("ENGINE_BINDING_MISSING");
