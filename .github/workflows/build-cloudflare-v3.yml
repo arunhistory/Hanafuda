@@ -1,0 +1,59 @@
+name: Build Cloudflare v3 gateway
+
+on:
+  push:
+    branches:
+      - implementation/webapp-v1
+    paths:
+      - 'cloudflare/v3-src/**'
+      - 'cloudflare/worker-v2.js'
+      - 'cloudflare/tsconfig.v3.json'
+      - 'tests/cloudflare_gateway_contract.test.mjs'
+      - '.github/workflows/build-cloudflare-v3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-validate-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/webapp-v1
+          fetch-depth: 0
+
+      - name: Compile TypeScript gateway modules
+        run: |
+          rm -rf cloudflare/v3-dist
+          npx --yes --package typescript@5.8.3 tsc -p cloudflare/tsconfig.v3.json
+          cp cloudflare/worker-v2.js cloudflare/v3-dist/worker-v2.js
+
+      - name: Validate generated JavaScript syntax
+        run: |
+          for f in cloudflare/v3-dist/*.js; do
+            node --check "$f"
+          done
+
+      - name: Run Cloudflare gateway contract tests
+        run: node tests/cloudflare_gateway_contract.test.mjs
+
+      - name: Reject hidden trigger leakage from v3 public gateway
+        run: |
+          if grep -R -E 'playerTotal|cpuTotal|should_force_impossible' cloudflare/v3-src cloudflare/v3-dist; then
+            echo 'Hidden transition details leaked into public gateway modules.' >&2
+            exit 1
+          fi
+
+      - name: Commit generated gateway artifacts if changed
+        run: |
+          if git status --porcelain -- cloudflare/v3-dist | grep -q .; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add cloudflare/v3-dist
+            git commit -m 'Build Cloudflare v3 gateway artifacts [skip ci]'
+            git push origin HEAD:implementation/webapp-v1
+          else
+            echo 'Cloudflare v3 artifacts are already current.'
+          fi
