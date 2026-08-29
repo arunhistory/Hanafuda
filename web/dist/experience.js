@@ -87,7 +87,7 @@ function actionGhost(card, kind, actor) {
     img.setAttribute("aria-hidden", "true");
     document.body.append(img);
     img.addEventListener("animationend", () => img.remove(), { once: true });
-    setTimeout(() => img.remove(), 1100);
+    setTimeout(() => img.remove(), 1300);
 }
 function animateAuthoritativeAction(event) {
     if (settings.skipNormalAnimations || currentScreen() !== "match")
@@ -97,6 +97,8 @@ function animateAuthoritativeAction(event) {
         actionGhost(event.playedCard, "played", actor);
     if (Number.isInteger(event.drawnCard))
         setTimeout(() => actionGhost(event.drawnCard, "drawn", actor), 180);
+    const captures = Array.isArray(event.capturedCards) ? event.capturedCards.filter(Number.isInteger) : [];
+    captures.forEach((card, index) => setTimeout(() => actionGhost(Number(card), "captured", actor), 360 + index * 85));
 }
 function syncHistoryDepth() {
     if (navigationSyncing)
@@ -126,12 +128,10 @@ async function leaveCurrentHierarchyFromBrowser() {
     stack.pop();
     observedDepth = stack.length;
     stopOnlineWarning();
-    if (session) {
+    if (session)
         await closeMatch(false);
-    }
-    else {
+    else
         await render();
-    }
     navigationSyncing = false;
 }
 function installHierarchyNavigation() {
@@ -153,11 +153,7 @@ window.addEventListener("hanafuda-audio-hook", event => {
         animateAuthoritativeAction(detail.event);
 });
 window.addEventListener("pagehide", () => stopOnlineWarning());
-const experienceObserver = new MutationObserver(() => {
-    applyMatchPresentation();
-    applyRulesDetail();
-    syncHistoryDepth();
-});
+const experienceObserver = new MutationObserver(() => { applyMatchPresentation(); applyRulesDetail(); syncHistoryDepth(); });
 experienceObserver.observe(app, { childList: true, subtree: true });
 installHierarchyNavigation();
 applyMatchPresentation();
