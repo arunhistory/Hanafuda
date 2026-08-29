@@ -1,0 +1,639 @@
+{
+  "version": 1,
+  "source": "assets/cards/sheet/card-sheet.png",
+  "sourceWidth": 1447,
+  "sourceHeight": 1087,
+  "output": {
+    "width": 240,
+    "height": 480,
+    "fit": "contain",
+    "format": "png",
+    "lossless": true
+  },
+  "cards": [
+    {
+      "id": "m01-c1",
+      "month": 1,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 80,
+        "y": 80,
+        "width": 99,
+        "height": 211
+      },
+      "output": "assets/cards/generated/m01-c1.png"
+    },
+    {
+      "id": "m01-c2",
+      "month": 1,
+      "slot": 2,
+      "logical_type": "light",
+      "crop": {
+        "x": 185,
+        "y": 79,
+        "width": 98,
+        "height": 212
+      },
+      "output": "assets/cards/generated/m01-c2.png"
+    },
+    {
+      "id": "m01-c3",
+      "month": 1,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 289,
+        "y": 80,
+        "width": 100,
+        "height": 211
+      },
+      "output": "assets/cards/generated/m01-c3.png"
+    },
+    {
+      "id": "m01-c4",
+      "month": 1,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 395,
+        "y": 80,
+        "width": 99,
+        "height": 210
+      },
+      "output": "assets/cards/generated/m01-c4.png"
+    },
+    {
+      "id": "m02-c1",
+      "month": 2,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 531,
+        "y": 80,
+        "width": 90,
+        "height": 211
+      },
+      "output": "assets/cards/generated/m02-c1.png"
+    },
+    {
+      "id": "m02-c2",
+      "month": 2,
+      "slot": 2,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 626,
+        "y": 80,
+        "width": 89,
+        "height": 210
+      },
+      "output": "assets/cards/generated/m02-c2.png"
+    },
+    {
+      "id": "m02-c3",
+      "month": 2,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 721,
+        "y": 80,
+        "width": 90,
+        "height": 210
+      },
+      "output": "assets/cards/generated/m02-c3.png"
+    },
+    {
+      "id": "m02-c4",
+      "month": 2,
+      "slot": 4,
+      "logical_type": "tane",
+      "crop": {
+        "x": 817,
+        "y": 80,
+        "width": 93,
+        "height": 210
+      },
+      "output": "assets/cards/generated/m02-c4.png"
+    },
+    {
+      "id": "m03-c1",
+      "month": 3,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 952,
+        "y": 80,
+        "width": 97,
+        "height": 203
+      },
+      "output": "assets/cards/generated/m03-c1.png"
+    },
+    {
+      "id": "m03-c2",
+      "month": 3,
+      "slot": 2,
+      "logical_type": "light",
+      "crop": {
+        "x": 1056,
+        "y": 80,
+        "width": 99,
+        "height": 203
+      },
+      "output": "assets/cards/generated/m03-c2.png"
+    },
+    {
+      "id": "m03-c3",
+      "month": 3,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 1163,
+        "y": 80,
+        "width": 98,
+        "height": 203
+      },
+      "output": "assets/cards/generated/m03-c3.png"
+    },
+    {
+      "id": "m03-c4",
+      "month": 3,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 1268,
+        "y": 80,
+        "width": 99,
+        "height": 203
+      },
+      "output": "assets/cards/generated/m03-c4.png"
+    },
+    {
+      "id": "m04-c1",
+      "month": 4,
+      "slot": 1,
+      "logical_type": "tane",
+      "crop": {
+        "x": 80,
+        "y": 338,
+        "width": 102,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m04-c1.png"
+    },
+    {
+      "id": "m04-c2",
+      "month": 4,
+      "slot": 2,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 188,
+        "y": 338,
+        "width": 96,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m04-c2.png"
+    },
+    {
+      "id": "m04-c3",
+      "month": 4,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 290,
+        "y": 338,
+        "width": 99,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m04-c3.png"
+    },
+    {
+      "id": "m04-c4",
+      "month": 4,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 395,
+        "y": 338,
+        "width": 99,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m04-c4.png"
+    },
+    {
+      "id": "m05-c1",
+      "month": 5,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 531,
+        "y": 338,
+        "width": 91,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m05-c1.png"
+    },
+    {
+      "id": "m05-c2",
+      "month": 5,
+      "slot": 2,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 626,
+        "y": 338,
+        "width": 90,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m05-c2.png"
+    },
+    {
+      "id": "m05-c3",
+      "month": 5,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 721,
+        "y": 338,
+        "width": 90,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m05-c3.png"
+    },
+    {
+      "id": "m05-c4",
+      "month": 5,
+      "slot": 4,
+      "logical_type": "tane",
+      "crop": {
+        "x": 817,
+        "y": 338,
+        "width": 93,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m05-c4.png"
+    },
+    {
+      "id": "m06-c1",
+      "month": 6,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 951,
+        "y": 338,
+        "width": 99,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m06-c1.png"
+    },
+    {
+      "id": "m06-c2",
+      "month": 6,
+      "slot": 2,
+      "logical_type": "tane",
+      "crop": {
+        "x": 1054,
+        "y": 338,
+        "width": 104,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m06-c2.png"
+    },
+    {
+      "id": "m06-c3",
+      "month": 6,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 1164,
+        "y": 338,
+        "width": 99,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m06-c3.png"
+    },
+    {
+      "id": "m06-c4",
+      "month": 6,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 1268,
+        "y": 338,
+        "width": 101,
+        "height": 183
+      },
+      "output": "assets/cards/generated/m06-c4.png"
+    },
+    {
+      "id": "m07-c1",
+      "month": 7,
+      "slot": 1,
+      "logical_type": "tane",
+      "crop": {
+        "x": 80,
+        "y": 564,
+        "width": 102,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m07-c1.png"
+    },
+    {
+      "id": "m07-c2",
+      "month": 7,
+      "slot": 2,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 188,
+        "y": 564,
+        "width": 96,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m07-c2.png"
+    },
+    {
+      "id": "m07-c3",
+      "month": 7,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 290,
+        "y": 564,
+        "width": 99,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m07-c3.png"
+    },
+    {
+      "id": "m07-c4",
+      "month": 7,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 395,
+        "y": 564,
+        "width": 99,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m07-c4.png"
+    },
+    {
+      "id": "m08-c1",
+      "month": 8,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 531,
+        "y": 564,
+        "width": 91,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m08-c1.png"
+    },
+    {
+      "id": "m08-c2",
+      "month": 8,
+      "slot": 2,
+      "logical_type": "light",
+      "crop": {
+        "x": 626,
+        "y": 564,
+        "width": 90,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m08-c2.png"
+    },
+    {
+      "id": "m08-c3",
+      "month": 8,
+      "slot": 3,
+      "logical_type": "tane",
+      "crop": {
+        "x": 721,
+        "y": 564,
+        "width": 91,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m08-c3.png"
+    },
+    {
+      "id": "m08-c4",
+      "month": 8,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 817,
+        "y": 564,
+        "width": 93,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m08-c4.png"
+    },
+    {
+      "id": "m09-c1",
+      "month": 9,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 951,
+        "y": 564,
+        "width": 99,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m09-c1.png"
+    },
+    {
+      "id": "m09-c2",
+      "month": 9,
+      "slot": 2,
+      "logical_type": "tane",
+      "crop": {
+        "x": 1055,
+        "y": 564,
+        "width": 103,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m09-c2.png"
+    },
+    {
+      "id": "m09-c3",
+      "month": 9,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 1164,
+        "y": 564,
+        "width": 99,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m09-c3.png"
+    },
+    {
+      "id": "m09-c4",
+      "month": 9,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 1269,
+        "y": 564,
+        "width": 100,
+        "height": 180
+      },
+      "output": "assets/cards/generated/m09-c4.png"
+    },
+    {
+      "id": "m10-c1",
+      "month": 10,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 80,
+        "y": 785,
+        "width": 98,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m10-c1.png"
+    },
+    {
+      "id": "m10-c2",
+      "month": 10,
+      "slot": 2,
+      "logical_type": "tane",
+      "crop": {
+        "x": 184,
+        "y": 785,
+        "width": 100,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m10-c2.png"
+    },
+    {
+      "id": "m10-c3",
+      "month": 10,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 290,
+        "y": 785,
+        "width": 98,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m10-c3.png"
+    },
+    {
+      "id": "m10-c4",
+      "month": 10,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 394,
+        "y": 785,
+        "width": 100,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m10-c4.png"
+    },
+    {
+      "id": "m11-c1",
+      "month": 11,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 530,
+        "y": 785,
+        "width": 92,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m11-c1.png"
+    },
+    {
+      "id": "m11-c2",
+      "month": 11,
+      "slot": 2,
+      "logical_type": "tane",
+      "crop": {
+        "x": 628,
+        "y": 785,
+        "width": 88,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m11-c2.png"
+    },
+    {
+      "id": "m11-c3",
+      "month": 11,
+      "slot": 3,
+      "logical_type": "ribbon",
+      "crop": {
+        "x": 722,
+        "y": 785,
+        "width": 91,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m11-c3.png"
+    },
+    {
+      "id": "m11-c4",
+      "month": 11,
+      "slot": 4,
+      "logical_type": "light",
+      "crop": {
+        "x": 818,
+        "y": 785,
+        "width": 92,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m11-c4.png"
+    },
+    {
+      "id": "m12-c1",
+      "month": 12,
+      "slot": 1,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 952,
+        "y": 785,
+        "width": 97,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m12-c1.png"
+    },
+    {
+      "id": "m12-c2",
+      "month": 12,
+      "slot": 2,
+      "logical_type": "light",
+      "crop": {
+        "x": 1055,
+        "y": 785,
+        "width": 104,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m12-c2.png"
+    },
+    {
+      "id": "m12-c3",
+      "month": 12,
+      "slot": 3,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 1166,
+        "y": 785,
+        "width": 97,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m12-c3.png"
+    },
+    {
+      "id": "m12-c4",
+      "month": 12,
+      "slot": 4,
+      "logical_type": "kasu",
+      "crop": {
+        "x": 1269,
+        "y": 785,
+        "width": 100,
+        "height": 187
+      },
+      "output": "assets/cards/generated/m12-c4.png"
+    }
+  ]
+}
