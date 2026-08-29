@@ -12,6 +12,9 @@ const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);'
 const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',[replacementPrior]);
 const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',[replacementAccept]);
 const replacementClose=onlineRoomSrc.indexOf('prior?.close(4001,"replaced")',[replacementStore]);
+const postmatchStart=onlineRoomSrc.indexOf('async postmatch(body:any)');
+const postmatchLock=onlineRoomSrc.indexOf('await this.state.storage.put({postmatchChoice:choice',postmatchStart);
+const postmatchRematchCreate=onlineRoomSrc.indexOf('op:"create_internal"',postmatchLock);
 const checks=[
   ['internal Supabase boundary',src.includes('"x-hanafuda-internal":internal')],
   ['no service-role secret in Cloudflare source',!src.includes('SUPABASE_SERVICE_ROLE_KEY')],
@@ -35,6 +38,9 @@ const checks=[
   ['initial turn timer waits for both connections',src.includes('connectionsReady')&&src.includes('connectionDeadline:Date.now()+120_000')&&src.includes('WAITING_FOR_CONNECTION')],
   ['disconnect timeout is distinct',src.includes('disconnect_timeout')&&src.includes('turn_timeout')&&src.includes('connection_timeout')],
   ['postmatch first-choice lock exists',src.includes('postmatchProcessing')&&src.includes('postmatchChoice')],
+  ['postmatch first valid choice locks before rematch work',postmatchLock>=0&&postmatchRematchCreate>postmatchLock],
+  ['postmatch late prior-epoch choices return the first valid choice',onlineRoomSrc.includes('previousPostmatchEpoch')&&onlineRoomSrc.includes('previousPostmatchChoice')&&onlineRoomSrc.includes('timingSafe(epoch,previousEpoch)')&&onlineRoomSrc.includes('stale:true')],
+  ['postmatch processing reports the real locked choice',onlineRoomSrc.includes('processing:state.get("postmatchProcessing")===true')&&!onlineRoomSrc.includes('choice:"processing"')],
   ['game epoch blocks stale ABA actions',src.includes('GAME_EPOCH_CONFLICT')&&src.includes('epoch=randomToken()')],
   ['online engine cleanup exists',src.includes('op:"close"')&&src.includes('closeEngine')],
   ['arbitrary websocket relay removed from v3 room',!src.includes('m?.type==="relay"')&&!src.includes('message?.type==="relay"')],
