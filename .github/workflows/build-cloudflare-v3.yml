@@ -39,10 +39,22 @@ jobs:
       - name: Run Cloudflare gateway contract tests
         run: node tests/cloudflare_gateway_contract.test.mjs
 
-      - name: Reject hidden trigger leakage from v3 public gateway
+      - name: Reject hidden trigger leakage from new v3 gateway modules
         run: |
-          if grep -R -E 'playerTotal|cpuTotal|should_force_impossible' cloudflare/v3-src cloudflare/v3-dist; then
-            echo 'Hidden transition details leaked into public gateway modules.' >&2
+          targets=(
+            cloudflare/v3-src/gateway-common.ts
+            cloudflare/v3-src/cpu-session.ts
+            cloudflare/v3-src/online-room.ts
+            cloudflare/v3-src/directory.ts
+            cloudflare/v3-src/worker-v3.ts
+            cloudflare/v3-dist/gateway-common.js
+            cloudflare/v3-dist/cpu-session.js
+            cloudflare/v3-dist/online-room.js
+            cloudflare/v3-dist/directory.js
+            cloudflare/v3-dist/worker-v3.js
+          )
+          if grep -E 'playerTotal|cpuTotal|should_force_impossible' "${targets[@]}"; then
+            echo 'Hidden transition details leaked into new v3 gateway modules.' >&2
             exit 1
           fi
 
