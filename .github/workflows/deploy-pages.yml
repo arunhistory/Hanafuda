@@ -22,6 +22,9 @@ concurrency:
 jobs:
   deploy:
     if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +48,8 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir -p _site/web _site/assets
-          cp -R web/. _site/web/
+          cp web/index.html web/styles.css web/experience.css _site/web/
+          cp -R web/dist _site/web/dist
           for dir in cards backgrounds effects config reserve ui; do
             if [ -d "assets/$dir" ]; then cp -R "assets/$dir" _site/assets/; fi
           done
@@ -64,6 +68,8 @@ jobs:
           HTML
           test ! -e _site/assets/source
           test ! -e _site/assets/wasm
+          test ! -e _site/web/src
+          test ! -e _site/web/tsconfig.json
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
