@@ -1,0 +1,51 @@
+name: Build Hanafuda web app
+
+on:
+  push:
+    branches: [implementation/webapp-v1]
+    paths:
+      - 'web/**'
+      - 'tests/web_frontend_contract.test.mjs'
+      - '.github/workflows/build-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hanafuda-webapp-v1
+  cancel-in-progress: true
+
+jobs:
+  build-validate-commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/webapp-v1
+          fetch-depth: 0
+      - name: Compile TypeScript frontend
+        run: |
+          rm -rf web/dist
+          npx --yes --package typescript@5.8.3 tsc -p web/tsconfig.json
+      - name: Validate generated JavaScript syntax
+        run: |
+          for f in web/dist/*.js; do node --check "$f"; done
+      - name: Run frontend contract tests
+        run: node tests/web_frontend_contract.test.mjs
+      - name: Reject secrets and hidden trigger details
+        run: |
+          if grep -R -E 'DEVELOPER_MODE_KEY|x-hanafuda-developer|SUPABASE_SERVICE_ROLE_KEY|playerTotal|cpuTotal|should_force_impossible' web; then
+            echo 'Sensitive or hidden-mode internals leaked into public web app.' >&2
+            exit 1
+          fi
+      - name: Commit generated frontend artifact if changed
+        run: |
+          if git status --porcelain -- web/dist | grep -q .; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add web/dist
+            git commit -m 'Build web frontend artifact [skip ci]'
+            git push origin HEAD:implementation/webapp-v1
+          else
+            echo 'Frontend artifact is already current.'
