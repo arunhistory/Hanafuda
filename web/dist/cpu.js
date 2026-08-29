@@ -15,7 +15,7 @@ async function startCpu() {
         saveSettings();
         let modeSessionId, modeSessionToken;
         if (settings.mode !== "impossible") {
-            const mode = await api("/api/mode/start", { mode: settings.mode, rounds: settings.rounds, developer: false });
+            const mode = await api("/api/mode/start", { mode: settings.mode, rounds: settings.rounds, developer: false, unlocked: isUnlocked() });
             if (!mode.ok || !mode.data?.ok)
                 throw new Error(mode.data?.code || "MODE_START_FAILED");
             modeSessionId = mode.data.sessionId;
