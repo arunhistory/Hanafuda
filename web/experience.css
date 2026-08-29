@@ -29,6 +29,8 @@
 .action-ghost.played.from-opponent { animation: playedFromOpponent .64s cubic-bezier(.17,.74,.17,1) both; }
 .action-ghost.drawn.from-player,
 .action-ghost.drawn.from-opponent { animation: drawnFromDeck .58s cubic-bezier(.16,.76,.2,1) both; }
+.action-ghost.captured.from-player { animation: capturedToPlayer .72s cubic-bezier(.12,.76,.18,1) both; }
+.action-ghost.captured.from-opponent { animation: capturedToOpponent .72s cubic-bezier(.12,.76,.18,1) both; }
 
 @keyframes playedFromPlayer {
   0% { opacity: .15; transform: translate3d(-50%,46vh,0) rotate(8deg) scale(.78); }
@@ -49,6 +51,18 @@
   28% { opacity: 1; }
   72% { transform: translate3d(-50%,-4vh,0) rotateY(0) rotate(-1deg) scale(1.1); filter: blur(0) drop-shadow(0 12px 18px rgba(0,0,0,.42)); }
   100% { opacity: 0; transform: translate3d(-50%,-10vh,0) scale(.98); }
+}
+
+@keyframes capturedToPlayer {
+  0% { opacity: .95; transform: translate3d(-50%,-9vh,0) rotate(0) scale(1.06); }
+  34% { opacity: 1; transform: translate3d(-56%,-5vh,0) rotate(-5deg) scale(1.13); }
+  100% { opacity: 0; transform: translate3d(-46vw,36vh,0) rotate(-14deg) scale(.62); }
+}
+
+@keyframes capturedToOpponent {
+  0% { opacity: .95; transform: translate3d(-50%,-9vh,0) rotate(0) scale(1.06); }
+  34% { opacity: 1; transform: translate3d(-44%,-11vh,0) rotate(5deg) scale(1.13); }
+  100% { opacity: 0; transform: translate3d(40vw,-45vh,0) rotate(14deg) scale(.62); }
 }
 
 .online-overtime {
