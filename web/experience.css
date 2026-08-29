@@ -51,6 +51,33 @@
   100% { opacity: 0; transform: translate3d(-50%,-10vh,0) scale(.98); }
 }
 
+.online-overtime {
+  position: fixed;
+  z-index: 1250;
+  left: 50%;
+  top: max(12px,env(safe-area-inset-top));
+  transform: translateX(-50%);
+  min-width: 112px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,.42);
+  border-radius: 999px;
+  background: rgba(35,6,6,.88);
+  box-shadow: 0 8px 28px rgba(0,0,0,.38),inset 0 0 18px rgba(255,255,255,.06);
+  backdrop-filter: blur(8px);
+  color: #fff4e7;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+  text-align: center;
+  pointer-events: none;
+  animation: overtimePulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes overtimePulse {
+  from { transform: translateX(-50%) scale(1); filter: brightness(1); }
+  to { transform: translateX(-50%) scale(1.035); filter: brightness(1.22); }
+}
+
 .settlement-card.hidden-final {
   position: relative;
   isolation: isolate;
@@ -101,6 +128,7 @@
   .board.dealing .hand-card-button .card,
   .board.dealing .opponent-zone .hand-row > .card,
   .action-ghost,
+  .online-overtime,
   .settlement-card.hidden-final,
   .settlement-card.hidden-final::before,
   .settlement-card.hidden-final::after {
