@@ -76,6 +76,11 @@ function decorateFinalSettlement(card:HTMLElement){
     note.textContent="同点のため、最終同点スコアへ先に到達した側を勝者として判定しました。";
     card.querySelector(".screen-actions")?.before(note);
   }
+  const firstHiddenAttempt=session?.kind==="cpu"&&session.mode==="impossible"&&!isUnlocked();
+  if(firstHiddenAttempt){
+    card.querySelector<HTMLElement>("[data-action='cpu-reconfigure']")?.remove();
+    card.querySelector<HTMLElement>("[data-action='cpu-same']")?.remove();
+  }
 }
 
 function decorateSettlement(){
