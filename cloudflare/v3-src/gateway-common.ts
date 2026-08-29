@@ -34,7 +34,9 @@ export function validRoomCode(v:string){return /^[A-Z2-9]{6}$/.test(v);}
 export function roomStatusForPhase(phase:number){return phase===5?"round_settlement":phase===6?"complete":"active";}
 
 export async function engineCall(env:any,payload:any){
-  const url=String(env.SUPABASE_ENGINE_URL??"");
+  const mainUrl=String(env.SUPABASE_ENGINE_URL??"");
+  const closeUrl=String(env.SUPABASE_ENGINE_CLOSE_URL??"");
+  const url=payload?.op==="close"?(closeUrl||mainUrl):mainUrl;
   const internal=String(env.HANA_INTERNAL??"");
   if(!url||!internal)throw new Error("ENGINE_BINDING_MISSING");
   const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","x-hanafuda-internal":internal},body:JSON.stringify(payload)});
