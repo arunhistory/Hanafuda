@@ -30,7 +30,7 @@ enum YakuMask : uint32_t {
 static uint32_t g_last_yaku_mask = 0;
 static uint8_t g_buffer[256];
 
-__attribute__((visibility("default"))) int core_version(){ return 2; }
+__attribute__((visibility("default"))) int core_version(){ return 3; }
 __attribute__((visibility("default"))) uint8_t* get_buffer(){ return g_buffer; }
 __attribute__((visibility("default"))) uint32_t get_last_yaku_mask(){ return g_last_yaku_mask; }
 __attribute__((visibility("default"))) int card_month(int id){ return (id>=0 && id<48) ? (id/4)+1 : 0; }
@@ -103,23 +103,70 @@ __attribute__((visibility("default"))) uint32_t matching_field_mask(int card,con
 
 static int popcount32(uint32_t x){int n=0;while(x){n+=(x&1u);x>>=1;}return n;}
 static uint32_t xorshift32(uint32_t x){x^=x<<13;x^=x>>17;x^=x<<5;return x?x:0x9e3779b9u;}
-static int intrinsic_value(int id){const uint32_t f=card_flags(id);int v=0;if(f&LIGHT)v+=15;if(f&TANE)v+=7;if(f&RIBBON)v+=5;if(f&AKATAN)v+=7;if(f&AOTAN)v+=7;if(f&SAKE)v+=8;if(f&KASU)v+=1;return v;}
+static int intrinsic_value(int id){const uint32_t f=card_flags(id);int v=0;if(f&LIGHT)v+=42;if(f&TANE)v+=18;if(f&RIBBON)v+=12;if(f&AKATAN)v+=12;if(f&AOTAN)v+=12;if(f&SAKE)v+=18;if(f&KASU)v+=3;return v;}
+static int flag_count(const uint8_t* cards,int n,uint32_t flag){int c=0;for(int i=0;i<n;i++)if(card_flags(cards[i])&flag)c++;return c;}
+static int set_progress(const uint8_t* cards,int n,int id,int a,int b,int c){if(id!=a&&id!=b&&id!=c)return 0;int have=0;if(id!=a&&contains(cards,n,a))have++;if(id!=b&&contains(cards,n,b))have++;if(id!=c&&contains(cards,n,c))have++;return have==2?58:have==1?16:4;}
+static int pair_progress(const uint8_t* cards,int n,int id,int a,int b){if(id!=a&&id!=b)return 0;const int other=id==a?b:a;return contains(cards,n,other)?38:5;}
+static int progress_value(const uint8_t* cards,int n,int id){
+  const uint32_t f=card_flags(id);int v=0;
+  if(f&LIGHT)v+=8+flag_count(cards,n,LIGHT)*10;
+  if(f&TANE)v+=4+flag_count(cards,n,TANE)*4;
+  if(f&RIBBON)v+=4+flag_count(cards,n,RIBBON)*4;
+  if(f&KASU)v+=2+flag_count(cards,n,KASU)*2;
+  v+=set_progress(cards,n,id,24,37,21);
+  v+=set_progress(cards,n,id,2,6,10);
+  v+=set_progress(cards,n,id,22,34,38);
+  v+=pair_progress(cards,n,id,9,33);
+  v+=pair_progress(cards,n,id,29,33);
+  return v;
+}
+static int projected_score_delta(const uint8_t* cards,int n,const uint8_t* additions,int add_n){
+  if(n<0||n>48||add_n<0||n+add_n>48)return 0;
+  uint8_t temp[48];for(int i=0;i<n;i++)temp[i]=cards[i];for(int i=0;i<add_n;i++)temp[n+i]=additions[i];
+  const int before=score_captured(cards,n),after=score_captured(temp,n+add_n);return(before<0||after<0)?0:after-before;
+}
+static int capture_bundle_value(const uint8_t* own,int own_n,const uint8_t* opp,int opp_n,const uint8_t* additions,int add_n,int difficulty){
+  int v=0;for(int i=0;i<add_n;i++)v+=intrinsic_value(additions[i]);
+  if(difficulty>=1){for(int i=0;i<add_n;i++)v+=progress_value(own,own_n,additions[i]);v+=projected_score_delta(own,own_n,additions,add_n)*(difficulty>=2?22:5);}
+  if(difficulty>=2){for(int i=0;i<add_n;i++)v+=progress_value(opp,opp_n,additions[i])*2;v+=projected_score_delta(opp,opp_n,additions,add_n)*9;}
+  return v;
+}
 
 __attribute__((visibility("default"))) int choose_hand_index(const uint8_t* hand,int hand_n,const uint8_t* field,int field_n,const uint8_t* own_captured,int own_n,const uint8_t* opp_captured,int opp_n,int difficulty,uint32_t seed){
-  (void)own_captured;(void)own_n;(void)opp_captured;(void)opp_n;
-  if(hand_n<=0||hand_n>8||field_n<0||field_n>16)return -1;
-  if(difficulty<=0){return (int)(xorshift32(seed)%((uint32_t)hand_n));}
-  int best=0,bestScore=-1000000;
+  if(hand_n<=0||hand_n>8||field_n<0||field_n>16||own_n<0||own_n>48||opp_n<0||opp_n>48)return -1;
+  if(difficulty<=0)return (int)(xorshift32(seed)%((uint32_t)hand_n));
+  int best=0,bestScore=-1000000000;
   for(int i=0;i<hand_n;i++){
-    const int id=hand[i];const uint32_t mm=matching_field_mask(id,field,field_n);const int matches=popcount32(mm);
-    int s=0;
-    if(matches==1){s+=20;for(int j=0;j<field_n;j++)if(mm&(1u<<j))s+=intrinsic_value(field[j]);}
-    else if(matches==2)s+=12;
-    else if(matches==3){s+=45;for(int j=0;j<field_n;j++)if(mm&(1u<<j))s+=intrinsic_value(field[j]);}
-    else s-=intrinsic_value(id)/2;
-    if(difficulty>=2){s+=intrinsic_value(id);const int m=card_month(id);int same=0;for(int j=0;j<field_n;j++)if(card_month(field[j])==m)same++;s+=same*3;}
-    s+=(int)((xorshift32(seed+(uint32_t)i*2654435761u))&3u);
+    const int id=hand[i];const uint32_t mm=matching_field_mask(id,field,field_n);const int matches=popcount32(mm);int s=0;
+    if(matches==0){
+      s-=intrinsic_value(id)*2;
+      s-=progress_value(opp_captured,opp_n,id)*(difficulty>=2?3:1);
+      if(difficulty>=2){uint8_t add[1]={(uint8_t)id};s-=projected_score_delta(opp_captured,opp_n,add,1)*12;}
+    }else if(matches==1){
+      for(int j=0;j<field_n;j++)if(mm&(1u<<j)){uint8_t add[2]={(uint8_t)id,field[j]};s+=80+capture_bundle_value(own_captured,own_n,opp_captured,opp_n,add,2,difficulty);break;}
+    }else if(matches==2){
+      int localBest=-1000000000;
+      for(int j=0;j<field_n;j++)if(mm&(1u<<j)){uint8_t add[2]={(uint8_t)id,field[j]};int x=capture_bundle_value(own_captured,own_n,opp_captured,opp_n,add,2,difficulty);if(x>localBest)localBest=x;}
+      s+=55+localBest;
+    }else if(matches==3){
+      uint8_t add[4];int k=0;add[k++]=(uint8_t)id;for(int j=0;j<field_n;j++)if(mm&(1u<<j))add[k++]=field[j];s+=170+capture_bundle_value(own_captured,own_n,opp_captured,opp_n,add,k,difficulty);
+    }
+    if(difficulty>=2)s+=progress_value(own_captured,own_n,id)*2;
+    s+=(int)(xorshift32(seed+(uint32_t)i*2654435761u)&3u);
     if(s>bestScore){bestScore=s;best=i;}
+  }
+  return best;
+}
+
+__attribute__((visibility("default"))) int choose_capture_index(const uint8_t* field,int field_n,const uint8_t* matches,int match_n,const uint8_t* own_captured,int own_n,const uint8_t* opp_captured,int opp_n,int difficulty,int played_card,uint32_t seed){
+  if(field_n<1||field_n>16||match_n<1||match_n>3||played_card<0||played_card>=48)return -1;
+  if(difficulty<=0)return matches[xorshift32(seed)%((uint32_t)match_n)];
+  int best=-1,bestScore=-1000000000;
+  for(int i=0;i<match_n;i++){
+    const int idx=matches[i];if(idx<0||idx>=field_n)continue;
+    uint8_t add[2]={(uint8_t)played_card,field[idx]};int s=capture_bundle_value(own_captured,own_n,opp_captured,opp_n,add,2,difficulty);
+    s+=(int)(xorshift32(seed+(uint32_t)i*2246822519u)&1u);
+    if(s>bestScore){bestScore=s;best=idx;}
   }
   return best;
 }
