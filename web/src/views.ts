@@ -36,7 +36,7 @@ function renderRules(){
   app.innerHTML=`<main class="${screenClass()}">${topbar("詳細ルール")}<section class="panel rules-copy"><h3>基本</h3><p>2人対戦。手札8枚ずつ、場8枚、山札24枚で開始します。親が先攻し、手札を1枚出した後に山札の先頭1枚を引きます。同月札が場にあれば通常のこいこいの取り札規則に従って取得します。</p><h3>こいこい</h3><p>1局につき1回まで。両者の手札がそれぞれ3枚未満になった時点では選択できません。こいこい後の得点倍率は2倍のみです。</p><h3>流局</h3><p>双方0点で1局を消化し、親は継続します。配札時に双方が同時に手四・くっつきを成立させた場合も流局です。</p><div class="screen-actions"><button class="secondary" data-nav="yaku">得点・役確認</button></div><p class="notice">任天堂株式会社が公開する花札「こいこい」の遊び方を参考にしています。本ゲームは任天堂株式会社の公式・公認・提携サービスではありません。</p></section></main>`;
 }
 function renderYakuScreen(){
-  app.innerHTML=`<main class="${screenClass()}">${topbar("得点・役確認")}<section class="panel rules-copy"><h2>役の得点と組み合わせ</h2>${yakuTable()}</section></main>`;
+  app.innerHTML=`<main class="${screenClass()}">${topbar("得点・役確認")}<section class="panel rules-copy"><h2>役の得点と組み合わせ</h2>${yakuTable()}<p class="notice">光札系の役は成立している最上位の1役だけを得点します。光札系以外の異なる役系統は重複して加算します。菊に盃はタネ札として扱い、カス役の枚数にも加算します。</p></section></main>`;
 }
 function yakuTable(){return `<table class="data-table"><thead><tr><th>役</th><th>得点</th><th>成立</th></tr></thead><tbody>${YAKU_DETAILS.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody></table>`;}
 
