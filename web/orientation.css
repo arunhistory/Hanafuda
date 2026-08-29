@@ -1,0 +1,49 @@
+/* Mobile/tablet launch policy: landscape presentation. Desktop remains untouched. */
+html.portrait-landscape-fallback{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+html.portrait-landscape-fallback body{
+  position:fixed;
+  left:0;
+  top:100%;
+  width:100dvh;
+  height:100dvw;
+  min-height:0;
+  overflow:auto;
+  transform:rotate(-90deg);
+  transform-origin:top left;
+}
+html.portrait-landscape-fallback .app-shell{
+  min-height:calc(100dvw - var(--footer-height));
+}
+html.portrait-landscape-fallback .screen{
+  min-height:calc(100dvw - var(--footer-height));
+}
+html.portrait-landscape-fallback .screen::before,
+html.portrait-landscape-fallback .match-screen::before{
+  inset:0 0 var(--footer-height);
+}
+html.portrait-landscape-fallback .modal-layer,
+html.portrait-landscape-fallback .fx-layer,
+html.portrait-landscape-fallback .capture-trail{
+  position:absolute;
+  width:100%;
+  height:calc(100dvw - var(--footer-height));
+  inset:0 auto auto 0;
+}
+html.portrait-landscape-fallback .toast-stack{
+  position:absolute;
+}
+
+@media (orientation:landscape){
+  html.touch-landscape-device body{
+    width:auto;
+    height:auto;
+    min-height:100dvh;
+    position:static;
+    transform:none;
+    overflow-x:hidden;
+  }
+}
