@@ -6,6 +6,11 @@
   transform-origin: 50% 50%;
 }
 
+.shuffle-layer.long-shuffle .shuffle-card { animation-duration: 1.7s; }
+.shuffle-layer.long-shuffle .shuffle-card:nth-child(2){animation-delay:140ms}
+.shuffle-layer.long-shuffle .shuffle-card:nth-child(3){animation-delay:280ms}
+.shuffle-layer.long-shuffle .shuffle-card:nth-child(4){animation-delay:420ms}
+
 @keyframes dealSequence {
   0% { opacity: 0; transform: translate3d(0,-42px,0) rotate(-7deg) scale(.86); filter: blur(2px); }
   62% { opacity: 1; transform: translate3d(0,4px,0) rotate(1.2deg) scale(1.025); filter: blur(0); }
@@ -29,8 +34,6 @@
 .action-ghost.played.from-opponent { animation: playedFromOpponent .64s cubic-bezier(.17,.74,.17,1) both; }
 .action-ghost.drawn.from-player,
 .action-ghost.drawn.from-opponent { animation: drawnFromDeck .58s cubic-bezier(.16,.76,.2,1) both; }
-.action-ghost.captured.from-player { animation: capturedToPlayer .72s cubic-bezier(.12,.76,.18,1) both; }
-.action-ghost.captured.from-opponent { animation: capturedToOpponent .72s cubic-bezier(.12,.76,.18,1) both; }
 
 @keyframes playedFromPlayer {
   0% { opacity: .15; transform: translate3d(-50%,46vh,0) rotate(8deg) scale(.78); }
@@ -51,18 +54,6 @@
   28% { opacity: 1; }
   72% { transform: translate3d(-50%,-4vh,0) rotateY(0) rotate(-1deg) scale(1.1); filter: blur(0) drop-shadow(0 12px 18px rgba(0,0,0,.42)); }
   100% { opacity: 0; transform: translate3d(-50%,-10vh,0) scale(.98); }
-}
-
-@keyframes capturedToPlayer {
-  0% { opacity: .95; transform: translate3d(-50%,-9vh,0) rotate(0) scale(1.06); }
-  34% { opacity: 1; transform: translate3d(-56%,-5vh,0) rotate(-5deg) scale(1.13); }
-  100% { opacity: 0; transform: translate3d(-46vw,36vh,0) rotate(-14deg) scale(.62); }
-}
-
-@keyframes capturedToOpponent {
-  0% { opacity: .95; transform: translate3d(-50%,-9vh,0) rotate(0) scale(1.06); }
-  34% { opacity: 1; transform: translate3d(-44%,-11vh,0) rotate(5deg) scale(1.13); }
-  100% { opacity: 0; transform: translate3d(40vw,-45vh,0) rotate(14deg) scale(.62); }
 }
 
 .online-overtime {
@@ -91,6 +82,74 @@
   from { transform: translateX(-50%) scale(1); filter: brightness(1); }
   to { transform: translateX(-50%) scale(1.035); filter: brightness(1.22); }
 }
+
+.staged-settlement > h2,
+.staged-settlement > .settlement-score {
+  animation: settlementHeaderReveal .55s ease both;
+}
+.staged-settlement > .settlement-score { animation-delay: .18s; }
+.staged-settlement .settlement-breakdown > div {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: settlementLineReveal .42s ease both;
+  animation-delay: calc(.48s + var(--settle-index,0) * .43s);
+}
+.staged-settlement .screen-actions {
+  opacity: 0;
+  animation: settlementControlsReveal .42s ease 2.72s both;
+}
+
+@keyframes settlementHeaderReveal {
+  from { opacity: 0; transform: translateY(-10px) scale(.96); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes settlementLineReveal {
+  from { opacity: 0; transform: translateY(8px); border-color: transparent; }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes settlementControlsReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settlement-card.final.enhanced-final {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation: finalCardEnter 1.05s cubic-bezier(.16,.8,.18,1) both;
+  box-shadow: 0 26px 100px rgba(0,0,0,.78),0 0 48px rgba(243,210,140,.16);
+}
+.settlement-card.final.enhanced-final::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  z-index: -1;
+  background: conic-gradient(from 0deg,transparent,rgba(255,223,150,.16),transparent 22%,transparent 58%,rgba(255,255,255,.08),transparent 78%);
+  animation: finalHalo 8s linear infinite;
+}
+.settlement-card.final.enhanced-final h2 { animation: finalTitle .9s .15s both; }
+.settlement-card.final.enhanced-final .settlement-score { animation: finalScore 1.15s .35s cubic-bezier(.16,.8,.18,1) both; }
+.settlement-card.final.enhanced-final .screen-actions { animation: finalControls .55s 1.15s both; }
+
+@keyframes finalCardEnter {
+  0% { opacity: 0; transform: scale(.86) translateY(18px); filter: brightness(1.5) blur(4px); }
+  70% { opacity: 1; transform: scale(1.025) translateY(0); filter: brightness(1.08) blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: none; }
+}
+@keyframes finalTitle {
+  from { opacity: 0; letter-spacing: .38em; transform: translateY(-10px); }
+  to { opacity: 1; letter-spacing: .12em; transform: translateY(0); }
+}
+@keyframes finalScore {
+  0% { opacity: 0; transform: scale(.72); text-shadow: 0 0 30px rgba(255,255,255,.7); }
+  58% { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes finalControls {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes finalHalo { to { transform: rotate(360deg); } }
 
 .settlement-card.hidden-final {
   position: relative;
@@ -143,10 +202,19 @@
   .board.dealing .opponent-zone .hand-row > .card,
   .action-ghost,
   .online-overtime,
+  .staged-settlement > h2,
+  .staged-settlement > .settlement-score,
+  .staged-settlement .settlement-breakdown > div,
+  .staged-settlement .screen-actions,
+  .settlement-card.final.enhanced-final,
+  .settlement-card.final.enhanced-final h2,
+  .settlement-card.final.enhanced-final .settlement-score,
+  .settlement-card.final.enhanced-final .screen-actions,
   .settlement-card.hidden-final,
   .settlement-card.hidden-final::before,
   .settlement-card.hidden-final::after {
     animation-duration: .001ms;
+    animation-delay: 0ms;
     animation-iteration-count: 1;
   }
 }
