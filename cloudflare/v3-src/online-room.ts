@@ -2,10 +2,11 @@ import {ONLINE_ACTIVE_PHASES,json,randomToken,sha256Hex,timingSafe,bodyJson,vali
 declare const WebSocketPair:any;
 
 const LIVE_ROOM_STATES=new Set(["starting","active","round_settlement","complete","reconfiguring"]);
+type SocketAttachment={seat:number;connectionId:string};
 
 export class HanafudaOnlineRoom {
-  state:any; env:any; sockets:Map<number,any>;
-  constructor(state:any,env:any){this.state=state;this.env=env;this.sockets=new Map();}
+  state:any; env:any;
+  constructor(state:any,env:any){this.state=state;this.env=env;}
 
   async fetch(req:Request){
     const url=new URL(req.url);
@@ -24,6 +25,16 @@ export class HanafudaOnlineRoom {
     return json({ok:false,code:"UNKNOWN_OPERATION"},404);
   }
 
+  connectionKey(seat:number){return seat===0?"connectionIdHost":"connectionIdGuest";}
+  disconnectKey(seat:number){return seat===0?"disconnectHost":"disconnectGuest";}
+  connectedOnceKey(seat:number){return seat===0?"connectedOnceHost":"connectedOnceGuest";}
+  socketFor(seat:number){const sockets=this.state.getWebSockets(`seat:${seat}`);if(!Array.isArray(sockets)||!sockets.length)return null;return sockets.find((s:any)=>s?.readyState===1)??sockets[0];}
+  attachment(socket:any):SocketAttachment|null{
+    try{const a=socket.deserializeAttachment?.();if(a&&(a.seat===0||a.seat===1)&&typeof a.connectionId==="string")return {seat:a.seat,connectionId:a.connectionId};}catch{}
+    try{const tags:string[]=this.state.getTags(socket);const seatRaw=tags.find(t=>t.startsWith("seat:"))?.slice(5),connectionId=tags.find(t=>t.startsWith("conn:"))?.slice(5)??"";const seat=Number(seatRaw);if((seat===0||seat===1)&&connectionId)return {seat,connectionId};}catch{}
+    return null;
+  }
+
   async create(body:any){
     if(await this.state.storage.get("initialized"))return json({ok:false,code:"ROOM_EXISTS"},409);
     const hostToken=String(body?.hostToken??""),rules=parseRuleSet(body?.rules);
@@ -32,7 +43,8 @@ export class HanafudaOnlineRoom {
       initialized:true,status:"waiting",hostHash:await sha256Hex(hostToken),guestHash:null,rules,
       gameId:null,epoch:null,version:-1,turnSeat:-1,turnDeadline:0,graceDeadline:0,
       disconnectHost:0,disconnectGuest:0,connectedOnceHost:false,connectedOnceGuest:false,
-      connectionsReady:false,connectionDeadline:0,postmatchChoice:null,postmatchProcessing:false,createdAt:Date.now()
+      connectionIdHost:null,connectionIdGuest:null,connectionsReady:false,connectionDeadline:0,
+      postmatchChoice:null,postmatchProcessing:false,createdAt:Date.now()
     });
     return json({ok:true,rules});
   }
@@ -57,7 +69,7 @@ export class HanafudaOnlineRoom {
     await this.state.storage.put({
       guestHash:await sha256Hex(guestToken),status,gameId,epoch,version,turnSeat:Number(hostSnapshot?.turn??-1),
       turnDeadline:0,graceDeadline:0,connectionDeadline:Date.now()+120_000,connectionsReady:false,
-      connectedOnceGuest:false,postmatchChoice:null,postmatchProcessing:false
+      connectedOnceGuest:false,connectionIdGuest:null,postmatchChoice:null,postmatchProcessing:false
     });
     await this.maybeActivateConnections();await this.scheduleNextAlarm();
     return json({ok:true,rules,epoch,version,snapshot:guest.data.snapshot,connectionsReady:(await this.state.storage.get("connectionsReady"))===true});
@@ -71,23 +83,16 @@ export class HanafudaOnlineRoom {
 
   async snapshotFor(seat:number){
     const gameId=String(await this.state.storage.get("gameId")??"");if(!gameId)return null;
-    const result=await engineCall(this.env,{op:"snapshot",gameId,seat});
-    return result.ok&&result.data?.ok?result.data:null;
+    const result=await engineCall(this.env,{op:"snapshot",gameId,seat});return result.ok&&result.data?.ok?result.data:null;
   }
 
-  async closeEngine(gameId?:string){
-    const id=gameId??String(await this.state.storage.get("gameId")??"");if(!id)return;
-    try{await engineCall(this.env,{op:"close",gameId:id});}catch{}
-  }
+  async closeEngine(gameId?:string){const id=gameId??String(await this.state.storage.get("gameId")??"");if(!id)return;try{await engineCall(this.env,{op:"close",gameId:id});}catch{}}
 
   async maybeActivateConnections(){
     if((await this.state.storage.get("connectionsReady"))===true)return false;
-    const host=(await this.state.storage.get("connectedOnceHost"))===true,guest=(await this.state.storage.get("connectedOnceGuest"))===true;
-    if(!host||!guest)return false;
-    let status=String(await this.state.storage.get("status")??"");
-    if(status==="starting")status="active";
-    const snapshot=(await this.snapshotFor(0))?.snapshot??null;
-    const active=status==="active"&&ONLINE_ACTIVE_PHASES.has(Number(snapshot?.phase));
+    const host=(await this.state.storage.get("connectedOnceHost"))===true,guest=(await this.state.storage.get("connectedOnceGuest"))===true;if(!host||!guest)return false;
+    let status=String(await this.state.storage.get("status")??"");if(status==="starting")status="active";
+    const snapshot=(await this.snapshotFor(0))?.snapshot??null,active=status==="active"&&ONLINE_ACTIVE_PHASES.has(Number(snapshot?.phase));
     await this.state.storage.put({connectionsReady:true,connectionDeadline:0,status,turnSeat:active?Number(snapshot?.turn??-1):-1,turnDeadline:active?Date.now()+60_000:0,graceDeadline:0});
     await this.scheduleNextAlarm();return true;
   }
@@ -96,47 +101,48 @@ export class HanafudaOnlineRoom {
     if(req.headers.get("Upgrade")!=="websocket")return json({ok:false,code:"UPGRADE_REQUIRED"},426);
     const seat=await this.authSeat(url.searchParams.get("token")??"");if(seat<0)return json({ok:false,code:"UNAUTHORIZED"},401);
     const currentStatus=String(await this.state.storage.get("status")??"");if(currentStatus==="timeout"||currentStatus==="closed")return json({ok:false,code:"ROOM_CLOSED"},410);
-    const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
-    const prior=this.sockets.get(seat);try{prior?.close(4001,"replaced");}catch{}this.sockets.set(seat,server);
-    await this.state.storage.put(seat===0?"disconnectHost":"disconnectGuest",0);
-    await this.state.storage.put(seat===0?"connectedOnceHost":"connectedOnceGuest",true);
+    const pair=new WebSocketPair(),client=pair[0],server=pair[1],connectionId=randomToken();
+    const prior=this.socketFor(seat);try{prior?.close(4001,"replaced");}catch{}
+    this.state.acceptWebSocket(server,[`seat:${seat}`,`conn:${connectionId}`]);server.serializeAttachment({seat,connectionId});
+    await this.state.storage.put({[this.disconnectKey(seat)]:0,[this.connectedOnceKey(seat)]:true,[this.connectionKey(seat)]:connectionId});
     const becameReady=await this.maybeActivateConnections();await this.scheduleNextAlarm();
-    server.addEventListener("message",(event:any)=>this.onMessage(seat,event));
-    server.addEventListener("close",()=>this.onDisconnect(seat,server));
-    server.addEventListener("error",()=>this.onDisconnect(seat,server));
     const snap=await this.snapshotFor(seat),status=String(await this.state.storage.get("status")??"");
     server.send(JSON.stringify({type:"connected",seat,status,rules:await this.state.storage.get("rules"),epoch:await this.state.storage.get("epoch")??null,version:Number(await this.state.storage.get("version")??-1),connectionsReady:(await this.state.storage.get("connectionsReady"))===true,snapshot:snap?.snapshot??null}));
     if(becameReady)await this.broadcastState(status);
     return new Response(null,{status:101,webSocket:client} as any);
   }
 
-  async onMessage(seat:number,event:any){
-    let message:any;try{message=JSON.parse(String(event.data));}catch{return;}
-    if(message?.type==="ping")try{this.sockets.get(seat)?.send(JSON.stringify({type:"pong",t:Date.now()}));}catch{}
+  async webSocketMessage(socket:any,message:any){
+    const a=this.attachment(socket);if(!a)return;
+    let parsed:any;try{const text=typeof message==="string"?message:new TextDecoder().decode(message);parsed=JSON.parse(text);}catch{return;}
+    if(parsed?.type==="ping")try{socket.send(JSON.stringify({type:"pong",t:Date.now()}));}catch{}
   }
+  async webSocketClose(socket:any){const a=this.attachment(socket);if(a)await this.onDisconnect(a.seat,a.connectionId);}
+  async webSocketError(socket:any){const a=this.attachment(socket);if(a)await this.onDisconnect(a.seat,a.connectionId);}
 
-  async onDisconnect(seat:number,socket:any){
-    if(this.sockets.get(seat)!==socket)return;this.sockets.delete(seat);
+  async onDisconnect(seat:number,connectionId:string){
+    const key=this.connectionKey(seat),current=String(await this.state.storage.get(key)??"");if(!current||!timingSafe(current,connectionId))return;
+    await this.state.storage.put(key,null);
     const status=String(await this.state.storage.get("status")??"");if(!LIVE_ROOM_STATES.has(status))return;
-    if((await this.state.storage.get("connectionsReady"))===true){const deadline=Date.now()+60_000;await this.state.storage.put(seat===0?"disconnectHost":"disconnectGuest",deadline);this.broadcastSame({type:"disconnect",seat,reconnectSeconds:60});}
+    if((await this.state.storage.get("connectionsReady"))===true){const deadline=Date.now()+60_000;await this.state.storage.put(this.disconnectKey(seat),deadline);this.broadcastSame({type:"disconnect",seat,reconnectSeconds:60});}
     await this.scheduleNextAlarm();
   }
 
-  broadcastSame(value:any){const text=JSON.stringify(value);for(const socket of this.sockets.values())try{socket.send(text);}catch{}}
+  broadcastSame(value:any){const text=JSON.stringify(value);for(const socket of this.state.getWebSockets())try{socket.send(text);}catch{}}
 
   async broadcastState(statusOverride?:string,actionEvent:any=null){
-    const status=statusOverride??String(await this.state.storage.get("status")??""),version=Number(await this.state.storage.get("version")??-1),rules=await this.state.storage.get("rules"),epoch=await this.state.storage.get("epoch")??null;
-    for(const [seat,socket] of this.sockets){try{const snap=await this.snapshotFor(seat);socket.send(JSON.stringify({type:"state",status,version,epoch,rules,connectionsReady:(await this.state.storage.get("connectionsReady"))===true,snapshot:snap?.snapshot??null,actionEvent:actionEvent??null}));}catch{}}
+    const status=statusOverride??String(await this.state.storage.get("status")??""),version=Number(await this.state.storage.get("version")??-1),rules=await this.state.storage.get("rules"),epoch=await this.state.storage.get("epoch")??null,connectionsReady=(await this.state.storage.get("connectionsReady"))===true;
+    for(const socket of this.state.getWebSockets()){
+      const a=this.attachment(socket);if(!a)continue;
+      try{const snap=await this.snapshotFor(a.seat);socket.send(JSON.stringify({type:"state",status,version,epoch,rules,connectionsReady,snapshot:snap?.snapshot??null,actionEvent:actionEvent??null}));}catch{}
+    }
   }
 
   async updateTurnTimer(snapshot:any,priorTurn:number){
     const phase=Number(snapshot?.phase),nextTurn=Number(snapshot?.turn),status=roomStatusForPhase(phase);
-    if(status!=="active"||!ONLINE_ACTIVE_PHASES.has(phase)){
-      await this.state.storage.put({turnSeat:-1,turnDeadline:0,graceDeadline:0});await this.scheduleNextAlarm();return status;
-    }
+    if(status!=="active"||!ONLINE_ACTIVE_PHASES.has(phase)){await this.state.storage.put({turnSeat:-1,turnDeadline:0,graceDeadline:0});await this.scheduleNextAlarm();return status;}
     if((await this.state.storage.get("connectionsReady"))!==true)return "starting";
-    const currentDeadline=Number(await this.state.storage.get("turnDeadline")??0);
-    if(nextTurn!==priorTurn||currentDeadline<=0)await this.state.storage.put({turnSeat:nextTurn,turnDeadline:Date.now()+60_000,graceDeadline:0});
+    const currentDeadline=Number(await this.state.storage.get("turnDeadline")??0);if(nextTurn!==priorTurn||currentDeadline<=0)await this.state.storage.put({turnSeat:nextTurn,turnDeadline:Date.now()+60_000,graceDeadline:0});
     await this.scheduleNextAlarm();return status;
   }
 
@@ -151,11 +157,8 @@ export class HanafudaOnlineRoom {
     if(kind!=="next_round"&&Number(before.snapshot?.turn)!==seat)return json({ok:false,code:"NOT_YOUR_TURN",version:stored},409);
     if(kind==="next_round"&&Number(before.snapshot?.phase)!==5)return json({ok:false,code:"NOT_AT_SETTLEMENT",version:stored},409);
     const payload:any={op:"action",gameId:String(await this.state.storage.get("gameId")??""),seat,actor:seat,expectedVersion:stored,action:kind};
-    if(kind==="play")payload.handIndex=Number(body?.handIndex);
-    if(kind==="capture")payload.fieldIndex=Number(body?.fieldIndex);
-    if(kind==="koi")payload.chooseKoi=body?.chooseKoi===true;
-    const result=await engineCall(this.env,payload);
-    if(!result.ok||!result.data?.ok)return json({ok:false,code:result.data?.code??"ENGINE_ACTION_FAILED",version:Number(result.data?.version??stored),snapshot:result.data?.snapshot??null},result.status||502);
+    if(kind==="play")payload.handIndex=Number(body?.handIndex);if(kind==="capture")payload.fieldIndex=Number(body?.fieldIndex);if(kind==="koi")payload.chooseKoi=body?.chooseKoi===true;
+    const result=await engineCall(this.env,payload);if(!result.ok||!result.data?.ok)return json({ok:false,code:result.data?.code??"ENGINE_ACTION_FAILED",version:Number(result.data?.version??stored),snapshot:result.data?.snapshot??null},result.status||502);
     const version=Number(result.data.version),snapshot=result.data.snapshot,actionEvent=result.data?.actionEvent??null,roomStatus=await this.updateTurnTimer(snapshot,Number(before.snapshot?.turn));
     await this.state.storage.put({version,status:roomStatus});if(roomStatus==="complete")await this.state.storage.put({postmatchChoice:null,postmatchProcessing:false});
     await this.broadcastState(roomStatus,actionEvent);return json({ok:true,epoch:storedEpoch,version,snapshot,status:roomStatus,actionEvent});
@@ -183,13 +186,12 @@ export class HanafudaOnlineRoom {
         const newEpoch=randomToken(),newStatus=roomStatusForPhase(Number(created.data.snapshot?.phase)),active=newStatus==="active";
         await this.state.storage.put({postmatchChoice:null,postmatchSeat:seat,gameId:String(created.data.gameId),epoch:newEpoch,version:Number(created.data.version),status:newStatus,turnSeat:active?Number(created.data.snapshot.turn):-1,turnDeadline:active?Date.now()+60_000:0,graceDeadline:0,postmatchProcessing:false});
         await this.closeEngine(oldGameId);await this.scheduleNextAlarm();this.broadcastSame({type:"postmatch_choice",choice,seat});await this.broadcastState(newStatus);
-        const chooserSnapshot=seat===0?created.data.snapshot:(await this.snapshotFor(1))?.snapshot??null;
-        return json({ok:true,locked:true,choice,status:newStatus,epoch:newEpoch,version:Number(created.data.version),snapshot:chooserSnapshot});
+        const chooserSnapshot=seat===0?created.data.snapshot:(await this.snapshotFor(1))?.snapshot??null;return json({ok:true,locked:true,choice,status:newStatus,epoch:newEpoch,version:Number(created.data.version),snapshot:chooserSnapshot});
       }
       if(choice==="reconfigure"){
         await this.state.storage.put({postmatchChoice:choice,postmatchSeat:seat,status:"reconfiguring",turnSeat:-1,turnDeadline:0,graceDeadline:0,postmatchProcessing:false});await this.scheduleNextAlarm();this.broadcastSame({type:"postmatch_choice",choice,seat});return json({ok:true,locked:true,choice,status:"reconfiguring"});
       }
-      await this.state.storage.put({postmatchChoice:choice,postmatchSeat:seat,status:"closed",turnSeat:-1,turnDeadline:0,graceDeadline:0,disconnectHost:0,disconnectGuest:0,postmatchProcessing:false});await this.closeEngine(oldGameId);await this.scheduleNextAlarm();this.broadcastSame({type:"postmatch_choice",choice,seat});this.closeSockets(1000,"home");return json({ok:true,locked:true,choice,status:"closed"});
+      await this.state.storage.put({postmatchChoice:choice,postmatchSeat:seat,status:"closed",turnSeat:-1,turnDeadline:0,graceDeadline:0,disconnectHost:0,disconnectGuest:0,connectionIdHost:null,connectionIdGuest:null,postmatchProcessing:false});await this.closeEngine(oldGameId);await this.scheduleNextAlarm();this.broadcastSame({type:"postmatch_choice",choice,seat});this.closeSockets(1000,"home");return json({ok:true,locked:true,choice,status:"closed"});
     }catch(e:any){await this.state.storage.put("postmatchProcessing",false);return json({ok:false,code:e?.message??"POSTMATCH_FAILED"},502);}
   }
 
@@ -208,11 +210,11 @@ export class HanafudaOnlineRoom {
 
   async close(body:any){
     const seat=await this.authSeat(String(body?.token??""));if(seat<0)return json({ok:false,code:"UNAUTHORIZED"},401);
-    await this.state.storage.put({status:"closed",turnSeat:-1,turnDeadline:0,graceDeadline:0,connectionDeadline:0,disconnectHost:0,disconnectGuest:0});await this.closeEngine();await this.scheduleNextAlarm();
+    await this.state.storage.put({status:"closed",turnSeat:-1,turnDeadline:0,graceDeadline:0,connectionDeadline:0,disconnectHost:0,disconnectGuest:0,connectionIdHost:null,connectionIdGuest:null});await this.closeEngine();await this.scheduleNextAlarm();
     this.broadcastSame({type:"closed",reason:String(body?.reason??"leave")});this.closeSockets(1000,"closed");return json({ok:true});
   }
 
-  closeSockets(code:number,reason:string){for(const socket of this.sockets.values())try{socket.close(code,reason);}catch{}this.sockets.clear();}
+  closeSockets(code:number,reason:string){for(const socket of this.state.getWebSockets())try{socket.close(code,reason);}catch{}}
 
   async scheduleNextAlarm(){
     const data=await this.state.storage.get(["status","connectionDeadline","turnDeadline","graceDeadline","disconnectHost","disconnectGuest"]),status=String(data.get("status")??"");
@@ -231,5 +233,7 @@ export class HanafudaOnlineRoom {
     await this.scheduleNextAlarm();
   }
 
-  async timeout(reason:string){await this.state.storage.put({status:"timeout",turnSeat:-1,connectionDeadline:0,turnDeadline:0,graceDeadline:0,disconnectHost:0,disconnectGuest:0});await this.closeEngine();this.broadcastSame({type:"timeout",reason});this.closeSockets(4000,"timeout");await this.state.storage.deleteAlarm();}
+  async timeout(reason:string){
+    await this.state.storage.put({status:"timeout",turnSeat:-1,connectionDeadline:0,turnDeadline:0,graceDeadline:0,disconnectHost:0,disconnectGuest:0,connectionIdHost:null,connectionIdGuest:null});await this.closeEngine();this.broadcastSame({type:"timeout",reason});this.closeSockets(4000,"timeout");await this.state.storage.deleteAlarm();
+  }
 }
