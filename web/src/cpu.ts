@@ -12,11 +12,11 @@ async function startCpu(){
     settings.koiEnabled=app.querySelector<HTMLInputElement>("#koi-enabled")?.checked??settings.koiEnabled;saveSettings();
     let modeSessionId:string|undefined,modeSessionToken:string|undefined;
     if(settings.mode!=="impossible"){
-      const mode=await api("/api/mode/start",{mode:settings.mode,rounds:settings.rounds,developer:false,unlocked:isUnlocked()});
+      const mode=await api("/api/mode/start",{mode:settings.mode,rounds:settings.rounds,developer:false});
       if(!mode.ok||!mode.data?.ok)throw new Error(mode.data?.code||"MODE_START_FAILED");
       modeSessionId=mode.data.sessionId;modeSessionToken=mode.data.token;
     }
-    const started=await api("/api/cpu/start",settings.mode==="impossible"?{mode:"impossible",rounds:settings.rounds,koiEnabled:settings.koiEnabled,unlocked:isUnlocked()}:{mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken});
+    const started=await api("/api/cpu/start",settings.mode==="impossible"?{mode:"impossible",rounds:settings.rounds,koiEnabled:settings.koiEnabled,unlocked:isUnlocked()}:{mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken,unlocked:isUnlocked()});
     if(!started.ok||!started.data?.ok)throw new Error(started.data?.code||"CPU_START_FAILED");
     session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken};
     snapshot=started.data.snapshot;pendingModeTransition=started.data.modeTransition?.transition==="impossible";hiddenFirstEncounter=false;roundHistory=[];currentRound=-1;
