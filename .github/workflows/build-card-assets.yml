@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - implementation/webapp-v1
+      - main
     paths:
       - '.github/workflows/build-card-assets.yml'
       - 'assets/cards/sheet/card-sheet.png'
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: implementation/webapp-v1
+          ref: main
           fetch-depth: 0
       - name: Install C++ image build dependencies
         run: |
@@ -55,4 +55,4 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Build 48 Hanafuda card assets [skip ci]'
-          git push origin HEAD:implementation/webapp-v1
+          git push origin HEAD:main
