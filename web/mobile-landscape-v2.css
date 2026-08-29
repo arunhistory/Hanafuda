@@ -1,0 +1,71 @@
+/* Mobile/tablet-only landscape layout v2. Desktop remains untouched. */
+html.touch-landscape-device.portrait-device body{overflow:hidden}
+html.touch-landscape-device.portrait-device .app-shell,
+html.touch-landscape-device.portrait-device .site-footer{visibility:hidden;pointer-events:none}
+.orientation-gate{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:radial-gradient(circle at 50% 30%,#2c1511,#0b0505 68%);color:#fff4d8;text-align:center}
+html.touch-landscape-device.portrait-device .orientation-gate{display:flex}
+.orientation-gate-card{width:min(86vw,520px);padding:24px;border:1px solid rgba(255,225,171,.35);border-radius:22px;background:rgba(18,8,7,.94);box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.orientation-gate-mark{font-size:3rem;line-height:1;margin-bottom:12px}
+.orientation-gate-card strong{display:block;font-size:1.25rem;margin-bottom:8px}
+.orientation-gate-card p{margin:0;line-height:1.65;color:#e8d7b8}
+
+@media (orientation:landscape){
+  html.touch-landscape-device{--footer-height:48px}
+  html.touch-landscape-device body{min-height:100dvh;overflow:hidden}
+  html.touch-landscape-device .app-shell{height:calc(100dvh - var(--footer-height));min-height:0;overflow:hidden}
+  html.touch-landscape-device .screen{height:calc(100dvh - var(--footer-height));min-height:0;padding:max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));gap:6px;overflow:hidden}
+  html.touch-landscape-device .screen::before,html.touch-landscape-device .match-screen::before{inset:0 0 var(--footer-height)}
+
+  html.touch-landscape-device .hero{margin:auto;width:min(95vw,1120px);max-width:none;height:min(72dvh,480px);padding:clamp(16px,2.2vw,28px);display:grid;grid-template-columns:minmax(220px,.9fr) minmax(360px,1.4fr);grid-template-rows:1fr 1fr;align-items:center;column-gap:clamp(18px,4vw,56px);text-align:left}
+  html.touch-landscape-device .hero h1{grid-column:1;grid-row:1;align-self:end;margin:0 0 8px;font-size:clamp(2.5rem,8vh,5rem);line-height:.95}
+  html.touch-landscape-device .hero>p{grid-column:1;grid-row:2;align-self:start;margin:0;font-size:clamp(.92rem,2.5vh,1.22rem)}
+  html.touch-landscape-device .home-actions{grid-column:2;grid-row:1/3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(64px,1fr);gap:12px;align-self:stretch}
+  html.touch-landscape-device .home-actions button:first-child{grid-column:auto}
+  html.touch-landscape-device .home-actions button{min-height:64px;font-size:clamp(.95rem,2.4vh,1.15rem)}
+
+  html.touch-landscape-device .topbar{min-height:36px}
+  html.touch-landscape-device .topbar h1,html.touch-landscape-device .topbar h2{font-size:clamp(.95rem,3vh,1.3rem)}
+  html.touch-landscape-device .icon-button,html.touch-landscape-device .primary,html.touch-landscape-device .secondary,html.touch-landscape-device .danger,html.touch-landscape-device .choice,html.touch-landscape-device .menu-item{min-height:36px;padding:6px 11px}
+  html.touch-landscape-device .panel{width:min(95vw,1160px);max-width:none;max-height:calc(100dvh - var(--footer-height) - 52px);padding:10px 14px;overflow:auto}
+  html.touch-landscape-device .settings-grid{grid-template-columns:minmax(90px,.48fr) minmax(145px,1fr) minmax(90px,.48fr) minmax(145px,1fr);gap:7px 12px}
+  html.touch-landscape-device .settings-grid select,html.touch-landscape-device .settings-grid input[type="number"]{min-height:34px}
+  html.touch-landscape-device .screen-actions{margin-top:8px}
+  html.touch-landscape-device .rules-copy{font-size:clamp(.74rem,1.95vh,.92rem);line-height:1.5}
+  html.touch-landscape-device .data-table{font-size:clamp(.66rem,1.75vh,.82rem)}
+
+  html.touch-landscape-device .match-screen{padding:max(4px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 4px max(8px,env(safe-area-inset-left));gap:4px}
+  html.touch-landscape-device .match-hud{min-height:34px;padding:3px 7px;border-radius:8px}
+  html.touch-landscape-device .scorebox{font-size:clamp(.66rem,1.8vh,.82rem)}
+  html.touch-landscape-device .score{font-size:clamp(.95rem,2.8vh,1.2rem)}
+  html.touch-landscape-device .round-info{font-size:clamp(.62rem,1.65vh,.76rem)}
+  html.touch-landscape-device .board{display:grid;grid-template-columns:minmax(110px,18%) minmax(0,64%) minmax(110px,18%);grid-template-rows:minmax(54px,23%) minmax(0,54%) minmax(54px,23%);gap:3px 7px;min-height:0}
+  html.touch-landscape-device .opponent-zone,html.touch-landscape-device .player-zone{display:contents}
+  html.touch-landscape-device .opponent-zone>.hand-row{grid-column:2;grid-row:1;align-self:center}
+  html.touch-landscape-device .opponent-zone>.captured-box{grid-column:3;grid-row:1/4;align-self:stretch}
+  html.touch-landscape-device .field-wrap{grid-column:2;grid-row:2;min-height:0}
+  html.touch-landscape-device .player-zone>.captured-box{grid-column:1;grid-row:1/4;align-self:stretch}
+  html.touch-landscape-device .player-zone>.hand-row{grid-column:2;grid-row:3;align-self:center}
+  html.touch-landscape-device .hand-row{min-height:0;height:100%;overflow:visible}
+  html.touch-landscape-device .hand-card-button .card{width:auto;height:min(17dvh,104px)}
+  html.touch-landscape-device .card-back{width:auto;height:min(14dvh,86px);margin-left:calc(min(14dvh,86px)*-.28)}
+  html.touch-landscape-device .field-grid{width:min(58vw,720px);height:100%;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:3px 7px}
+  html.touch-landscape-device .field-card-button .card{height:min(100%,clamp(46px,14dvh,96px))}
+  html.touch-landscape-device .captured-box{min-width:0;padding:4px;display:flex;flex-direction:column;overflow:hidden}
+  html.touch-landscape-device .captured-title{flex:0 0 auto;font-size:clamp(.56rem,1.45vh,.68rem);text-align:center}
+  html.touch-landscape-device .captured-row{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;align-content:center;justify-items:center;gap:2px;overflow:hidden}
+  html.touch-landscape-device .captured-row .card{width:auto;height:min(9dvh,50px);margin:0}
+  html.touch-landscape-device .status-strip{min-height:30px;padding:3px 6px;font-size:clamp(.62rem,1.6vh,.76rem)}
+
+  html.touch-landscape-device .modal-layer,html.touch-landscape-device .fx-layer{inset:0 0 var(--footer-height);padding:7px}
+  html.touch-landscape-device .modal{width:min(90vw,900px);max-height:84dvh;padding:10px 14px}
+  html.touch-landscape-device .modal-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.touch-landscape-device .koi-choice{display:grid;grid-template-columns:repeat(2,minmax(150px,260px))}
+  html.touch-landscape-device .settlement-card{width:min(84vw,860px);max-height:82dvh;overflow:auto;padding:10px 16px}
+  html.touch-landscape-device .settlement-score{font-size:clamp(1.7rem,6.5vh,3rem)}
+  html.touch-landscape-device .settlement-breakdown{max-width:680px;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px}
+  html.touch-landscape-device .callout{width:min(78vw,780px);height:min(58dvh,350px)}
+
+  html.touch-landscape-device .site-footer{height:var(--footer-height);padding-bottom:env(safe-area-inset-bottom)}
+  html.touch-landscape-device .copyright{height:16px;line-height:16px;font-size:.58rem}
+  html.touch-landscape-device .ad-bar{height:calc(var(--footer-height) - 16px - env(safe-area-inset-bottom));font-size:.58rem}
+}
