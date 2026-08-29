@@ -18,6 +18,7 @@ function applyDealSequence(){
 }
 
 function applyMatchPresentation(){
+  if(session?.kind==="cpu"&&session.mode==="impossible"&&isUnlocked())hiddenFirstEncounter=false;
   applyDealSequence();
   const menu=app.querySelector<HTMLButtonElement>("[data-action='pause']");
   if(menu)menu.textContent="☰ メニュー";
