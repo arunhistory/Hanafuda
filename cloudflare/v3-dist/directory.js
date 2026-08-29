@@ -3,8 +3,7 @@ const QUEUE_TTL = 120_000;
 export class HanafudaDirectory {
     state;
     env;
-    sockets;
-    constructor(state, env) { this.state = state; this.env = env; this.sockets = new Map(); }
+    constructor(state, env) { this.state = state; this.env = env; }
     async scheduleCleanup(at) {
         const target = Math.max(Date.now() + 1, Number(at ?? Date.now() + QUEUE_TTL));
         const existing = Number(await this.state.storage.getAlarm() ?? 0);
@@ -28,18 +27,31 @@ export class HanafudaDirectory {
         }
         return null;
     }
-    send(socket, value) {
+    send(socket, value) { try {
+        socket.send(JSON.stringify(value));
+        return true;
+    }
+    catch {
+        return false;
+    } }
+    socketFor(ticket) { const sockets = this.state.getWebSockets(`ticket:${ticket}`); return Array.isArray(sockets) && sockets.length ? sockets[0] : null; }
+    attachment(socket) {
         try {
-            socket.send(JSON.stringify(value));
-            return true;
+            const a = socket.deserializeAttachment?.();
+            if (a && typeof a.ticket === "string" && typeof a.waitKey === "string")
+                return { ticket: a.ticket, waitKey: a.waitKey };
         }
-        catch {
-            return false;
+        catch { }
+        try {
+            const tags = this.state.getTags(socket);
+            const ticket = tags.find(t => t.startsWith("ticket:"))?.slice(7) ?? "", rule = tags.find(t => t.startsWith("rule:"))?.slice(5) ?? "";
+            if (ticket && rule)
+                return { ticket, waitKey: `waiting:${rule}` };
         }
+        catch { }
+        return null;
     }
     async dropWaiting(ticket, waitKey, socket, closeCode, closeReason) {
-        if (this.sockets.get(ticket) === socket)
-            this.sockets.delete(ticket);
         const waiting = await this.state.storage.get(waitKey);
         if (waiting?.ticket === ticket)
             await this.state.storage.delete(waitKey);
@@ -66,8 +78,7 @@ export class HanafudaDirectory {
             await this.state.storage.deleteAlarm();
     }
     parseRulesFromUrl(url) {
-        const rounds = Number(url.searchParams.get("rounds"));
-        const rawKoi = url.searchParams.get("koiEnabled");
+        const rounds = Number(url.searchParams.get("rounds")), rawKoi = url.searchParams.get("koiEnabled");
         if (rawKoi !== "true" && rawKoi !== "false")
             return null;
         return parseRuleSet({ rounds, koiEnabled: rawKoi === "true" });
@@ -79,27 +90,12 @@ export class HanafudaDirectory {
         if (!rules)
             return json({ ok: false, code: "INVALID_RULESET" }, 400);
         const pair = new WebSocketPair(), client = pair[0], server = pair[1], ticket = randomToken(), key = ruleKey(rules), waitKey = `waiting:${key}`;
-        server.accept();
-        this.sockets.set(ticket, server);
-        server.addEventListener("message", (event) => {
-            let message;
-            try {
-                message = JSON.parse(String(event.data));
-            }
-            catch {
-                return;
-            }
-            if (message?.type === "ping")
-                this.send(server, { type: "pong", t: Date.now() });
-            if (message?.type === "cancel")
-                void this.dropWaiting(ticket, waitKey, server, 1000, "cancelled");
-        });
-        server.addEventListener("close", () => void this.dropWaiting(ticket, waitKey, server));
-        server.addEventListener("error", () => void this.dropWaiting(ticket, waitKey, server));
+        this.state.acceptWebSocket(server, [`ticket:${ticket}`, `rule:${key}`]);
+        server.serializeAttachment({ ticket, waitKey });
         const now = Date.now();
         const waiting = await this.state.storage.get(waitKey);
         if (waiting && waiting.expires > now && waiting.ticket !== ticket) {
-            const peer = this.sockets.get(waiting.ticket);
+            const peer = this.socketFor(waiting.ticket);
             if (peer) {
                 const room = await this.createRoom(rules);
                 if (!room) {
@@ -110,8 +106,6 @@ export class HanafudaDirectory {
                     return new Response(null, { status: 101, webSocket: client });
                 }
                 await this.state.storage.delete(waitKey);
-                this.sockets.delete(waiting.ticket);
-                this.sockets.delete(ticket);
                 const hostOk = this.send(peer, { type: "matched", roomCode: room.roomCode, token: room.hostToken, seat: "host", rules: room.rules });
                 const guestOk = this.send(server, { type: "matched", roomCode: room.roomCode, token: room.guestToken, seat: "guest", rules: room.rules });
                 if (!hostOk || !guestOk) {
@@ -151,12 +145,31 @@ export class HanafudaDirectory {
         this.send(server, { type: "queued", ticket, rules, expires });
         return new Response(null, { status: 101, webSocket: client });
     }
-    async fetch(req) {
-        const url = new URL(req.url);
-        if (req.method === "GET" && url.pathname.endsWith("/connect"))
-            return this.connect(req, url);
-        return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+    async fetch(req) { const url = new URL(req.url); if (req.method === "GET" && url.pathname.endsWith("/connect"))
+        return this.connect(req, url); return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405); }
+    async webSocketMessage(socket, message) {
+        let m;
+        try {
+            const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+            m = JSON.parse(text);
+        }
+        catch {
+            return;
+        }
+        if (m?.type === "ping") {
+            this.send(socket, { type: "pong", t: Date.now() });
+            return;
+        }
+        if (m?.type === "cancel") {
+            const a = this.attachment(socket);
+            if (a)
+                await this.dropWaiting(a.ticket, a.waitKey, socket, 1000, "cancelled");
+        }
     }
+    async webSocketClose(socket) { const a = this.attachment(socket); if (a)
+        await this.dropWaiting(a.ticket, a.waitKey, socket); }
+    async webSocketError(socket) { const a = this.attachment(socket); if (a)
+        await this.dropWaiting(a.ticket, a.waitKey, socket); }
     async alarm() {
         const now = Date.now();
         let next = 0;
@@ -165,9 +178,8 @@ export class HanafudaDirectory {
             const ticket = String(value?.ticket ?? ""), expires = Number(value?.expires ?? 0);
             if (expires > 0 && expires <= now) {
                 await this.state.storage.delete(key);
-                const socket = this.sockets.get(ticket);
+                const socket = this.socketFor(ticket);
                 if (socket) {
-                    this.sockets.delete(ticket);
                     this.send(socket, { type: "timeout", code: "MATCHMAKING_TIMEOUT" });
                     try {
                         socket.close(4000, "matchmaking_timeout");
