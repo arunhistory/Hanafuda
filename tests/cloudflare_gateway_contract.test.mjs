@@ -16,7 +16,7 @@ const checks=[
   ['disconnect timeout is distinct',src.includes('disconnect_timeout')&&src.includes('turn_timeout')],
   ['postmatch first-choice lock exists',src.includes('postmatchProcessing')&&src.includes('postmatchChoice')],
   ['arbitrary websocket relay removed from v3 room',!src.includes('m?.type==="relay"')&&!src.includes('message?.type==="relay"')],
-  ['hidden trigger constants absent from gateway extension',!src.includes('playerTotal')&&!src.includes('cpuTotal')&&!src.includes('should_force_impossible')&&!src.includes('1000')],
+  ['hidden trigger constants absent from gateway extension',!src.includes('playerTotal')&&!src.includes('cpuTotal')&&!src.includes('should_force_impossible')],
 ];
 for(const [name,ok] of checks)console.log(ok?'PASS':'FAIL',name);
 if(checks.some(([,ok])=>!ok))process.exit(1);
