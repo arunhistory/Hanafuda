@@ -12,6 +12,7 @@ const checks=[
   ['guest pre-join inspection exists',src.includes('/api/online/inspect')&&src.includes('op==="inspect"')],
   ['authoritative online actions exist',src.includes('/api/online/action')&&src.includes('expectedVersion')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
+  ['matchmaking cleanup uses DO alarm not cron',src.includes('async alarm()')&&src.includes('setAlarm')&&src.includes('waiting:')&&src.includes('match:')&&src.includes('ticketrule:')&&!src.toLowerCase().includes('cron')],
   ['turn warning uses 60+30 seconds',src.includes('Date.now()+60_000')&&src.includes('graceDeadline:now+30_000')],
   ['initial turn timer waits for both connections',src.includes('connectionsReady')&&src.includes('connectionDeadline:Date.now()+120_000')&&src.includes('WAITING_FOR_CONNECTION')],
   ['disconnect timeout is distinct',src.includes('disconnect_timeout')&&src.includes('turn_timeout')&&src.includes('connection_timeout')],
