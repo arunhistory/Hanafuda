@@ -11,6 +11,7 @@ const checks=[
   ['room rules are rounds+koi only',src.includes('k!=="rounds"&&k!=="koiEnabled"')],
   ['guest pre-join inspection exists',src.includes('/api/online/inspect')&&src.includes('op==="inspect"')],
   ['authoritative online actions exist',src.includes('/api/online/action')&&src.includes('expectedVersion')],
+  ['authoritative action events propagate to CPU and online clients',src.includes('actionEvent:result.data?.actionEvent??null')&&src.includes('broadcastState(roomStatus,actionEvent)')&&src.includes('actionEvent:actionEvent??null')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['matchmaking cleanup uses DO alarm not cron',src.includes('async alarm()')&&src.includes('setAlarm')&&src.includes('waiting:')&&src.includes('match:')&&src.includes('ticketrule:')&&!src.toLowerCase().includes('cron')],
   ['turn warning uses 60+30 seconds',src.includes('Date.now()+60_000')&&src.includes('graceDeadline:now+30_000')],
