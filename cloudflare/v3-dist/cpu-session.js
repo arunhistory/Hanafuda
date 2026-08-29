@@ -51,7 +51,7 @@ export class HanafudaCpuSession {
         if (!created.ok || !created.data?.ok || !created.data?.gameId)
             return json({ ok: false, code: "ENGINE_CREATE_FAILED" }, 502);
         await this.state.storage.put({ initialized: true, closed: false, tokenHash: await sha256Hex(token), mode, rounds, koiEnabled, gameId: created.data.gameId, version: Number(created.data.version), modeSessionId, modeSessionToken, pendingTransition: false, createdAt: Date.now() });
-        const events = [{ actor: "system", snapshot: created.data.snapshot, version: Number(created.data.version) }];
+        const events = [{ actor: "system", snapshot: created.data.snapshot, version: Number(created.data.version), actionEvent: null }];
         let modeTransition = null;
         if (Number(created.data.snapshot?.phase) === 5) {
             const check = await engineCall(this.env, { op: "mode_check", gameId: String(created.data.gameId), seat: 0, modeSession: await this.modeSession() });
@@ -87,7 +87,7 @@ export class HanafudaCpuSession {
             const result = await this.engineAction({ action: "cpu_step", actor: 1 });
             if (!result.ok || !result.data?.ok)
                 return { ok: false, response: json({ ok: false, code: "CPU_ENGINE_FAILED", detail: result.data?.code ?? null }, result.status || 502) };
-            events.push({ actor: "cpu", snapshot: result.data.snapshot, version: Number(result.data.version) });
+            events.push({ actor: "cpu", snapshot: result.data.snapshot, version: Number(result.data.version), actionEvent: result.data?.actionEvent ?? null });
             if (result.data?.modeTransition?.transition === "impossible") {
                 await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6) });
                 return { ok: true, modeTransition: result.data.modeTransition };
@@ -117,7 +117,7 @@ export class HanafudaCpuSession {
         const result = await this.engineAction(payload);
         if (!result.ok || !result.data?.ok)
             return json({ ok: false, code: result.data?.code ?? "ENGINE_ACTION_FAILED", version: Number(result.data?.version ?? storedVersion), snapshot: result.data?.snapshot ?? null }, result.status || 502);
-        const events = [{ actor: "player", snapshot: result.data.snapshot, version: Number(result.data.version) }];
+        const events = [{ actor: "player", snapshot: result.data.snapshot, version: Number(result.data.version), actionEvent: result.data?.actionEvent ?? null }];
         if (result.data?.modeTransition?.transition === "impossible") {
             await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6) });
             return json({ ok: true, version: Number(result.data.version), snapshot: result.data.snapshot, events, modeTransition: result.data.modeTransition });
