@@ -1,6 +1,34 @@
 "use strict";
 function onlineRulesFromUi() { return { rounds: Number(app.querySelector("#online-rounds")?.value ?? 12), koiEnabled: app.querySelector("#online-koi")?.checked ?? true }; }
 let inspectedRoom = null;
+let matchmakingSocket = null;
+function setMatchmakingUi(active) {
+    const random = app.querySelector("[data-action='online-random']");
+    if (random) {
+        random.textContent = active ? "マッチング中止" : "ランダム対戦";
+        random.classList.toggle("danger", active);
+        random.classList.toggle("secondary", !active);
+    }
+    app.querySelectorAll("#online-rounds,#online-koi,#room-code,[data-action='online-create'],[data-action='online-inspect'],[data-action='online-join']").forEach(el => el.disabled = active || (el.dataset.action === "online-join" && !inspectedRoom));
+}
+function cancelRandomMatch(renderAfter = true) {
+    const ws = matchmakingSocket;
+    matchmakingSocket = null;
+    busy = false;
+    if (ws) {
+        try {
+            if (ws.readyState === WebSocket.OPEN)
+                ws.send(JSON.stringify({ type: "cancel" }));
+        }
+        catch { }
+        try {
+            ws.close(1000, "cancelled");
+        }
+        catch { }
+    }
+    if (renderAfter && currentScreen() === "online")
+        void render();
+}
 async function createOnlineRoom() {
     if (busy)
         return;
@@ -20,6 +48,8 @@ async function createOnlineRoom() {
     }
 }
 async function inspectOnlineRoom() {
+    if (matchmakingSocket)
+        return;
     const input = app.querySelector("#room-code");
     if (!input)
         return;
@@ -42,7 +72,7 @@ async function inspectOnlineRoom() {
     }
 }
 async function joinOnlineRoom() {
-    if (!inspectedRoom || busy)
+    if (!inspectedRoom || busy || matchmakingSocket)
         return;
     busy = true;
     try {
@@ -58,33 +88,68 @@ async function joinOnlineRoom() {
         busy = false;
     }
 }
-async function randomOnline() {
+function randomOnline() {
+    if (matchmakingSocket) {
+        cancelRandomMatch();
+        return;
+    }
     if (busy)
         return;
+    const rules = onlineRulesFromUi();
+    settings.rounds = rules.rounds;
+    settings.koiEnabled = rules.koiEnabled;
+    saveSettings();
     busy = true;
-    try {
-        const rules = onlineRulesFromUi();
-        let r = await api("/api/online/random", { rules });
-        if (!r.ok || !r.data?.ok)
-            throw new Error(r.data?.code || "MATCHMAKING_FAILED");
-        const ticket = r.data.queueTicket;
-        toast("対戦相手を待っています…");
-        for (let i = 0; i < 24 && !r.data.matched; i++) {
-            await delay(5000);
-            r = await api("/api/online/random", { ticket });
-            if (!r.ok || !r.data?.ok)
-                throw new Error(r.data?.code || "MATCHMAKING_FAILED");
+    const url = new URL(API_BASE.replace(/^http/, "ws") + "/api/online/random/connect");
+    url.searchParams.set("rounds", String(rules.rounds));
+    url.searchParams.set("koiEnabled", String(rules.koiEnabled));
+    const ws = new WebSocket(url);
+    matchmakingSocket = ws;
+    let matched = false;
+    setMatchmakingUi(true);
+    const cancelOnNavigate = () => cancelRandomMatch(false);
+    app.querySelector("[data-action='back']")?.addEventListener("click", cancelOnNavigate, { capture: true, once: true });
+    app.querySelector("[data-action='home']")?.addEventListener("click", cancelOnNavigate, { capture: true, once: true });
+    ws.onopen = () => toast("対戦相手を待っています…");
+    ws.onmessage = event => {
+        let msg;
+        try {
+            msg = JSON.parse(String(event.data));
         }
-        if (!r.data.matched)
-            throw new Error("MATCHMAKING_TIMEOUT");
-        await startOnlineSession(r.data.roomCode, r.data.token, r.data.seat === "guest" ? 1 : 0, r.data.rules, null);
-    }
-    catch (e) {
-        toast(e instanceof Error ? e.message : "マッチングに失敗しました");
-    }
-    finally {
+        catch {
+            return;
+        }
+        if (msg?.type === "queued")
+            return;
+        if (msg?.type === "timeout") {
+            toast("マッチング時間を超えました。");
+            cancelRandomMatch();
+            return;
+        }
+        if (msg?.type === "error") {
+            toast(msg.code || "マッチングに失敗しました");
+            cancelRandomMatch();
+            return;
+        }
+        if (msg?.type !== "matched" || matchmakingSocket !== ws)
+            return;
+        matched = true;
+        matchmakingSocket = null;
         busy = false;
-    }
+        try {
+            ws.close(1000, "matched");
+        }
+        catch { }
+        const seat = msg.seat === "guest" ? 1 : 0;
+        const matchRules = msg.rules;
+        void startOnlineSession(String(msg.roomCode), String(msg.token), seat, matchRules, null);
+    };
+    ws.onerror = () => { if (matchmakingSocket === ws)
+        toast("マッチング通信でエラーが発生しました。"); };
+    ws.onclose = () => { if (matchmakingSocket !== ws)
+        return; matchmakingSocket = null; busy = false; if (!matched)
+        toast("マッチングを終了しました。"); if (currentScreen() === "online")
+        void render(); };
 }
 async function startOnlineSession(code, token, seat, rules, initial) {
     const provisional = { kind: "online", roomCode: code, token, seat, version: Number(initial?.version ?? -1), epoch: String(initial?.epoch ?? ""), rules, socket: null };
@@ -212,6 +277,19 @@ async function applyOnlineReconfigure() {
     await animateNewRoundIfNeeded(true);
 }
 window.addEventListener("pagehide", () => {
+    const waiting = matchmakingSocket;
+    matchmakingSocket = null;
+    if (waiting) {
+        try {
+            if (waiting.readyState === WebSocket.OPEN)
+                waiting.send(JSON.stringify({ type: "cancel" }));
+        }
+        catch { }
+        try {
+            waiting.close(1000, "pagehide");
+        }
+        catch { }
+    }
     const s = session;
     if (!s)
         return;
