@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "animations": {
+    "shuffle": {"skippable":true,"stateIndependent":true},
+    "deal.oneByOne": {"skippable":true,"stateIndependent":true},
+    "capture": {"skippable":true,"stateIndependent":true},
+    "koikoi": {"skippable":true,"stateIndependent":true,"textAsset":"effect.koikoi.text","backgroundAsset":"effect.callout.background","backgroundUsage":"text-bounds-only","baseBackground":"background.match.normal"},
+    "agari": {"skippable":true,"stateIndependent":true,"textAsset":"effect.agari.text","backgroundAsset":"effect.callout.background","backgroundUsage":"text-bounds-only","baseBackground":"background.match.normal"},
+    "roundSettlement": {"skippable":true,"stateIndependent":true,"backgroundAsset":"background.settlement"},
+    "finalSettlement": {"skippable":true,"stateIndependent":true,"backgroundAsset":"background.settlement","scale":"grand"},
+    "impossibleCollapse.first": {"skippable":false,"stateIndependent":true,"backgroundAsset":"background.match.corrupted"},
+    "impossibleMatch": {"skippable":true,"stateIndependent":true,"backgroundAsset":"background.match.corrupted"}
+  },
+  "audioHooks": {"bgm":[],"se":[]}
+}
