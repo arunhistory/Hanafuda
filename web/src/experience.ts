@@ -91,6 +91,21 @@ function decorateSimultaneousSpecials(breakdown:HTMLElement){
   if(first)first.textContent=`あなた: ${mine} / 相手: ${theirs}`;
 }
 
+function decorateStateModal(){
+  if(modal!=="state"||!snapshot)return;
+  const panel=app.querySelector<HTMLElement>(".modal.subview");
+  if(!panel||panel.querySelector("[data-state-public-detail='1']"))return;
+  const [mine,theirs]=perspectiveCaptured(snapshot);
+  const mySeat=playerSeat(),theirSeat=opponentSeat();
+  const myYaku=specialName(snapshot.special[mySeat])||yakuNames(snapshot.yakuMasks[mySeat]);
+  const theirYaku=specialName(snapshot.special[theirSeat])||yakuNames(snapshot.yakuMasks[theirSeat]);
+  const detail=document.createElement("section");
+  detail.dataset.statePublicDetail="1";
+  detail.className="state-public-detail";
+  detail.innerHTML=`<h3>公開済み取得札</h3><div class="state-side"><strong>あなた ${mine.length}枚</strong><div class="captured-row state-cards">${mine.length?capturedHtml(mine):"<span>なし</span>"}</div></div><div class="state-side"><strong>相手 ${theirs.length}枚</strong><div class="captured-row state-cards">${theirs.length?capturedHtml(theirs):"<span>なし</span>"}</div></div><h3>成立済役</h3><p>あなた：${escapeHtml(myYaku)}<br>相手：${escapeHtml(theirYaku)}</p>`;
+  panel.querySelector(".screen-actions")?.before(detail);
+}
+
 function decorateSettlement(){
   const card=app.querySelector<HTMLElement>(".settlement-card");
   if(!card)return;
@@ -152,6 +167,7 @@ function applyMatchPresentation(){
   applyDealSequence();
   renderOnlineWarning();
   decorateSettlement();
+  decorateStateModal();
   scheduleForcedTransition();
   const menu=app.querySelector<HTMLButtonElement>("[data-action='pause']");
   if(menu)menu.textContent="☰ メニュー";
