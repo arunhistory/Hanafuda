@@ -191,12 +191,12 @@ export class HanafudaOnlineRoom {
             socket.send(text);
         }
         catch { } }
-    async broadcastState(statusOverride) {
+    async broadcastState(statusOverride, actionEvent = null) {
         const status = statusOverride ?? String(await this.state.storage.get("status") ?? ""), version = Number(await this.state.storage.get("version") ?? -1), rules = await this.state.storage.get("rules"), epoch = await this.state.storage.get("epoch") ?? null;
         for (const [seat, socket] of this.sockets) {
             try {
                 const snap = await this.snapshotFor(seat);
-                socket.send(JSON.stringify({ type: "state", status, version, epoch, rules, connectionsReady: (await this.state.storage.get("connectionsReady")) === true, snapshot: snap?.snapshot ?? null }));
+                socket.send(JSON.stringify({ type: "state", status, version, epoch, rules, connectionsReady: (await this.state.storage.get("connectionsReady")) === true, snapshot: snap?.snapshot ?? null, actionEvent: actionEvent ?? null }));
             }
             catch { }
         }
@@ -251,12 +251,12 @@ export class HanafudaOnlineRoom {
         const result = await engineCall(this.env, payload);
         if (!result.ok || !result.data?.ok)
             return json({ ok: false, code: result.data?.code ?? "ENGINE_ACTION_FAILED", version: Number(result.data?.version ?? stored), snapshot: result.data?.snapshot ?? null }, result.status || 502);
-        const version = Number(result.data.version), snapshot = result.data.snapshot, roomStatus = await this.updateTurnTimer(snapshot, Number(before.snapshot?.turn));
+        const version = Number(result.data.version), snapshot = result.data.snapshot, actionEvent = result.data?.actionEvent ?? null, roomStatus = await this.updateTurnTimer(snapshot, Number(before.snapshot?.turn));
         await this.state.storage.put({ version, status: roomStatus });
         if (roomStatus === "complete")
             await this.state.storage.put({ postmatchChoice: null, postmatchProcessing: false });
-        await this.broadcastState(roomStatus);
-        return json({ ok: true, epoch: storedEpoch, version, snapshot, status: roomStatus });
+        await this.broadcastState(roomStatus, actionEvent);
+        return json({ ok: true, epoch: storedEpoch, version, snapshot, status: roomStatus, actionEvent });
     }
     async status(body) {
         const seat = await this.authSeat(String(body?.token ?? ""));
