@@ -152,6 +152,7 @@ function randomOnline() {
         void render(); };
 }
 async function startOnlineSession(code, token, seat, rules, initial) {
+    stopOnlineWarning();
     const provisional = { kind: "online", roomCode: code, token, seat, version: Number(initial?.version ?? -1), epoch: String(initial?.epoch ?? ""), rules, socket: null };
     session = provisional;
     snapshot = initial?.snapshot ?? null;
@@ -187,15 +188,16 @@ function handleOnlineMessage(msg) {
     if (!session || session.kind !== "online")
         return;
     if (msg?.type === "connected" || msg?.type === "state") {
+        stopOnlineWarning();
+        const prior = snapshot, priorVersion = session.version, incomingVersion = Number(msg.version);
         if (msg.epoch)
             session.epoch = String(msg.epoch);
-        if (Number.isSafeInteger(Number(msg.version)))
-            session.version = Number(msg.version);
+        if (Number.isSafeInteger(incomingVersion))
+            session.version = incomingVersion;
         if (msg.snapshot) {
-            const prior = snapshot;
             snapshot = msg.snapshot;
             onlineReconfigureState = "none";
-            if (msg.actionEvent)
+            if (msg.actionEvent && (!Number.isSafeInteger(incomingVersion) || incomingVersion > priorVersion))
                 recordHistory(msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
             renderMatch();
             void animateNewRoundIfNeeded(!prior);
@@ -213,16 +215,23 @@ function handleOnlineMessage(msg) {
         if (msg.rules)
             session.rules = msg.rules;
     }
-    else if (msg?.type === "turn_warning")
+    else if (msg?.type === "turn_warning") {
+        startOnlineWarning();
         toast("持ち時間60秒を超えました。あと30秒です。");
+    }
     else if (msg?.type === "timeout") {
+        stopOnlineWarning();
         toast("通信タイムアウトのため対局を終了します。");
         void closeMatch(true);
     }
-    else if (msg?.type === "disconnect")
+    else if (msg?.type === "disconnect") {
+        stopOnlineWarning();
         toast("対戦相手の通信が切断されました。復帰を待っています。");
-    else if (msg?.type === "closed")
+    }
+    else if (msg?.type === "closed") {
+        stopOnlineWarning();
         void closeMatch(true);
+    }
 }
 async function onlinePostmatch(choice) {
     if (!session || session.kind !== "online")
@@ -237,6 +246,7 @@ async function onlinePostmatch(choice) {
     if (r.data.locked && lockedChoice !== choice)
         toast(`先着の選択「${lockedChoice}」が適用されました`);
     if (lockedChoice === "home") {
+        stopOnlineWarning();
         await closeMatch(true);
         return;
     }
@@ -277,6 +287,7 @@ async function applyOnlineReconfigure() {
     await animateNewRoundIfNeeded(true);
 }
 window.addEventListener("pagehide", () => {
+    stopOnlineWarning();
     const waiting = matchmakingSocket;
     matchmakingSocket = null;
     if (waiting) {
