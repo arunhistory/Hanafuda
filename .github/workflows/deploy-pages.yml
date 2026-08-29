@@ -1,0 +1,83 @@
+name: Deploy Hanafuda Pages
+
+on:
+  push:
+    branches: [implementation/webapp-v1]
+    paths:
+      - '.github/workflows/deploy-pages.yml'
+  workflow_run:
+    workflows: ['Build Hanafuda web app']
+    types: [completed]
+    branches: [implementation/webapp-v1]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hanafuda-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/webapp-v1
+          fetch-depth: 1
+
+      - name: Verify generated frontend exists
+        run: |
+          set -euo pipefail
+          test -s web/index.html
+          for f in web/dist/core.js web/dist/views.js web/dist/cpu.js web/dist/online.js web/dist/experience.js; do
+            test -s "$f"
+            node --check "$f"
+          done
+          test -s assets/config/asset-registry.json
+          test "$(find assets/cards/generated -maxdepth 1 -type f -name '*.png' | wc -l)" -eq 48
+
+      - name: Assemble public site without source originals
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site/web _site/assets
+          cp -R web/. _site/web/
+          for dir in cards backgrounds effects config reserve ui; do
+            if [ -d "assets/$dir" ]; then cp -R "assets/$dir" _site/assets/; fi
+          done
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="ja">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta http-equiv="refresh" content="0;url=./web/">
+            <meta name="robots" content="noindex">
+            <title>花札 こいこい</title>
+          </head>
+          <body><p><a href="./web/">花札を開く</a></p></body>
+          </html>
+          HTML
+          test ! -e _site/assets/source
+          test ! -e _site/assets/wasm
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
