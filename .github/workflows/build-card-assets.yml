@@ -47,12 +47,12 @@ jobs:
         run: node tools/generate_asset_version.mjs
       - name: Commit generated artifacts if changed
         run: |
-          if git diff --quiet -- assets/config/card-crops.json assets/config/asset-version.json assets/cards/generated; then
+          git add assets/config/card-crops.json assets/config/asset-version.json assets/cards/generated
+          if git diff --cached --quiet; then
             echo 'Generated card assets are already current.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/config/card-crops.json assets/config/asset-version.json assets/cards/generated
           git commit -m 'Build 48 Hanafuda card assets [skip ci]'
           git push origin HEAD:implementation/webapp-v1
