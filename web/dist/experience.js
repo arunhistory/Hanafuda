@@ -102,8 +102,9 @@ function decorateSimultaneousSpecials(breakdown) {
     if (!mine || !theirs)
         return;
     const first = breakdown.querySelector("div:first-child strong");
-    if (first)
-        first.textContent = `あなた: ${mine} / 相手: ${theirs}`;
+    const text = `あなた: ${mine} / 相手: ${theirs}`;
+    if (first && first.textContent !== text)
+        first.textContent = text;
 }
 function decorateStateModal() {
     if (modal !== "state" || !snapshot)
@@ -161,7 +162,8 @@ function lockForcedTransitionControl() {
     if (!button)
         return;
     button.disabled = true;
-    button.textContent = "……";
+    if (button.textContent !== "……")
+        button.textContent = "……";
     button.setAttribute("aria-label", "次の対戦へ移行します");
 }
 function scheduleForcedTransition() {
@@ -193,7 +195,7 @@ function applyMatchPresentation() {
     decorateStateModal();
     scheduleForcedTransition();
     const menu = app.querySelector("[data-action='pause']");
-    if (menu)
+    if (menu && menu.textContent !== "☰ メニュー")
         menu.textContent = "☰ メニュー";
     const final = app.querySelector(".settlement-card.final");
     if (final && session?.kind === "cpu" && session.mode === "impossible")
