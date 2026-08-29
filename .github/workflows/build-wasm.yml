@@ -12,6 +12,7 @@ on:
       - 'tools/build_engine_wasm.sh'
       - 'tests/core.test.mjs'
       - 'tests/game_simulation.test.mjs'
+      - 'tests/game_rules_contract.test.mjs'
 
 permissions:
   contents: write
@@ -40,6 +41,7 @@ jobs:
       - name: Run rule and simulation tests
         run: |
           node tests/core.test.mjs
+          node tests/game_rules_contract.test.mjs
           node tests/game_simulation.test.mjs
       - name: Record hashes
         run: |
