@@ -65,6 +65,15 @@ function decorateSettlement(){
     card.classList.add("enhanced-final");
     return;
   }
+  const breakdown=card.querySelector<HTMLElement>(".settlement-breakdown");
+  if(breakdown&&snapshot&&!breakdown.querySelector("[data-next-dealer='1']")){
+    const nextDealer=document.createElement("div");
+    nextDealer.dataset.nextDealer="1";
+    const label=document.createElement("span");label.textContent="次局親";
+    const value=document.createElement("strong");value.textContent=snapshot.dealer===playerSeat()?"あなた":"相手";
+    nextDealer.append(label,value);
+    breakdown.append(nextDealer);
+  }
   if(settings.skipNormalAnimations)return;
   card.classList.add("staged-settlement");
   card.querySelectorAll<HTMLElement>(".settlement-breakdown > div").forEach((row,index)=>row.style.setProperty("--settle-index",String(index)));
@@ -75,6 +84,14 @@ function cancelForcedTransition(resetKey=false){
   if(resetKey)forcedTransitionKey="";
 }
 
+function lockForcedTransitionControl(){
+  const button=app.querySelector<HTMLButtonElement>("[data-action='accept-transition']");
+  if(!button)return;
+  button.disabled=true;
+  button.textContent="……";
+  button.setAttribute("aria-label","次の対戦へ移行します");
+}
+
 function scheduleForcedTransition(){
   const s=session;
   const snap=snapshot;
@@ -82,11 +99,12 @@ function scheduleForcedTransition(){
     cancelForcedTransition(true);
     return;
   }
+  lockForcedTransitionControl();
   const key=`${s.sessionId}:${s.version}:${snap.roundIndex}`;
   if(forcedTransitionKey===key)return;
   cancelForcedTransition(false);
   forcedTransitionKey=key;
-  const hold=settings.skipNormalAnimations?1600:3800;
+  const hold=settings.skipNormalAnimations?1600:4300;
   forcedTransitionTimer=window.setTimeout(()=>{
     forcedTransitionTimer=undefined;
     if(session===s&&pendingModeTransition&&snapshot?.phase===5)void beginImpossibleTransition();
