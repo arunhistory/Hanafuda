@@ -10,5 +10,6 @@ clang++ --target=wasm32 -O3 -flto -nostdlib -fno-exceptions -fno-rtti -fno-built
   -Wl,--max-memory=262144 \
   -Wl,--strip-all \
   -o "$ROOT/assets/wasm/hanafuda_engine.wasm" \
+  "$ROOT/src/core/wasm_runtime.cpp" \
   "$ROOT/src/core/hanafuda_core.cpp" \
   "$ROOT/src/core/hanafuda_game.cpp"
