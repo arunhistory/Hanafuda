@@ -156,13 +156,13 @@ export class HanafudaOnlineRoom {
             return json({ ok: false, code: "ROOM_CLOSED" }, 410);
         const pair = new WebSocketPair(), client = pair[0], server = pair[1], connectionId = randomToken();
         const prior = this.socketFor(seat);
+        this.state.acceptWebSocket(server, [`seat:${seat}`, `conn:${connectionId}`]);
+        server.serializeAttachment({ seat, connectionId });
+        await this.state.storage.put({ [this.disconnectKey(seat)]: 0, [this.connectedOnceKey(seat)]: true, [this.connectionKey(seat)]: connectionId });
         try {
             prior?.close(4001, "replaced");
         }
         catch { }
-        this.state.acceptWebSocket(server, [`seat:${seat}`, `conn:${connectionId}`]);
-        server.serializeAttachment({ seat, connectionId });
-        await this.state.storage.put({ [this.disconnectKey(seat)]: 0, [this.connectedOnceKey(seat)]: true, [this.connectionKey(seat)]: connectionId });
         const becameReady = await this.maybeActivateConnections();
         await this.scheduleNextAlarm();
         const snap = await this.snapshotFor(seat), status = String(await this.state.storage.get("status") ?? "");
