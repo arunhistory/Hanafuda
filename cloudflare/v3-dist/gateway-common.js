@@ -22,7 +22,8 @@ export function timingSafe(a, b) { if (!a || !b || a.length !== b.length)
 export async function bodyJson(req, max = 8192) { const text = await req.text(); if (text.length > max)
     throw new Error("REQUEST_TOO_LARGE"); return JSON.parse(text); }
 export function safeMode(v) { return ["beginner", "amateur", "pro"].includes(v) ? v : null; }
-export function modeCode(v) { return v === "beginner" ? 0 : v === "amateur" ? 1 : 2; }
+export function safeCpuMode(v) { return ["beginner", "amateur", "pro", "impossible"].includes(v) ? v : null; }
+export function modeCode(v) { return v === "beginner" ? 0 : v === "amateur" ? 1 : v === "pro" ? 2 : 3; }
 export function parseRounds(v) { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null; }
 export function validOpaqueToken(v) { return /^[a-f0-9]{64}$/.test(v); }
 export function roomCode() { const a = new Uint8Array(6); crypto.getRandomValues(a); let s = ""; for (const b of a)
