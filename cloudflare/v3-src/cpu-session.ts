@@ -21,7 +21,7 @@ export class HanafudaCpuSession {
 
   async init(body:any){
     if(await this.state.storage.get("initialized"))return json({ok:false,code:"ALREADY_INITIALIZED"},409);
-    const token=String(body?.token??""),mode=safeCpuMode(String(body?.mode??"")),rounds=parseRounds(body?.rounds),koiEnabled=body?.koiEnabled;
+    const token=String(body?.token??""),mode=safeCpuMode(String(body?.mode??"")),rounds=parseRounds(body?.rounds),koiEnabled=body?.koiEnabled,unlocked=body?.unlocked===true;
     const modeSessionId=String(body?.modeSessionId??""),modeSessionToken=String(body?.modeSessionToken??"");
     if(!validOpaqueToken(token)||!mode||rounds===null||typeof koiEnabled!=="boolean")return json({ok:false,code:"INVALID_INIT"},400);
 
@@ -38,11 +38,11 @@ export class HanafudaCpuSession {
 
     const created=await engineCall(this.env,{op:"create_internal",rounds,cpuProfile:modeCode(mode),firstDealer:-1,koiEnabled});
     if(!created.ok||!created.data?.ok||!created.data?.gameId)return json({ok:false,code:"ENGINE_CREATE_FAILED"},502);
-    await this.state.storage.put({initialized:true,closed:false,tokenHash:await sha256Hex(token),mode,rounds,koiEnabled,gameId:created.data.gameId,version:Number(created.data.version),modeSessionId:mode==="impossible"?null:modeSessionId,modeSessionToken:mode==="impossible"?null:modeSessionToken,developer,pendingTransition:false,challenge:false,challengeTestOnly:false,unlockGranted:false,createdAt:Date.now()});
+    await this.state.storage.put({initialized:true,closed:false,tokenHash:await sha256Hex(token),mode,rounds,koiEnabled,gameId:created.data.gameId,version:Number(created.data.version),modeSessionId:mode==="impossible"?null:modeSessionId,modeSessionToken:mode==="impossible"?null:modeSessionToken,developer,unlocked,pendingTransition:false,challenge:false,challengeTestOnly:false,unlockGranted:false,createdAt:Date.now()});
 
     const events=[{actor:"system",snapshot:created.data.snapshot,version:Number(created.data.version),actionEvent:null}];
     let modeTransition:any=null;
-    if(Number(created.data.snapshot?.phase)===5&&mode!=="impossible"){
+    if(Number(created.data.snapshot?.phase)===5&&mode!=="impossible"&&await this.modeEvaluationEnabled()){
       const ms=await this.modeSession();
       const check=ms?await engineCall(this.env,{op:"mode_check",gameId:String(created.data.gameId),seat:0,modeSession:ms}):null;
       if(check?.ok&&check.data?.ok&&check.data?.modeTransition?.transition==="impossible"){
@@ -64,11 +64,16 @@ export class HanafudaCpuSession {
     return validOpaqueToken(sessionId)&&validOpaqueToken(token)?{sessionId,token}:null;
   }
 
+  async modeEvaluationEnabled(){
+    const state=await this.state.storage.get(["developer","unlocked"]);
+    return state.get("developer")===true||state.get("unlocked")!==true;
+  }
+
   async engineAction(action:any){
     const gameId=String(await this.state.storage.get("gameId")??"");
     const version=Number(await this.state.storage.get("version")??-1);
     const payload:any={op:"action",gameId,seat:0,expectedVersion:version,...action};
-    const ms=await this.modeSession();if(ms)payload.modeSession=ms;
+    const ms=await this.modeSession();if(ms&&await this.modeEvaluationEnabled())payload.modeSession=ms;
     const result=await engineCall(this.env,payload);
     if(result.ok&&result.data?.ok&&Number.isSafeInteger(Number(result.data.version)))await this.state.storage.put("version",Number(result.data.version));
     return result;
@@ -168,12 +173,12 @@ export async function routeCpu(req:Request,env:any,url:URL){
   if(url.pathname==="/api/cpu/start"){
     const mode=safeCpuMode(String(body?.mode??"")),rounds=parseRounds(body?.rounds),koiEnabled=body?.koiEnabled;
     if(!mode||rounds===null||typeof koiEnabled!=="boolean")return json({ok:false,code:"INVALID_RULESET"},400);
-    const directImpossible=mode==="impossible";
-    if(directImpossible&&(body?.unlocked!==true||req.headers.get("Origin")!==env.APP_ORIGIN))return json({ok:false,code:"MODE_LOCKED"},403);
+    const directImpossible=mode==="impossible",unlocked=body?.unlocked===true;
+    if(directImpossible&&(!unlocked||req.headers.get("Origin")!==env.APP_ORIGIN))return json({ok:false,code:"MODE_LOCKED"},403);
     const modeSessionId=String(body?.modeSessionId??""),modeSessionToken=String(body?.modeSessionToken??"");
     if(!directImpossible&&(!validOpaqueToken(modeSessionId)||!validOpaqueToken(modeSessionToken)))return json({ok:false,code:"INVALID_MODE_SESSION"},400);
     const id=env.CPU_SESSIONS.newUniqueId(),token=randomToken(),stub=env.CPU_SESSIONS.get(id);
-    const response=await stub.fetch("https://cpu/init",{method:"POST",body:JSON.stringify({op:"init",token,mode,rounds,koiEnabled,modeSessionId:directImpossible?null:modeSessionId,modeSessionToken:directImpossible?null:modeSessionToken})});
+    const response=await stub.fetch("https://cpu/init",{method:"POST",body:JSON.stringify({op:"init",token,mode,rounds,koiEnabled,unlocked,modeSessionId:directImpossible?null:modeSessionId,modeSessionToken:directImpossible?null:modeSessionToken})});
     const data=await response.json().catch(()=>null);
     if(!response.ok||!data?.ok)return json(data??{ok:false,code:"CPU_SESSION_INIT_FAILED"},response.status||502);
     return json({ok:true,sessionId:id.toString(),token,version:data.version,snapshot:data.snapshot,events:data.events??[],modeTransition:data.modeTransition??null,unlockGranted:data.unlockGranted===true,mode,rounds,koiEnabled});
