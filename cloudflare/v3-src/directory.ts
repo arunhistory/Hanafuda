@@ -6,10 +6,11 @@ const QUEUE_TTL=120_000;
 type Rules={rounds:number;koiEnabled:boolean};
 type WaitingRecord={ticket:string;expires:number};
 type MatchRoom={roomCode:string;hostToken:string;guestToken:string;rules:Rules};
+type SocketAttachment={ticket:string;waitKey:string};
 
 export class HanafudaDirectory {
-  state:any;env:any;sockets:Map<string,any>;
-  constructor(state:any,env:any){this.state=state;this.env=env;this.sockets=new Map();}
+  state:any;env:any;
+  constructor(state:any,env:any){this.state=state;this.env=env;}
 
   async scheduleCleanup(at?:number){
     const target=Math.max(Date.now()+1,Number(at??Date.now()+QUEUE_TTL));
@@ -33,30 +34,28 @@ export class HanafudaDirectory {
     return null;
   }
 
-  send(socket:any,value:any){
-    try{socket.send(JSON.stringify(value));return true;}catch{return false;}
+  send(socket:any,value:any){try{socket.send(JSON.stringify(value));return true;}catch{return false;}}
+  socketFor(ticket:string){const sockets=this.state.getWebSockets(`ticket:${ticket}`);return Array.isArray(sockets)&&sockets.length?sockets[0]:null;}
+  attachment(socket:any):SocketAttachment|null{
+    try{const a=socket.deserializeAttachment?.();if(a&&typeof a.ticket==="string"&&typeof a.waitKey==="string")return {ticket:a.ticket,waitKey:a.waitKey};}catch{}
+    try{const tags:string[]=this.state.getTags(socket);const ticket=tags.find(t=>t.startsWith("ticket:"))?.slice(7)??"",rule=tags.find(t=>t.startsWith("rule:"))?.slice(5)??"";if(ticket&&rule)return {ticket,waitKey:`waiting:${rule}`};}catch{}
+    return null;
   }
 
   async dropWaiting(ticket:string,waitKey:string,socket:any,closeCode?:number,closeReason?:string){
-    if(this.sockets.get(ticket)===socket)this.sockets.delete(ticket);
-    const waiting:any=await this.state.storage.get(waitKey);
-    if(waiting?.ticket===ticket)await this.state.storage.delete(waitKey);
+    const waiting:any=await this.state.storage.get(waitKey);if(waiting?.ticket===ticket)await this.state.storage.delete(waitKey);
     if(closeCode){try{socket.close(closeCode,closeReason??"closed");}catch{}}
     await this.rescheduleFromStorage();
   }
 
   async rescheduleFromStorage(){
-    const items:any=await this.state.storage.list({prefix:"waiting:",limit:1000});
-    let next=0;
-    const now=Date.now();
+    const items:any=await this.state.storage.list({prefix:"waiting:",limit:1000});let next=0;const now=Date.now();
     for(const [,value] of items){const expires=Number((value as any)?.expires??0);if(expires>now&&(next===0||expires<next))next=expires;}
     if(next>0)await this.state.storage.setAlarm(Math.max(Date.now()+1,next));else await this.state.storage.deleteAlarm();
   }
 
   parseRulesFromUrl(url:URL):Rules|null{
-    const rounds=Number(url.searchParams.get("rounds"));
-    const rawKoi=url.searchParams.get("koiEnabled");
-    if(rawKoi!=="true"&&rawKoi!=="false")return null;
+    const rounds=Number(url.searchParams.get("rounds")),rawKoi=url.searchParams.get("koiEnabled");if(rawKoi!=="true"&&rawKoi!=="false")return null;
     return parseRuleSet({rounds,koiEnabled:rawKoi==="true"});
   }
 
@@ -64,69 +63,50 @@ export class HanafudaDirectory {
     if(req.headers.get("Upgrade")!=="websocket")return json({ok:false,code:"UPGRADE_REQUIRED"},426);
     const rules=this.parseRulesFromUrl(url);if(!rules)return json({ok:false,code:"INVALID_RULESET"},400);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1],ticket=randomToken(),key=ruleKey(rules),waitKey=`waiting:${key}`;
-    server.accept();this.sockets.set(ticket,server);
-    server.addEventListener("message",(event:any)=>{
-      let message:any;try{message=JSON.parse(String(event.data));}catch{return;}
-      if(message?.type==="ping")this.send(server,{type:"pong",t:Date.now()});
-      if(message?.type==="cancel")void this.dropWaiting(ticket,waitKey,server,1000,"cancelled");
-    });
-    server.addEventListener("close",()=>void this.dropWaiting(ticket,waitKey,server));
-    server.addEventListener("error",()=>void this.dropWaiting(ticket,waitKey,server));
+    this.state.acceptWebSocket(server,[`ticket:${ticket}`,`rule:${key}`]);server.serializeAttachment({ticket,waitKey});
 
-    const now=Date.now();
-    const waiting=await this.state.storage.get(waitKey) as WaitingRecord|undefined;
+    const now=Date.now();const waiting=await this.state.storage.get(waitKey) as WaitingRecord|undefined;
     if(waiting&&waiting.expires>now&&waiting.ticket!==ticket){
-      const peer=this.sockets.get(waiting.ticket);
+      const peer=this.socketFor(waiting.ticket);
       if(peer){
         const room=await this.createRoom(rules);
         if(!room){
-          this.send(peer,{type:"error",code:"MATCH_CREATE_FAILED"});
-          this.send(server,{type:"error",code:"MATCH_CREATE_FAILED"});
-          await this.dropWaiting(waiting.ticket,waitKey,peer,1011,"match_create_failed");
-          await this.dropWaiting(ticket,waitKey,server,1011,"match_create_failed");
+          this.send(peer,{type:"error",code:"MATCH_CREATE_FAILED"});this.send(server,{type:"error",code:"MATCH_CREATE_FAILED"});
+          await this.dropWaiting(waiting.ticket,waitKey,peer,1011,"match_create_failed");await this.dropWaiting(ticket,waitKey,server,1011,"match_create_failed");
           return new Response(null,{status:101,webSocket:client} as any);
         }
         await this.state.storage.delete(waitKey);
-        this.sockets.delete(waiting.ticket);this.sockets.delete(ticket);
         const hostOk=this.send(peer,{type:"matched",roomCode:room.roomCode,token:room.hostToken,seat:"host",rules:room.rules});
         const guestOk=this.send(server,{type:"matched",roomCode:room.roomCode,token:room.guestToken,seat:"guest",rules:room.rules});
         if(!hostOk||!guestOk){
-          const stub=this.env.ROOMS.get(this.env.ROOMS.idFromName(room.roomCode));
-          await stub.fetch("https://room/op",{method:"POST",body:JSON.stringify({op:"close",token:room.hostToken,reason:"matchmaking_peer_lost"})}).catch(()=>null);
-          if(hostOk)this.send(peer,{type:"error",code:"MATCH_PEER_LOST"});
-          if(guestOk)this.send(server,{type:"error",code:"MATCH_PEER_LOST"});
+          const stub=this.env.ROOMS.get(this.env.ROOMS.idFromName(room.roomCode));await stub.fetch("https://room/op",{method:"POST",body:JSON.stringify({op:"close",token:room.hostToken,reason:"matchmaking_peer_lost"})}).catch(()=>null);
+          if(hostOk)this.send(peer,{type:"error",code:"MATCH_PEER_LOST"});if(guestOk)this.send(server,{type:"error",code:"MATCH_PEER_LOST"});
           try{peer.close(1011,"peer_lost");}catch{}try{server.close(1011,"peer_lost");}catch{}
-        }else{
-          try{peer.close(1000,"matched");}catch{}try{server.close(1000,"matched");}catch{}
-        }
-        await this.rescheduleFromStorage();
-        return new Response(null,{status:101,webSocket:client} as any);
+        }else{try{peer.close(1000,"matched");}catch{}try{server.close(1000,"matched");}catch{}}
+        await this.rescheduleFromStorage();return new Response(null,{status:101,webSocket:client} as any);
       }
       await this.state.storage.delete(waitKey);
     }
 
-    const expires=now+QUEUE_TTL;
-    await this.state.storage.put(waitKey,{ticket,expires});
-    await this.scheduleCleanup(expires);
-    this.send(server,{type:"queued",ticket,rules,expires});
+    const expires=now+QUEUE_TTL;await this.state.storage.put(waitKey,{ticket,expires});await this.scheduleCleanup(expires);this.send(server,{type:"queued",ticket,rules,expires});
     return new Response(null,{status:101,webSocket:client} as any);
   }
 
-  async fetch(req:Request){
-    const url=new URL(req.url);
-    if(req.method==="GET"&&url.pathname.endsWith("/connect"))return this.connect(req,url);
-    return json({ok:false,code:"METHOD_NOT_ALLOWED"},405);
+  async fetch(req:Request){const url=new URL(req.url);if(req.method==="GET"&&url.pathname.endsWith("/connect"))return this.connect(req,url);return json({ok:false,code:"METHOD_NOT_ALLOWED"},405);}
+
+  async webSocketMessage(socket:any,message:any){
+    let m:any;try{const text=typeof message==="string"?message:new TextDecoder().decode(message);m=JSON.parse(text);}catch{return;}
+    if(m?.type==="ping"){this.send(socket,{type:"pong",t:Date.now()});return;}
+    if(m?.type==="cancel"){const a=this.attachment(socket);if(a)await this.dropWaiting(a.ticket,a.waitKey,socket,1000,"cancelled");}
   }
+  async webSocketClose(socket:any){const a=this.attachment(socket);if(a)await this.dropWaiting(a.ticket,a.waitKey,socket);}
+  async webSocketError(socket:any){const a=this.attachment(socket);if(a)await this.dropWaiting(a.ticket,a.waitKey,socket);}
 
   async alarm(){
-    const now=Date.now();let next=0;
-    const items:any=await this.state.storage.list({prefix:"waiting:",limit:1000});
-    for(const [key,value] of items){
-      const ticket=String((value as any)?.ticket??""),expires=Number((value as any)?.expires??0);
-      if(expires>0&&expires<=now){
-        await this.state.storage.delete(key);
-        const socket=this.sockets.get(ticket);if(socket){this.sockets.delete(ticket);this.send(socket,{type:"timeout",code:"MATCHMAKING_TIMEOUT"});try{socket.close(4000,"matchmaking_timeout");}catch{}}
-      }else if(expires>now&&(next===0||expires<next))next=expires;
+    const now=Date.now();let next=0;const items:any=await this.state.storage.list({prefix:"waiting:",limit:1000});
+    for(const [key,value] of items){const ticket=String((value as any)?.ticket??""),expires=Number((value as any)?.expires??0);
+      if(expires>0&&expires<=now){await this.state.storage.delete(key);const socket=this.socketFor(ticket);if(socket){this.send(socket,{type:"timeout",code:"MATCHMAKING_TIMEOUT"});try{socket.close(4000,"matchmaking_timeout");}catch{}}}
+      else if(expires>now&&(next===0||expires<next))next=expires;
     }
     if(next>0)await this.state.storage.setAlarm(Math.max(Date.now()+1,next));else await this.state.storage.deleteAlarm();
   }
@@ -139,8 +119,7 @@ export async function routeOnlineV3(req:Request,env:any,url:URL){
   }
   if(url.pathname==="/api/online/random/connect"){
     if(req.method!=="GET")return json({ok:false,code:"METHOD_NOT_ALLOWED"},405);
-    const target=new URL(req.url);target.pathname="/connect";
-    return env.DIRECTORY.get(env.DIRECTORY.idFromName("global")).fetch(new Request(target.toString(),req));
+    const target=new URL(req.url);target.pathname="/connect";return env.DIRECTORY.get(env.DIRECTORY.idFromName("global")).fetch(new Request(target.toString(),req));
   }
   if(url.pathname==="/api/online/random")return json({ok:false,code:"MATCHMAKING_WEBSOCKET_REQUIRED"},410);
   if(!["/api/online/action","/api/online/status","/api/online/postmatch","/api/online/reconfigure","/api/online/close"].includes(url.pathname))return null;
@@ -148,6 +127,5 @@ export async function routeOnlineV3(req:Request,env:any,url:URL){
   let body:any;try{body=await bodyJson(req);}catch{return json({ok:false,code:"INVALID_JSON"},400);}
   const code=String(body?.roomCode??"").toUpperCase(),token=String(body?.token??"");if(!validRoomCode(code)||!validOpaqueToken(token))return json({ok:false,code:"INVALID_SESSION"},400);
   const op=url.pathname.endsWith("/action")?"action":url.pathname.endsWith("/status")?"status":url.pathname.endsWith("/postmatch")?"postmatch":url.pathname.endsWith("/reconfigure")?"reconfigure":"close";
-  const response=await env.ROOMS.get(env.ROOMS.idFromName(code)).fetch("https://room/op",{method:"POST",body:JSON.stringify({...body,op,token})});
-  const text=await response.text();return new Response(text,{status:response.status,headers:JSON_HEADERS});
+  const response=await env.ROOMS.get(env.ROOMS.idFromName(code)).fetch("https://room/op",{method:"POST",body:JSON.stringify({...body,op,token})});const text=await response.text();return new Response(text,{status:response.status,headers:JSON_HEADERS});
 }

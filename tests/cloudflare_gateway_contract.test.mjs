@@ -4,7 +4,9 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dir=path.join(root,'cloudflare','v3-src');
-const src=fs.readdirSync(dir).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
+const files=fs.readdirSync(dir).filter(x=>x.endsWith('.ts')).sort();
+const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
+const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const checks=[
   ['internal Supabase boundary',src.includes('"x-hanafuda-internal":internal')],
   ['no service-role secret in Cloudflare source',!src.includes('SUPABASE_SERVICE_ROLE_KEY')],
@@ -18,6 +20,7 @@ const checks=[
   ['direct hidden mode requires local unlock signal and official origin',src.includes('body?.unlocked!==true')&&src.includes('req.headers.get("Origin")!==env.APP_ORIGIN')&&src.includes('MODE_LOCKED')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['random matchmaking is WebSocket event-driven',src.includes('/api/online/random/connect')&&src.includes('new WebSocketPair()')&&src.includes('type:"matched"')&&!src.includes('op==="poll"')&&!src.includes('op==="enqueue"')],
+  ['matchmaking sockets use Durable Object hibernation API',directorySrc.includes('this.state.acceptWebSocket(server')&&directorySrc.includes('this.state.getWebSockets(`ticket:${ticket}`)')&&directorySrc.includes('serializeAttachment')&&directorySrc.includes('webSocketMessage(')&&!directorySrc.includes('server.accept()')&&!directorySrc.includes('server.addEventListener(')],
   ['legacy polling endpoint is explicitly rejected',src.includes('MATCHMAKING_WEBSOCKET_REQUIRED')&&src.includes('},410)')],
   ['matchmaking cleanup uses DO alarm not cron',src.includes('async alarm()')&&src.includes('setAlarm')&&src.includes('waiting:')&&src.includes('MATCHMAKING_TIMEOUT')&&!src.toLowerCase().includes('cron')],
   ['turn warning uses 60+30 seconds',src.includes('Date.now()+60_000')&&src.includes('graceDeadline:now+30_000')],
