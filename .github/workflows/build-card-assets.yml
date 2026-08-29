@@ -1,0 +1,58 @@
+name: Build Hanafuda Card Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - implementation/webapp-v1
+    paths:
+      - '.github/workflows/build-card-assets.yml'
+      - 'assets/cards/sheet/card-sheet.png'
+      - 'assets/config/card-crops.json'
+      - 'assets/config/asset-registry.json'
+      - 'assets/config/animation-registry.json'
+      - 'tools/generate_card_crops.mjs'
+      - 'tools/crop_cards.cpp'
+      - 'tools/generate_asset_version.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  build-validate-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: implementation/webapp-v1
+          fetch-depth: 0
+      - name: Install C++ image build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpng-dev nlohmann-json3-dev
+      - name: Generate crop manifest
+        run: node tools/generate_card_crops.mjs
+      - name: Build C++ crop tool
+        run: |
+          mkdir -p build
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror tools/crop_cards.cpp $(pkg-config --cflags --libs libpng) -o build/crop_cards
+      - name: Generate 48 normalized lossless cards
+        run: ./build/crop_cards . assets/config/card-crops.json
+      - name: Validate generated card set
+        run: |
+          test "$(find assets/cards/generated -maxdepth 1 -type f -name 'm??-c?.png' | wc -l)" -eq 48
+          test -z "$(find assets/cards/generated -maxdepth 1 -type f -name '*.png' -size 0)"
+      - name: Generate asset version and hashes
+        run: node tools/generate_asset_version.mjs
+      - name: Commit generated artifacts if changed
+        run: |
+          if git diff --quiet -- assets/config/card-crops.json assets/config/asset-version.json assets/cards/generated; then
+            echo 'Generated card assets are already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/config/card-crops.json assets/config/asset-version.json assets/cards/generated
+          git commit -m 'Build 48 Hanafuda card assets [skip ci]'
+          git push origin HEAD:implementation/webapp-v1
