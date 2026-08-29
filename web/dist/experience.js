@@ -3,6 +3,8 @@ let observedDepth = stack.length;
 let navigationSyncing = false;
 let onlineWarningDeadline = 0;
 let onlineWarningTimer;
+let forcedTransitionTimer;
+let forcedTransitionKey = "";
 function dealSequenceIndex(kind, index, s) {
     const group = Math.floor(index / 2), within = index % 2;
     if (kind === "field")
@@ -67,11 +69,53 @@ function applyRulesDetail() {
     else
         rules.insertAdjacentHTML("beforeend", detailedRulesHtml());
 }
+function decorateSettlement() {
+    const card = app.querySelector(".settlement-card");
+    if (!card)
+        return;
+    if (card.classList.contains("final")) {
+        card.classList.add("enhanced-final");
+        return;
+    }
+    if (settings.skipNormalAnimations)
+        return;
+    card.classList.add("staged-settlement");
+    card.querySelectorAll(".settlement-breakdown > div").forEach((row, index) => row.style.setProperty("--settle-index", String(index)));
+}
+function cancelForcedTransition(resetKey = false) {
+    if (forcedTransitionTimer !== undefined) {
+        window.clearTimeout(forcedTransitionTimer);
+        forcedTransitionTimer = undefined;
+    }
+    if (resetKey)
+        forcedTransitionKey = "";
+}
+function scheduleForcedTransition() {
+    const s = session;
+    const snap = snapshot;
+    if (!(s?.kind === "cpu" && s.mode !== "impossible" && pendingModeTransition && snap?.phase === 5)) {
+        cancelForcedTransition(true);
+        return;
+    }
+    const key = `${s.sessionId}:${s.version}:${snap.roundIndex}`;
+    if (forcedTransitionKey === key)
+        return;
+    cancelForcedTransition(false);
+    forcedTransitionKey = key;
+    const hold = settings.skipNormalAnimations ? 1600 : 3800;
+    forcedTransitionTimer = window.setTimeout(() => {
+        forcedTransitionTimer = undefined;
+        if (session === s && pendingModeTransition && snapshot?.phase === 5)
+            void beginImpossibleTransition();
+    }, hold);
+}
 function applyMatchPresentation() {
     if (session?.kind === "cpu" && session.mode === "impossible" && isUnlocked())
         hiddenFirstEncounter = false;
     applyDealSequence();
     renderOnlineWarning();
+    decorateSettlement();
+    scheduleForcedTransition();
     const menu = app.querySelector("[data-action='pause']");
     if (menu)
         menu.textContent = "☰ メニュー";
@@ -126,6 +170,7 @@ async function leaveCurrentHierarchyFromBrowser() {
     stack.pop();
     observedDepth = stack.length;
     stopOnlineWarning();
+    cancelForcedTransition(true);
     if (session)
         await closeMatch(false);
     else
@@ -150,7 +195,7 @@ window.addEventListener("hanafuda-audio-hook", event => {
     if (detail?.name === "card-action" && detail.event)
         animateAuthoritativeAction(detail.event);
 });
-window.addEventListener("pagehide", () => stopOnlineWarning());
+window.addEventListener("pagehide", () => { stopOnlineWarning(); cancelForcedTransition(true); });
 const experienceObserver = new MutationObserver(() => { applyMatchPresentation(); applyRulesDetail(); syncHistoryDepth(); });
 experienceObserver.observe(app, { childList: true, subtree: true });
 installHierarchyNavigation();
