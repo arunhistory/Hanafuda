@@ -13,6 +13,18 @@ function stageTransitionVictory(card:HTMLElement){
   card.querySelector<HTMLButtonElement>("[data-action='confirm-transition']")?.addEventListener("click",()=>void beginImpossibleTransition(),{once:true});
 }
 
+function syncFirstEncounterPostmatch(){
+  if(!snapshot||!session||session.kind!=="cpu"||session.mode!=="impossible")return;
+  if(snapshot.phase!==6||!hiddenFirstEncounter||isUnlocked())return;
+  app.querySelector<HTMLElement>("[data-action='cpu-same']")?.remove();
+  const reconfigure=app.querySelector<HTMLElement>("[data-action='cpu-reconfigure']");
+  if(reconfigure&&reconfigure.textContent!=="プロ対戦設定へ")reconfigure.textContent="プロ対戦設定へ";
+}
+
+const transitionUiObserver=new MutationObserver(()=>syncFirstEncounterPostmatch());
+transitionUiObserver.observe(app,{childList:true,subtree:true});
+syncFirstEncounterPostmatch();
+
 document.addEventListener("click",event=>{
   const raw=event.target;
   if(!(raw instanceof Element))return;
