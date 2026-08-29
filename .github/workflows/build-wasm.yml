@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - implementation/webapp-v1
+      - main
     paths:
       - '.github/workflows/build-wasm.yml'
       - 'src/core/**'
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: implementation/webapp-v1
+          ref: main
           fetch-depth: 0
       - name: Install WebAssembly linker
         run: |
@@ -54,4 +54,4 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add assets/wasm/hanafuda_core.wasm assets/wasm/hanafuda_engine.wasm
           git commit -m 'Build Hanafuda WASM artifacts [skip ci]'
-          git push origin HEAD:implementation/webapp-v1
+          git push origin HEAD:main
