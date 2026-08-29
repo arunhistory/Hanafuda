@@ -209,6 +209,16 @@ async function animateNewRoundIfNeeded(force) {
             app.classList.remove("corrupted-round-shift");
     }
 }
+function confirmedSettlementYaku(event) {
+    const winner = Number(event.settlement?.winner);
+    if (!snapshot || (winner !== 0 && winner !== 1))
+        return "";
+    const special = specialName(snapshot.special[winner]);
+    if (special)
+        return special;
+    const mask = event.yakuMasks?.[winner] ?? snapshot.yakuMasks[winner];
+    return yakuNames(mask);
+}
 async function animateEvent(event) {
     if (event.capturedCards?.length)
         toast(`取得: ${event.capturedCards.map(cardName).join("・")}`);
@@ -216,8 +226,12 @@ async function animateEvent(event) {
         toast(`役成立: ${yakuNames(event.newYakuMask)}`);
     if (event.capturedCards?.length)
         await showCaptureTrail(event.capturedCards, event.actor === playerSeat());
-    if (event.settlement && event.settlement.winner !== 2)
+    if (event.settlement && event.settlement.winner !== 2) {
         await showCallout("effect.agari.text");
+        const label = confirmedSettlementYaku(event);
+        if (label && label !== "なし")
+            await showAgariYaku(label);
+    }
     emitAudioHook("card-action", { event });
     await delay(120);
 }
@@ -237,6 +251,14 @@ async function showCallout(assetId) {
     layer.innerHTML = `<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;
     document.body.append(layer);
     await delay(1850);
+    layer.remove();
+}
+async function showAgariYaku(label) {
+    const layer = document.createElement("div");
+    layer.className = "fx-layer agari-yaku-layer";
+    layer.innerHTML = `<div class="agari-yaku-card"><span>成立役</span><strong>${escapeHtml(label)}</strong></div>`;
+    document.body.append(layer);
+    await delay(1250);
     layer.remove();
 }
 async function showCaptureTrail(cards, toPlayer) {
