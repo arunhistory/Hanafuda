@@ -1,30 +1,33 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const css=fs.readFileSync('web/mobile-landscape-v2.css','utf8');
-const ts=fs.readFileSync('web/src/ui-profile.ts','utf8');
+const css=fs.readFileSync('web/mobile-landscape-v3.css','utf8');
+const ts=fs.readFileSync('web/src/mobile-launch.ts','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
-assert.match(html,/mobile-landscape-v2\.css/,'mobile landscape stylesheet must be loaded');
-assert.match(html,/dist\/ui-profile\.js/,'Supabase-directed UI controller must be loaded');
-assert.doesNotMatch(html,/orientation\.css|dist\/orientation\.js/,'obsolete local orientation assets must not be loaded');
-assert.match(html,/https:\/\/mpuhgfbdkxmhynytwhzu\.supabase\.co/,'CSP must allow the Supabase UI authority');
-assert.match(ts,/hanafuda-ui-profile/,'frontend must ask Supabase for the UI profile');
-assert.match(ts,/data\?\.profile==="desktop"\|\|data\?\.profile==="mobile_landscape"/,'frontend may only accept the two server-approved profiles');
-assert.doesNotMatch(ts,/function isPhoneOrTablet\(\)/,'frontend must not independently decide phone/tablet classification');
-assert.doesNotMatch(ts,/Android\|iPhone\|iPad\|iPod\|Mobile\|Tablet/,'device classification rules must not live in GitHub frontend');
-assert.match(ts,/activeProfile!=="mobile_landscape"/,'orientation behavior must only activate after the server profile says mobile landscape');
-assert.match(ts,/orientation\.lock\("landscape"\)/,'supported browsers must request native landscape after server approval');
-assert.match(ts,/requestFullscreenForOrientation/,'gesture path must support browsers that require fullscreen before lock');
-assert.doesNotMatch(css,/portrait-landscape-fallback/,'old rotated portrait fallback must be removed');
-assert.doesNotMatch(css,/transform\s*:\s*rotate\(-?90deg\)/,'the game UI must never be rotated as a fake landscape viewport');
-assert.match(css,/html\.touch-landscape-device \.hero/,'home landscape layout must be mobile/tablet scoped');
-assert.match(css,/html\.touch-landscape-device \.settings-grid/,'settings landscape layout must be mobile/tablet scoped');
-assert.match(css,/html\.touch-landscape-device \.board/,'match table landscape layout must be mobile/tablet scoped');
-assert.match(css,/\.opponent-zone>\.captured-box/,'opponent captures must move to a landscape side rail');
-assert.match(css,/\.player-zone>\.captured-box/,'player captures must move to a landscape side rail');
-assert.match(css,/\.opponent-zone>\.hand-row/,'opponent hand must remain above the field');
-assert.match(css,/\.player-zone>\.hand-row/,'player hand must remain below the field');
-assert.match(css,/\.orientation-gate/,'portrait fallback must ask for physical landscape instead of rotating UI');
+assert.match(html,/id="webapp-viewport" class="webapp-viewport"/,'the web app must have one rotatable viewport wrapper');
+assert.match(html,/mobile-landscape-v3\.css/,'the virtual landscape stylesheet must be loaded');
+assert.match(html,/dist\/mobile-launch\.js/,'the mobile web-app launcher must be loaded');
+assert.doesNotMatch(html,/dist\/ui-profile\.js|mobile-landscape-v2\.css/,'obsolete server-driven orientation assets must not be loaded');
+assert.doesNotMatch(html,/mpuhgfbdkxmhynytwhzu\.supabase\.co/,'orientation launch must not depend on Supabase');
 
-console.log('mobile landscape contract: PASS');
+assert.match(ts,/function isMobileOrTablet\(\)/,'mobile/tablet launch detection must exist in the web app');
+assert.match(ts,/window\.visualViewport/,'the canvas must use the actual browser content viewport');
+assert.match(ts,/canvasWidth=portrait\?height:width/,'portrait browsers must expose their long dimension as landscape width');
+assert.match(ts,/canvasHeight=portrait\?width:height/,'portrait browsers must expose their short dimension as landscape height');
+assert.match(ts,/virtual-landscape/,'portrait mobile browsers must activate the virtual landscape shell');
+assert.match(ts,/compact-landscape/,'short phone canvases must have an explicit readable layout mode');
+assert.doesNotMatch(ts,/orientation\.lock|requestFullscreen|hanafuda-ui-profile/,'launch must not rotate the OS, force fullscreen, or call a UI orientation service');
+
+assert.match(css,/html\.mobile-webapp\.virtual-landscape \.webapp-viewport[^\n]*rotate\(90deg\)/,'only the completed landscape viewport may be rotated into a portrait browser');
+assert.doesNotMatch(css,/\.app-shell[^\n]*rotate\(|\.screen[^\n]*rotate\(|\.board[^\n]*rotate\(/,'internal game UI must not be a rotated portrait layout');
+assert.match(css,/--mobile-canvas-height/,'mobile sizing must use the virtual landscape canvas height');
+assert.match(css,/grid-template-columns:minmax\(122px,18%\) minmax\(0,64%\) minmax\(122px,18%\)/,'match layout must reserve readable side rails and a dominant central field');
+assert.match(css,/\.opponent-zone>\.hand-row[^\n]*grid-column:2;grid-row:1/,'opponent hand must be above the field');
+assert.match(css,/\.player-zone>\.hand-row[^\n]*grid-column:2;grid-row:3/,'player hand must be below the field');
+assert.match(css,/\.opponent-zone>\.captured-box[^\n]*grid-column:3/,'opponent captures must use the right rail');
+assert.match(css,/\.player-zone>\.captured-box[^\n]*grid-column:1/,'player captures must use the left rail');
+assert.match(css,/\.koi-choice button\{min-height:56px/,'koi/agari choices must remain large enough to tap');
+assert.match(css,/html\.mobile-webapp\.compact-landscape/,'short phone browser layouts must preserve playability');
+
+console.log('mobile virtual landscape contract: PASS');
