@@ -1,5 +1,5 @@
 type OrientationCapableScreen = Screen & {
-  orientation?: ScreenOrientation & { lock?: (orientation: OrientationLockType)=>Promise<void> };
+  orientation?: ScreenOrientation & { lock?: (orientation:string)=>Promise<void> };
 };
 
 const coarsePointer=window.matchMedia("(pointer: coarse)");
@@ -33,7 +33,4 @@ window.addEventListener("orientationchange",applyLandscapePresentation,{passive:
 window.addEventListener("resize",applyLandscapePresentation,{passive:true});
 portrait.addEventListener?.("change",applyLandscapePresentation);
 
-// Browsers that only allow orientation locking after a user gesture get one
-// additional native-lock attempt on the first interaction. The CSS fallback is
-// already active before that, so the game still launches as a landscape UI.
 document.addEventListener("pointerdown",()=>void requestNativeLandscape(),{once:true,passive:true});
