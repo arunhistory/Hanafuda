@@ -1,6 +1,8 @@
 "use strict";
 let observedDepth = stack.length;
 let navigationSyncing = false;
+let onlineWarningDeadline = 0;
+let onlineWarningTimer;
 function dealSequenceIndex(kind, index, s) {
     const group = Math.floor(index / 2), within = index % 2;
     if (kind === "field")
@@ -17,8 +19,46 @@ function applyDealSequence() {
     app.querySelectorAll("[data-hand-index]").forEach((el, i) => el.style.setProperty("--deal-index", String(dealSequenceIndex("player", i, s))));
     app.querySelectorAll(".opponent-zone .hand-row > .card").forEach((el, i) => el.style.setProperty("--deal-index", String(dealSequenceIndex("opponent", i, s))));
 }
+function renderOnlineWarning() {
+    let badge = document.querySelector("#online-overtime");
+    const active = session?.kind === "online" && onlineWarningDeadline > Date.now() && currentScreen() === "match";
+    if (!active) {
+        badge?.remove();
+        return;
+    }
+    if (!badge) {
+        badge = document.createElement("div");
+        badge.id = "online-overtime";
+        badge.className = "online-overtime";
+        badge.setAttribute("role", "status");
+        document.body.append(badge);
+    }
+    const remain = Math.max(0, Math.ceil((onlineWarningDeadline - Date.now()) / 1000));
+    badge.textContent = `延長 ${remain}秒`;
+}
+function stopOnlineWarning() {
+    onlineWarningDeadline = 0;
+    if (onlineWarningTimer !== undefined) {
+        window.clearInterval(onlineWarningTimer);
+        onlineWarningTimer = undefined;
+    }
+    renderOnlineWarning();
+}
+function startOnlineWarning() {
+    stopOnlineWarning();
+    onlineWarningDeadline = Date.now() + 30000;
+    renderOnlineWarning();
+    onlineWarningTimer = window.setInterval(() => {
+        renderOnlineWarning();
+        if (onlineWarningDeadline <= Date.now())
+            stopOnlineWarning();
+    }, 250);
+}
 function applyMatchPresentation() {
+    if (session?.kind === "cpu" && session.mode === "impossible" && isUnlocked())
+        hiddenFirstEncounter = false;
     applyDealSequence();
+    renderOnlineWarning();
     const menu = app.querySelector("[data-action='pause']");
     if (menu)
         menu.textContent = "☰ メニュー";
@@ -72,6 +112,7 @@ async function leaveCurrentHierarchyFromBrowser() {
     navigationSyncing = true;
     stack.pop();
     observedDepth = stack.length;
+    stopOnlineWarning();
     if (session) {
         await closeMatch(false);
     }
@@ -98,6 +139,7 @@ window.addEventListener("hanafuda-audio-hook", event => {
     if (detail?.name === "card-action" && detail.event)
         animateAuthoritativeAction(detail.event);
 });
+window.addEventListener("pagehide", () => stopOnlineWarning());
 const experienceObserver = new MutationObserver(() => {
     applyMatchPresentation();
     syncHistoryDepth();
