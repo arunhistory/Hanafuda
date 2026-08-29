@@ -69,7 +69,8 @@ export class HanafudaOnlineRoom {
             gameId: null, epoch: null, version: -1, turnSeat: -1, turnDeadline: 0, graceDeadline: 0,
             disconnectHost: 0, disconnectGuest: 0, connectedOnceHost: false, connectedOnceGuest: false,
             connectionIdHost: null, connectionIdGuest: null, connectionsReady: false, connectionDeadline: 0,
-            postmatchChoice: null, postmatchProcessing: false, createdAt: Date.now()
+            postmatchChoice: null, postmatchSeat: null, postmatchProcessing: false,
+            previousPostmatchEpoch: null, previousPostmatchChoice: null, previousPostmatchSeat: null, createdAt: Date.now()
         });
         return json({ ok: true, rules });
     }
@@ -103,7 +104,8 @@ export class HanafudaOnlineRoom {
         await this.state.storage.put({
             guestHash: await sha256Hex(guestToken), status, gameId, epoch, version, turnSeat: Number(hostSnapshot?.turn ?? -1),
             turnDeadline: 0, graceDeadline: 0, connectionDeadline: Date.now() + 120_000, connectionsReady: false,
-            connectedOnceGuest: false, connectionIdGuest: null, postmatchChoice: null, postmatchProcessing: false
+            connectedOnceGuest: false, connectionIdGuest: null, postmatchChoice: null, postmatchSeat: null, postmatchProcessing: false,
+            previousPostmatchEpoch: null, previousPostmatchChoice: null, previousPostmatchSeat: null
         });
         await this.maybeActivateConnections();
         await this.scheduleNextAlarm();
@@ -279,7 +281,7 @@ export class HanafudaOnlineRoom {
         const version = Number(result.data.version), snapshot = result.data.snapshot, actionEvent = result.data?.actionEvent ?? null, roomStatus = await this.updateTurnTimer(snapshot, Number(before.snapshot?.turn));
         await this.state.storage.put({ version, status: roomStatus });
         if (roomStatus === "complete")
-            await this.state.storage.put({ postmatchChoice: null, postmatchProcessing: false });
+            await this.state.storage.put({ postmatchChoice: null, postmatchSeat: null, postmatchProcessing: false });
         await this.broadcastState(roomStatus, actionEvent);
         return json({ ok: true, epoch: storedEpoch, version, snapshot, status: roomStatus, actionEvent });
     }
@@ -294,23 +296,28 @@ export class HanafudaOnlineRoom {
         const seat = await this.authSeat(String(body?.token ?? ""));
         if (seat < 0)
             return json({ ok: false, code: "UNAUTHORIZED" }, 401);
-        const epoch = String(body?.epoch ?? ""), storedEpoch = String(await this.state.storage.get("epoch") ?? "");
-        if (!validOpaqueToken(epoch) || !storedEpoch || !timingSafe(epoch, storedEpoch))
+        const epoch = String(body?.epoch ?? "");
+        if (!validOpaqueToken(epoch))
             return json({ ok: false, code: "GAME_EPOCH_CONFLICT" }, 409);
-        const existing = await this.state.storage.get("postmatchChoice");
+        const state = await this.state.storage.get(["epoch", "previousPostmatchEpoch", "previousPostmatchChoice", "previousPostmatchSeat", "postmatchChoice", "postmatchSeat", "postmatchProcessing", "status", "version"]);
+        const storedEpoch = String(state.get("epoch") ?? ""), previousEpoch = String(state.get("previousPostmatchEpoch") ?? ""), previousChoice = String(state.get("previousPostmatchChoice") ?? "");
+        if (!storedEpoch || !timingSafe(epoch, storedEpoch)) {
+            if (previousEpoch && previousChoice && timingSafe(epoch, previousEpoch))
+                return json({ ok: true, locked: true, choice: previousChoice, seat: Number(state.get("previousPostmatchSeat") ?? -1), stale: true });
+            return json({ ok: false, code: "GAME_EPOCH_CONFLICT" }, 409);
+        }
+        const existing = String(state.get("postmatchChoice") ?? "");
         if (existing)
-            return json({ ok: true, locked: true, choice: existing });
-        if ((await this.state.storage.get("status")) !== "complete")
+            return json({ ok: true, locked: true, choice: existing, seat: Number(state.get("postmatchSeat") ?? -1), processing: state.get("postmatchProcessing") === true });
+        if (String(state.get("status") ?? "") !== "complete")
             return json({ ok: false, code: "MATCH_NOT_COMPLETE" }, 409);
-        const expected = Number(body?.version), stored = Number(await this.state.storage.get("version") ?? -1);
+        const expected = Number(body?.version), stored = Number(state.get("version") ?? -1);
         if (!Number.isSafeInteger(expected) || expected !== stored)
             return json({ ok: false, code: "VERSION_CONFLICT", version: stored }, 409);
         const choice = String(body?.choice ?? "");
         if (!["reconfigure", "same", "home"].includes(choice))
             return json({ ok: false, code: "INVALID_CHOICE" }, 400);
-        if (await this.state.storage.get("postmatchProcessing"))
-            return json({ ok: true, locked: true, choice: "processing" });
-        await this.state.storage.put("postmatchProcessing", true);
+        await this.state.storage.put({ postmatchChoice: choice, postmatchSeat: seat, postmatchProcessing: true, previousPostmatchEpoch: storedEpoch, previousPostmatchChoice: choice, previousPostmatchSeat: seat });
         const oldGameId = String(await this.state.storage.get("gameId") ?? "");
         try {
             if (choice === "same") {
@@ -321,7 +328,7 @@ export class HanafudaOnlineRoom {
                 if (!created.ok || !created.data?.ok || !created.data?.gameId)
                     throw new Error("REMATCH_CREATE_FAILED");
                 const newEpoch = randomToken(), newStatus = roomStatusForPhase(Number(created.data.snapshot?.phase)), active = newStatus === "active";
-                await this.state.storage.put({ postmatchChoice: null, postmatchSeat: seat, gameId: String(created.data.gameId), epoch: newEpoch, version: Number(created.data.version), status: newStatus, turnSeat: active ? Number(created.data.snapshot.turn) : -1, turnDeadline: active ? Date.now() + 60_000 : 0, graceDeadline: 0, postmatchProcessing: false });
+                await this.state.storage.put({ postmatchChoice: null, postmatchSeat: null, gameId: String(created.data.gameId), epoch: newEpoch, version: Number(created.data.version), status: newStatus, turnSeat: active ? Number(created.data.snapshot.turn) : -1, turnDeadline: active ? Date.now() + 60_000 : 0, graceDeadline: 0, postmatchProcessing: false });
                 await this.closeEngine(oldGameId);
                 await this.scheduleNextAlarm();
                 this.broadcastSame({ type: "postmatch_choice", choice, seat });
@@ -330,12 +337,12 @@ export class HanafudaOnlineRoom {
                 return json({ ok: true, locked: true, choice, status: newStatus, epoch: newEpoch, version: Number(created.data.version), snapshot: chooserSnapshot });
             }
             if (choice === "reconfigure") {
-                await this.state.storage.put({ postmatchChoice: choice, postmatchSeat: seat, status: "reconfiguring", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, postmatchProcessing: false });
+                await this.state.storage.put({ status: "reconfiguring", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, postmatchProcessing: false });
                 await this.scheduleNextAlarm();
                 this.broadcastSame({ type: "postmatch_choice", choice, seat });
                 return json({ ok: true, locked: true, choice, status: "reconfiguring" });
             }
-            await this.state.storage.put({ postmatchChoice: choice, postmatchSeat: seat, status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0, connectionIdHost: null, connectionIdGuest: null, postmatchProcessing: false });
+            await this.state.storage.put({ status: "closed", turnSeat: -1, turnDeadline: 0, graceDeadline: 0, disconnectHost: 0, disconnectGuest: 0, connectionIdHost: null, connectionIdGuest: null, postmatchProcessing: false });
             await this.closeEngine(oldGameId);
             await this.scheduleNextAlarm();
             this.broadcastSame({ type: "postmatch_choice", choice, seat });
@@ -343,7 +350,11 @@ export class HanafudaOnlineRoom {
             return json({ ok: true, locked: true, choice, status: "closed" });
         }
         catch (e) {
-            await this.state.storage.put("postmatchProcessing", false);
+            const currentEpoch = String(await this.state.storage.get("epoch") ?? "");
+            if (currentEpoch && timingSafe(currentEpoch, storedEpoch))
+                await this.state.storage.put({ postmatchChoice: null, postmatchSeat: null, postmatchProcessing: false, previousPostmatchEpoch: null, previousPostmatchChoice: null, previousPostmatchSeat: null });
+            else
+                await this.state.storage.put("postmatchProcessing", false);
             return json({ ok: false, code: e?.message ?? "POSTMATCH_FAILED" }, 502);
         }
     }
@@ -363,7 +374,7 @@ export class HanafudaOnlineRoom {
         if (!created.ok || !created.data?.ok || !created.data?.gameId)
             return json({ ok: false, code: "ENGINE_CREATE_FAILED" }, 502);
         const newEpoch = randomToken(), newStatus = roomStatusForPhase(Number(created.data.snapshot?.phase)), active = newStatus === "active";
-        await this.state.storage.put({ rules, gameId: String(created.data.gameId), epoch: newEpoch, version: Number(created.data.version), status: newStatus, postmatchChoice: null, postmatchProcessing: false, turnSeat: active ? Number(created.data.snapshot.turn) : -1, turnDeadline: active ? Date.now() + 60_000 : 0, graceDeadline: 0 });
+        await this.state.storage.put({ rules, gameId: String(created.data.gameId), epoch: newEpoch, version: Number(created.data.version), status: newStatus, postmatchChoice: null, postmatchSeat: null, postmatchProcessing: false, turnSeat: active ? Number(created.data.snapshot.turn) : -1, turnDeadline: active ? Date.now() + 60_000 : 0, graceDeadline: 0 });
         await this.closeEngine(oldGameId);
         await this.scheduleNextAlarm();
         this.broadcastSame({ type: "rules_changed", rules });
