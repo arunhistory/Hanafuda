@@ -1,5 +1,7 @@
 let observedDepth=stack.length;
 let navigationSyncing=false;
+let onlineWarningDeadline=0;
+let onlineWarningTimer:number|undefined;
 
 function dealSequenceIndex(kind:"field"|"player"|"opponent",index:number,s:Snapshot){
   const group=Math.floor(index/2),within=index%2;
@@ -17,9 +19,35 @@ function applyDealSequence(){
   app.querySelectorAll<HTMLElement>(".opponent-zone .hand-row > .card").forEach((el,i)=>el.style.setProperty("--deal-index",String(dealSequenceIndex("opponent",i,s))));
 }
 
+function renderOnlineWarning(){
+  let badge=document.querySelector<HTMLElement>("#online-overtime");
+  const active=session?.kind==="online"&&onlineWarningDeadline>Date.now()&&currentScreen()==="match";
+  if(!active){badge?.remove();return;}
+  if(!badge){badge=document.createElement("div");badge.id="online-overtime";badge.className="online-overtime";badge.setAttribute("role","status");document.body.append(badge);}
+  const remain=Math.max(0,Math.ceil((onlineWarningDeadline-Date.now())/1000));
+  badge.textContent=`延長 ${remain}秒`;
+}
+
+function stopOnlineWarning(){
+  onlineWarningDeadline=0;
+  if(onlineWarningTimer!==undefined){window.clearInterval(onlineWarningTimer);onlineWarningTimer=undefined;}
+  renderOnlineWarning();
+}
+
+function startOnlineWarning(){
+  stopOnlineWarning();
+  onlineWarningDeadline=Date.now()+30000;
+  renderOnlineWarning();
+  onlineWarningTimer=window.setInterval(()=>{
+    renderOnlineWarning();
+    if(onlineWarningDeadline<=Date.now())stopOnlineWarning();
+  },250);
+}
+
 function applyMatchPresentation(){
   if(session?.kind==="cpu"&&session.mode==="impossible"&&isUnlocked())hiddenFirstEncounter=false;
   applyDealSequence();
+  renderOnlineWarning();
   const menu=app.querySelector<HTMLButtonElement>("[data-action='pause']");
   if(menu)menu.textContent="☰ メニュー";
   const final=app.querySelector<HTMLElement>(".settlement-card.final");
@@ -54,6 +82,13 @@ recordHistory=(event:ActionEvent,actor?:string)=>{
   if(previous===newest)roundHistory.pop();
 };
 
+const baseHandleOnlineMessage=handleOnlineMessage;
+handleOnlineMessage=(msg:any)=>{
+  if(msg?.type==="turn_warning")startOnlineWarning();
+  else if(msg?.type==="state"||msg?.type==="connected"||msg?.type==="timeout"||msg?.type==="closed")stopOnlineWarning();
+  baseHandleOnlineMessage(msg);
+};
+
 function syncHistoryDepth(){
   if(navigationSyncing)return;
   const depth=stack.length;
@@ -76,6 +111,7 @@ async function leaveCurrentHierarchyFromBrowser(){
   navigationSyncing=true;
   stack.pop();
   observedDepth=stack.length;
+  stopOnlineWarning();
   if(session){
     await closeMatch(false);
   }else{
@@ -100,6 +136,7 @@ window.addEventListener("hanafuda-audio-hook",event=>{
   const detail=(event as CustomEvent<{name?:string;event?:ActionEvent}>).detail;
   if(detail?.name==="card-action"&&detail.event)animateAuthoritativeAction(detail.event);
 });
+window.addEventListener("pagehide",()=>stopOnlineWarning());
 
 const experienceObserver=new MutationObserver(()=>{
   applyMatchPresentation();
