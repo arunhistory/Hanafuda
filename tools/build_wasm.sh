@@ -14,7 +14,6 @@ clang++ --target=wasm32 -O3 -flto -nostdlib -fno-exceptions -fno-rtti -fno-built
   -Wl,--export=matching_field_mask \
   -Wl,--export=choose_hand_index \
   -Wl,--export=choose_capture_index \
-  -Wl,--export=choose_koi_decision \
   -Wl,--export-memory \
   -Wl,--initial-memory=131072 \
   -Wl,--max-memory=131072 \
