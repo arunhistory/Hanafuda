@@ -193,7 +193,7 @@ async function animateNewRoundIfNeeded(force) {
     roundHistory = [];
     if (settings.skipNormalAnimations)
         return;
-    await showShuffle();
+    await showShuffle(force);
     const board = app.querySelector(".board");
     board?.classList.add("dealing");
     await delay(Math.min(1200, 700 + snapshot.hand.length * 55));
@@ -212,13 +212,13 @@ async function animateEvent(event) {
     emitAudioHook("card-action", { event });
     await delay(120);
 }
-async function showShuffle() {
+async function showShuffle(initial = false) {
     const layer = document.createElement("div");
-    layer.className = "fx-layer shuffle-layer";
+    layer.className = `fx-layer shuffle-layer${initial ? " long-shuffle" : ""}`;
     layer.innerHTML = '<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';
     document.body.append(layer);
     emitAudioHook("shuffle");
-    await delay(1250);
+    await delay(initial ? 2250 : 1250);
     layer.remove();
 }
 async function showCallout(assetId) {
@@ -227,7 +227,7 @@ async function showCallout(assetId) {
     const particles = Array.from({ length: 22 }, (_, i) => `<i class="particle" style="left:${10 + (i * 37) % 80}%;top:${15 + (i * 53) % 70}%;--dx:${((i % 7) - 3) * 31}px;--dy:${((i % 5) - 2) * 34}px"></i>`).join("");
     layer.innerHTML = `<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;
     document.body.append(layer);
-    await delay(1200);
+    await delay(1850);
     layer.remove();
 }
 async function showCaptureTrail(cards, toPlayer) {
