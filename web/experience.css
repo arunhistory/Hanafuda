@@ -95,6 +95,35 @@
   100% { opacity:0; transform:scale(.985); }
 }
 
+.state-public-detail {
+  margin-top:12px;
+  display:grid;
+  gap:8px;
+}
+.state-public-detail h3 {
+  margin:.4em 0 .1em;
+  text-align:left;
+  color:var(--gold);
+}
+.state-side { display:grid; gap:5px; }
+.state-side > strong { font-size:.78rem; }
+.state-cards {
+  justify-content:flex-start;
+  overflow-x:auto;
+  overflow-y:hidden;
+  min-height:58px;
+  padding:5px 6px 8px;
+  border:1px solid rgba(255,225,171,.16);
+  border-radius:8px;
+  scrollbar-width:thin;
+}
+.state-cards .card {
+  flex:0 0 auto;
+  width:clamp(28px,5vw,46px);
+  margin-right:-10px;
+}
+.state-cards .card:last-child { margin-right:0; }
+
 .online-overtime {
   position: fixed;
   z-index: 1250;
