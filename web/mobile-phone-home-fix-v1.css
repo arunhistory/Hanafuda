@@ -1,0 +1,15 @@
+/* Phone-only virtual-landscape correction. Tablet and desktop layouts are untouched. */
+html.mobile-webapp.phone-landscape .screen:not(.match-screen){padding:5px 7px;gap:4px}
+html.mobile-webapp.phone-landscape .hero{width:96%;height:calc(var(--table-h) - 10px);max-height:none;margin:auto;padding:10px 12px;grid-template-columns:minmax(150px,34%) minmax(0,66%);grid-template-rows:1fr 1fr;column-gap:12px;border-radius:16px;overflow:hidden}
+html.mobile-webapp.phone-landscape .hero h1{font-size:clamp(1.8rem,calc(var(--mobile-canvas-height)*.083),3.1rem);letter-spacing:.08em;margin:0 0 5px}
+html.mobile-webapp.phone-landscape .hero>p{font-size:clamp(.72rem,calc(var(--mobile-canvas-height)*.026),.95rem);margin:0;line-height:1.25}
+html.mobile-webapp.phone-landscape .home-actions{min-width:0;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;height:100%;align-self:stretch}
+html.mobile-webapp.phone-landscape .home-actions button{width:100%;min-width:0;min-height:0;height:100%;padding:6px 8px;border-radius:11px;font-size:clamp(.8rem,calc(var(--mobile-canvas-height)*.032),1rem);line-height:1.15;overflow:hidden}
+html.mobile-webapp.phone-landscape .home-actions button:first-child{grid-column:auto}
+html.mobile-webapp.phone-landscape .topbar{min-height:30px;height:30px}
+html.mobile-webapp.phone-landscape .panel{width:96%;max-height:calc(var(--table-h) - 38px);padding:8px 10px}
+html.mobile-webapp.phone-landscape .settings-grid{grid-template-columns:92px minmax(0,1fr) 92px minmax(0,1fr);gap:5px 8px;font-size:.76rem}
+html.mobile-webapp.phone-landscape .settings-grid select,html.mobile-webapp.phone-landscape .settings-grid input[type="number"]{min-height:32px;height:32px;padding:3px 6px;font-size:.76rem}
+html.mobile-webapp.phone-landscape .check-row{min-height:30px;font-size:.74rem}
+html.mobile-webapp.phone-landscape .screen-actions{margin-top:7px;gap:6px}
+html.mobile-webapp.phone-landscape .screen-actions button{min-height:32px;padding:4px 9px;font-size:.76rem}
