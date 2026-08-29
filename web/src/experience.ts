@@ -88,7 +88,8 @@ function decorateSimultaneousSpecials(breakdown:HTMLElement){
   const mine=specialName(snapshot.special[playerSeat()]),theirs=specialName(snapshot.special[opponentSeat()]);
   if(!mine||!theirs)return;
   const first=breakdown.querySelector<HTMLElement>("div:first-child strong");
-  if(first)first.textContent=`あなた: ${mine} / 相手: ${theirs}`;
+  const text=`あなた: ${mine} / 相手: ${theirs}`;
+  if(first&&first.textContent!==text)first.textContent=text;
 }
 
 function decorateStateModal(){
@@ -139,7 +140,7 @@ function lockForcedTransitionControl(){
   const button=app.querySelector<HTMLButtonElement>("[data-action='accept-transition']");
   if(!button)return;
   button.disabled=true;
-  button.textContent="……";
+  if(button.textContent!=="……")button.textContent="……";
   button.setAttribute("aria-label","次の対戦へ移行します");
 }
 
@@ -170,7 +171,7 @@ function applyMatchPresentation(){
   decorateStateModal();
   scheduleForcedTransition();
   const menu=app.querySelector<HTMLButtonElement>("[data-action='pause']");
-  if(menu)menu.textContent="☰ メニュー";
+  if(menu&&menu.textContent!=="☰ メニュー")menu.textContent="☰ メニュー";
   const final=app.querySelector<HTMLElement>(".settlement-card.final");
   if(final&&session?.kind==="cpu"&&session.mode==="impossible")final.classList.add("hidden-final");
 }
