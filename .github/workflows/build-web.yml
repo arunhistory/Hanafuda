@@ -49,3 +49,4 @@ jobs:
             git push origin HEAD:implementation/webapp-v1
           else
             echo 'Frontend artifact is already current.'
+          fi
