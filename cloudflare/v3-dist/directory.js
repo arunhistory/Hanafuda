@@ -1,8 +1,15 @@
 import { JSON_HEADERS, json, randomToken, bodyJson, validOpaqueToken, roomCode, parseRuleSet, ruleKey, validRoomCode } from "./gateway-common.js";
+const QUEUE_TTL = 120_000;
 export class HanafudaDirectory {
     state;
     env;
     constructor(state, env) { this.state = state; this.env = env; }
+    async scheduleCleanup(at) {
+        const target = Math.max(Date.now() + 1, Number(at ?? Date.now() + QUEUE_TTL));
+        const existing = Number(await this.state.storage.getAlarm() ?? 0);
+        if (!existing || target < existing)
+            await this.state.storage.setAlarm(target);
+    }
     async makeRoom(waitingTicket, currentTicket, rules) {
         for (let attempt = 0; attempt < 8; attempt++) {
             const code = roomCode(), hostToken = randomToken(), guestToken = randomToken(), stub = this.env.ROOMS.get(this.env.ROOMS.idFromName(code));
@@ -14,11 +21,21 @@ export class HanafudaDirectory {
             const join = await stub.fetch("https://room/join", { method: "POST", body: JSON.stringify({ op: "join", guestToken }) });
             if (!join.ok)
                 return null;
-            const expires = Date.now() + 120_000;
+            const expires = Date.now() + QUEUE_TTL;
             await this.state.storage.put(`match:${waitingTicket}`, { roomCode: code, token: hostToken, seat: "host", rules, expires });
+            await this.state.storage.put(`ticketrule:${waitingTicket}`, { key: ruleKey(rules), expires });
+            await this.scheduleCleanup(expires);
             return { roomCode: code, token: guestToken, seat: "guest", rules, expires };
         }
         return null;
+    }
+    async ticketRule(ticket) {
+        const raw = await this.state.storage.get(`ticketrule:${ticket}`);
+        if (typeof raw === "string")
+            return { key: raw, expires: 0 };
+        if (raw && typeof raw === "object")
+            return { key: String(raw.key ?? ""), expires: Number(raw.expires ?? 0) };
+        return { key: "", expires: 0 };
     }
     async fetch(req) {
         if (req.method !== "POST")
@@ -44,11 +61,12 @@ export class HanafudaDirectory {
                 if (!result)
                     return json({ ok: false, code: "MATCH_CREATE_FAILED" }, 503);
                 await this.state.storage.delete(waitKey);
-                await this.state.storage.delete(`ticketrule:${waiting.ticket}`);
                 return json({ ok: true, matched: true, ...result });
             }
-            await this.state.storage.put(waitKey, { ticket, expires: now + 120_000 });
-            await this.state.storage.put(`ticketrule:${ticket}`, key);
+            const expires = now + QUEUE_TTL;
+            await this.state.storage.put(waitKey, { ticket, expires });
+            await this.state.storage.put(`ticketrule:${ticket}`, { key, expires });
+            await this.scheduleCleanup(expires);
             return json({ ok: true, matched: false, rules });
         }
         if (op === "poll") {
@@ -62,9 +80,9 @@ export class HanafudaDirectory {
             return json({ ok: true, matched: true, roomCode: match.roomCode, token: match.token, seat: match.seat, rules: match.rules });
         }
         if (op === "cancel") {
-            const key = String(await this.state.storage.get(`ticketrule:${ticket}`) ?? "");
-            if (key) {
-                const waitKey = `waiting:${key}`, waiting = await this.state.storage.get(waitKey);
+            const ref = await this.ticketRule(ticket);
+            if (ref.key) {
+                const waitKey = `waiting:${ref.key}`, waiting = await this.state.storage.get(waitKey);
                 if (waiting?.ticket === ticket)
                     await this.state.storage.delete(waitKey);
             }
@@ -73,6 +91,30 @@ export class HanafudaDirectory {
             return json({ ok: true });
         }
         return json({ ok: false, code: "UNKNOWN_OPERATION" }, 404);
+    }
+    async alarm() {
+        const now = Date.now();
+        let next = 0;
+        for (const prefix of ["waiting:", "match:", "ticketrule:"]) {
+            const items = await this.state.storage.list({ prefix, limit: 1000 });
+            for (const [key, value] of items) {
+                const expires = Number(value?.expires ?? 0);
+                if (expires > 0 && expires <= now) {
+                    if (prefix === "waiting:") {
+                        const ticket = String(value?.ticket ?? "");
+                        if (ticket)
+                            await this.state.storage.delete(`ticketrule:${ticket}`);
+                    }
+                    await this.state.storage.delete(key);
+                }
+                else if (expires > now && (next === 0 || expires < next))
+                    next = expires;
+            }
+        }
+        if (next > 0)
+            await this.state.storage.setAlarm(Math.max(Date.now() + 1, next));
+        else
+            await this.state.storage.deleteAlarm();
     }
 }
 export async function routeOnlineV3(req, env, url) {
