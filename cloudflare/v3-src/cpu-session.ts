@@ -14,6 +14,7 @@ export class HanafudaCpuSession {
     if(!validOpaqueToken(token)||!storedHash||!timingSafe(await sha256Hex(token),storedHash))return json({ok:false,code:"UNAUTHORIZED"},401);
     if(op==="action")return this.action(body);
     if(op==="status")return this.status();
+    if(op==="close")return this.close();
     return json({ok:false,code:"UNKNOWN_OPERATION"},404);
   }
 
@@ -31,7 +32,7 @@ export class HanafudaCpuSession {
 
     const created=await engineCall(this.env,{op:"create_internal",rounds,cpuProfile:modeCode(mode),firstDealer:-1,koiEnabled});
     if(!created.ok||!created.data?.ok||!created.data?.gameId)return json({ok:false,code:"ENGINE_CREATE_FAILED"},502);
-    await this.state.storage.put({initialized:true,tokenHash:await sha256Hex(token),mode,rounds,koiEnabled,gameId:created.data.gameId,version:Number(created.data.version),modeSessionId,modeSessionToken,pendingTransition:false,createdAt:Date.now()});
+    await this.state.storage.put({initialized:true,closed:false,tokenHash:await sha256Hex(token),mode,rounds,koiEnabled,gameId:created.data.gameId,version:Number(created.data.version),modeSessionId,modeSessionToken,pendingTransition:false,createdAt:Date.now()});
     return json({ok:true,version:Number(created.data.version),snapshot:created.data.snapshot,mode,rounds,koiEnabled});
   }
 
@@ -62,6 +63,7 @@ export class HanafudaCpuSession {
   }
 
   async action(body:any){
+    if((await this.state.storage.get("closed"))===true)return json({ok:false,code:"SESSION_CLOSED"},410);
     const clientVersion=Number(body?.version),storedVersion=Number(await this.state.storage.get("version")??-1);
     if(!Number.isSafeInteger(clientVersion)||clientVersion!==storedVersion)return json({ok:false,code:"VERSION_CONFLICT",version:storedVersion},409);
     if(await this.state.storage.get("pendingTransition"))return json({ok:false,code:"TRANSITION_REQUIRED",forcedRounds:Number(await this.state.storage.get("forcedRounds")??6)},409);
@@ -86,11 +88,20 @@ export class HanafudaCpuSession {
   }
 
   async status(){
+    if((await this.state.storage.get("closed"))===true)return json({ok:true,closed:true,pendingTransition:false});
     const gameId=String(await this.state.storage.get("gameId")??"");
     const result=await engineCall(this.env,{op:"snapshot",gameId,seat:0});
     if(!result.ok||!result.data?.ok)return json({ok:false,code:"ENGINE_STATUS_FAILED"},result.status||502);
     const version=Number(result.data.version);await this.state.storage.put("version",version);
     return json({ok:true,version,snapshot:result.data.snapshot,pendingTransition:(await this.state.storage.get("pendingTransition"))===true,forcedRounds:Number(await this.state.storage.get("forcedRounds")??0)});
+  }
+
+  async close(){
+    if((await this.state.storage.get("closed"))===true)return json({ok:true,closed:true});
+    const gameId=String(await this.state.storage.get("gameId")??"");
+    if(gameId){const result=await engineCall(this.env,{op:"close",gameId});if(!result.ok&&!([404,410].includes(result.status)))return json({ok:false,code:"ENGINE_CLOSE_FAILED"},result.status||502);}
+    await this.state.storage.put({closed:true,pendingTransition:false,closedAt:Date.now()});
+    return json({ok:true,closed:true});
   }
 }
 
@@ -111,7 +122,7 @@ export async function routeCpu(req:Request,env:any,url:URL){
   if(!validOpaqueToken(sessionId)||!validOpaqueToken(token))return json({ok:false,code:"INVALID_SESSION"},400);
   let id:any;try{id=env.CPU_SESSIONS.idFromString(sessionId);}catch{return json({ok:false,code:"INVALID_SESSION"},400);}
   const stub=env.CPU_SESSIONS.get(id);
-  const op=url.pathname==="/api/cpu/action"?"action":url.pathname==="/api/cpu/status"?"status":null;
+  const op=url.pathname==="/api/cpu/action"?"action":url.pathname==="/api/cpu/status"?"status":url.pathname==="/api/cpu/close"?"close":null;
   if(!op)return json({ok:false,code:"NOT_FOUND"},404);
   const response=await stub.fetch("https://cpu/op",{method:"POST",body:JSON.stringify({...body,op,token})});
   const text=await response.text();return new Response(text,{status:response.status,headers:JSON_HEADERS});
