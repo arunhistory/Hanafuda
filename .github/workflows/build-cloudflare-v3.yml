@@ -3,7 +3,7 @@ name: Build Cloudflare v3 gateway
 on:
   push:
     branches:
-      - implementation/webapp-v1
+      - main
     paths:
       - 'cloudflare/v3-src/**'
       - 'cloudflare/worker-v2.js'
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: implementation/webapp-v1
+          ref: main
           fetch-depth: 0
 
       - name: Compile TypeScript gateway modules
@@ -68,7 +68,7 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add cloudflare/v3-dist
             git commit -m 'Build Cloudflare v3 gateway artifacts [skip ci]'
-            git push origin HEAD:implementation/webapp-v1
+            git push origin HEAD:main
           else
             echo 'Cloudflare v3 artifacts are already current.'
           fi
