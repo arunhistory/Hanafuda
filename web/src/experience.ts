@@ -51,6 +51,7 @@ function detailedRulesHtml(){
 }
 
 function applyRulesDetail(){
+  if(currentScreen()!=="rules")return;
   const rules=app.querySelector<HTMLElement>(".rules-copy");
   if(!rules||rules.querySelector("[data-rules-detail='1']"))return;
   const marker=rules.querySelector(".notice");
