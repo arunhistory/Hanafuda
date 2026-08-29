@@ -1,14 +1,7 @@
 name: Deploy Hanafuda Pages
 
 on:
-  push:
-    branches: [implementation/webapp-v1]
-    paths:
-      - '.github/workflows/deploy-pages.yml'
-  workflow_run:
-    workflows: ['Build Hanafuda web app']
-    types: [completed]
-    branches: [implementation/webapp-v1]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,7 +14,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
