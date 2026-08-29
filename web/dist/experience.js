@@ -94,6 +94,16 @@ function decorateFinalSettlement(card) {
         card.querySelector("[data-action='cpu-same']")?.remove();
     }
 }
+function decorateSimultaneousSpecials(breakdown) {
+    if (!snapshot || snapshot.lastRoundWinner !== 2)
+        return;
+    const mine = specialName(snapshot.special[playerSeat()]), theirs = specialName(snapshot.special[opponentSeat()]);
+    if (!mine || !theirs)
+        return;
+    const first = breakdown.querySelector("div:first-child strong");
+    if (first)
+        first.textContent = `あなた: ${mine} / 相手: ${theirs}`;
+}
 function decorateSettlement() {
     const card = app.querySelector(".settlement-card");
     if (!card)
@@ -103,15 +113,18 @@ function decorateSettlement() {
         return;
     }
     const breakdown = card.querySelector(".settlement-breakdown");
-    if (breakdown && snapshot && !breakdown.querySelector("[data-next-dealer='1']")) {
-        const nextDealer = document.createElement("div");
-        nextDealer.dataset.nextDealer = "1";
-        const label = document.createElement("span");
-        label.textContent = "次局親";
-        const value = document.createElement("strong");
-        value.textContent = snapshot.dealer === playerSeat() ? "あなた" : "相手";
-        nextDealer.append(label, value);
-        breakdown.append(nextDealer);
+    if (breakdown && snapshot) {
+        decorateSimultaneousSpecials(breakdown);
+        if (!breakdown.querySelector("[data-next-dealer='1']")) {
+            const nextDealer = document.createElement("div");
+            nextDealer.dataset.nextDealer = "1";
+            const label = document.createElement("span");
+            label.textContent = "次局親";
+            const value = document.createElement("strong");
+            value.textContent = snapshot.dealer === playerSeat() ? "あなた" : "相手";
+            nextDealer.append(label, value);
+            breakdown.append(nextDealer);
+        }
     }
     if (settings.skipNormalAnimations)
         return;
