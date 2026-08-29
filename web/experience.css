@@ -130,6 +130,8 @@
 .settlement-card.final.enhanced-final h2 { animation: finalTitle .9s .15s both; }
 .settlement-card.final.enhanced-final .settlement-score { animation: finalScore 1.15s .35s cubic-bezier(.16,.8,.18,1) both; }
 .settlement-card.final.enhanced-final .screen-actions { animation: finalControls .55s 1.15s both; }
+.final-kicker { margin-bottom:.35rem; font-size:.78rem; font-weight:800; letter-spacing:.28em; color:var(--gold); opacity:.9; }
+.final-tiebreak-note { margin:12px auto; max-width:500px; padding:8px 10px; border-top:1px solid rgba(255,226,160,.25); border-bottom:1px solid rgba(255,226,160,.25); line-height:1.6; }
 
 @keyframes finalCardEnter {
   0% { opacity: 0; transform: scale(.86) translateY(18px); filter: brightness(1.5) blur(4px); }
@@ -150,6 +152,44 @@
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes finalHalo { to { transform: rotate(360deg); } }
+
+.screen.corrupted::after {
+  content:"";
+  position:fixed;
+  inset:0 0 var(--footer-height);
+  z-index:24;
+  pointer-events:none;
+  opacity:.055;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 3px,rgba(216,205,255,.32) 4px 5px),
+    linear-gradient(90deg,transparent 0 28%,rgba(255,36,104,.16) 29% 30%,transparent 31% 67%,rgba(61,79,255,.18) 68% 69%,transparent 70%);
+  mix-blend-mode:screen;
+  animation:corruptedIdle 2.8s steps(2,end) infinite;
+}
+.app-shell.corrupted-round-shift::after {
+  content:"";
+  position:fixed;
+  inset:0 0 var(--footer-height);
+  z-index:56;
+  pointer-events:none;
+  opacity:.13;
+  background:
+    repeating-linear-gradient(90deg,transparent 0 7px,rgba(255,255,255,.2) 8px 9px),
+    linear-gradient(100deg,rgba(255,24,94,.2),transparent 32%,rgba(75,67,255,.22) 68%,transparent);
+  mix-blend-mode:screen;
+  animation:corruptedRoundShift .62s steps(3,end) 2 both;
+}
+@keyframes corruptedIdle {
+  0%,100% { transform:translate3d(0,0,0); }
+  33% { transform:translate3d(1px,0,0); }
+  66% { transform:translate3d(-1px,1px,0); }
+}
+@keyframes corruptedRoundShift {
+  0% { transform:translate3d(-2%,0,0) skewX(-1deg); opacity:.04; }
+  35% { transform:translate3d(2%,1px,0) skewX(1.1deg); opacity:.16; }
+  70% { transform:translate3d(-1%,0,0); opacity:.1; }
+  100% { transform:translate3d(0,0,0); opacity:.03; }
+}
 
 .settlement-card.hidden-final {
   position: relative;
@@ -210,6 +250,8 @@
   .settlement-card.final.enhanced-final h2,
   .settlement-card.final.enhanced-final .settlement-score,
   .settlement-card.final.enhanced-final .screen-actions,
+  .screen.corrupted::after,
+  .app-shell.corrupted-round-shift::after,
   .settlement-card.hidden-final,
   .settlement-card.hidden-final::before,
   .settlement-card.hidden-final::after {
