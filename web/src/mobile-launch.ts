@@ -20,7 +20,7 @@ function viewportSize(){
 function syncMobileCanvas(){
   const root=document.documentElement;
   if(!isMobileOrTablet()){
-    root.classList.remove("mobile-webapp","virtual-landscape");
+    root.classList.remove("mobile-webapp","virtual-landscape","compact-landscape");
     root.style.removeProperty("--mobile-canvas-width");
     root.style.removeProperty("--mobile-canvas-height");
     return;
@@ -33,6 +33,7 @@ function syncMobileCanvas(){
 
   root.classList.add("mobile-webapp");
   root.classList.toggle("virtual-landscape",portrait);
+  root.classList.toggle("compact-landscape",canvasHeight<=430);
   root.style.setProperty("--mobile-canvas-width",`${canvasWidth}px`);
   root.style.setProperty("--mobile-canvas-height",`${canvasHeight}px`);
 }
