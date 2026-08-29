@@ -66,7 +66,7 @@ function applyMatchPresentation(){
   if(final&&session?.kind==="cpu"&&session.mode==="impossible")final.classList.add("hidden-final");
 }
 
-function actionGhost(card:number,kind:"played"|"drawn",actor:number){
+function actionGhost(card:number,kind:"played"|"drawn"|"captured",actor:number){
   const img=document.createElement("img");
   img.className=`action-ghost ${kind} ${actor===playerSeat()?"from-player":"from-opponent"}`;
   img.src=assets.card(card);
@@ -74,7 +74,7 @@ function actionGhost(card:number,kind:"played"|"drawn",actor:number){
   img.setAttribute("aria-hidden","true");
   document.body.append(img);
   img.addEventListener("animationend",()=>img.remove(),{once:true});
-  setTimeout(()=>img.remove(),1100);
+  setTimeout(()=>img.remove(),1300);
 }
 
 function animateAuthoritativeAction(event:ActionEvent){
@@ -82,36 +82,23 @@ function animateAuthoritativeAction(event:ActionEvent){
   const actor=Number(event.actor);
   if(Number.isInteger(event.playedCard))actionGhost(event.playedCard!,"played",actor);
   if(Number.isInteger(event.drawnCard))setTimeout(()=>actionGhost(event.drawnCard!,"drawn",actor),180);
+  const captures=Array.isArray(event.capturedCards)?event.capturedCards.filter(Number.isInteger):[];
+  captures.forEach((card,index)=>setTimeout(()=>actionGhost(Number(card),"captured",actor),360+index*85));
 }
 
 function syncHistoryDepth(){
   if(navigationSyncing)return;
   const depth=stack.length;
-  if(depth>observedDepth){
-    history.pushState({hanafuda:true,depth},"");
-  }else if(depth<observedDepth){
-    history.replaceState({hanafuda:true,depth},"");
-  }
+  if(depth>observedDepth){history.pushState({hanafuda:true,depth},"");}
+  else if(depth<observedDepth){history.replaceState({hanafuda:true,depth},"");}
   observedDepth=depth;
 }
 
 async function leaveCurrentHierarchyFromBrowser(){
-  if(modal){
-    modal=null;
-    if(currentScreen()==="match")renderMatch();else void render();
-    history.pushState({hanafuda:true,depth:stack.length},"");
-    return;
-  }
+  if(modal){modal=null;if(currentScreen()==="match")renderMatch();else void render();history.pushState({hanafuda:true,depth:stack.length},"");return;}
   if(stack.length<=1)return;
-  navigationSyncing=true;
-  stack.pop();
-  observedDepth=stack.length;
-  stopOnlineWarning();
-  if(session){
-    await closeMatch(false);
-  }else{
-    await render();
-  }
+  navigationSyncing=true;stack.pop();observedDepth=stack.length;stopOnlineWarning();
+  if(session)await closeMatch(false);else await render();
   navigationSyncing=false;
 }
 
@@ -119,10 +106,7 @@ function installHierarchyNavigation(){
   history.replaceState({hanafuda:true,depth:stack.length},"");
   document.addEventListener("click",event=>{
     const target=(event.target as Element|null)?.closest<HTMLElement>("[data-action='back']");
-    if(!target)return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if(stack.length>1)history.back();
+    if(!target)return;event.preventDefault();event.stopImmediatePropagation();if(stack.length>1)history.back();
   },true);
   window.addEventListener("popstate",()=>void leaveCurrentHierarchyFromBrowser());
 }
@@ -133,11 +117,7 @@ window.addEventListener("hanafuda-audio-hook",event=>{
 });
 window.addEventListener("pagehide",()=>stopOnlineWarning());
 
-const experienceObserver=new MutationObserver(()=>{
-  applyMatchPresentation();
-  applyRulesDetail();
-  syncHistoryDepth();
-});
+const experienceObserver=new MutationObserver(()=>{applyMatchPresentation();applyRulesDetail();syncHistoryDepth();});
 experienceObserver.observe(app,{childList:true,subtree:true});
 installHierarchyNavigation();
 applyMatchPresentation();
