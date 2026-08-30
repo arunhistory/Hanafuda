@@ -7,6 +7,8 @@ async function api(path, body, extra = {}) {
 async function releaseCpuAfterReady() {
     if (!session || session.kind !== "cpu")
         return;
+    if (!matchInteractionReady)
+        throw new Error("MATCH_NOT_READY");
     const ready = await api("/api/cpu/ready", { sessionId: session.sessionId, token: session.token });
     if (!ready.ok || !ready.data?.ok)
         throw new Error(ready.data?.code || "CPU_READY_FAILED");
@@ -39,6 +41,7 @@ async function startCpu() {
         if (!started.ok || !started.data?.ok)
             throw new Error(started.data?.code || "CPU_START_FAILED");
         session = { kind: "cpu", sessionId: started.data.sessionId, token: started.data.token, version: Number(started.data.version), mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken };
+        matchInteractionReady = false;
         snapshot = started.data.snapshot;
         pendingModeTransition = started.data.modeTransition?.transition === "impossible";
         hiddenFirstEncounter = false;
@@ -48,6 +51,8 @@ async function startCpu() {
         renderMatch();
         await animateNewRoundIfNeeded(true);
         await showReadyGate();
+        matchInteractionReady = true;
+        renderMatch();
         await releaseCpuAfterReady();
     }
     catch (e) {
@@ -123,6 +128,10 @@ function cardName(card) { return `${Math.floor(card / 4) + 1}月${card % 4 + 1}�
 async function sendAction(action, payload = {}) {
     if (busy || !session || !snapshot)
         return;
+    const openingNextCpuRound = action === "next_round" && session.kind === "cpu";
+    const readyBefore = matchInteractionReady;
+    if (openingNextCpuRound)
+        matchInteractionReady = false;
     busy = true;
     try {
         if (session.kind === "cpu") {
@@ -151,12 +160,16 @@ async function sendAction(action, payload = {}) {
         }
         renderMatch();
         await animateNewRoundIfNeeded(false);
-        if (action === "next_round" && session?.kind === "cpu") {
+        if (openingNextCpuRound) {
             await showReadyGate();
+            matchInteractionReady = true;
+            renderMatch();
             await releaseCpuAfterReady();
         }
     }
     catch (e) {
+        if (openingNextCpuRound)
+            matchInteractionReady = readyBefore;
         toast(e instanceof Error ? e.message : "操作に失敗しました");
         await refreshStatus();
     }
@@ -202,11 +215,13 @@ async function beginImpossibleTransition() {
     if (!session || session.kind !== "cpu" || busy)
         return;
     busy = true;
+    const readyBefore = matchInteractionReady;
     try {
         await showCollapse();
         const result = await api("/api/cpu/transition", { sessionId: session.sessionId, token: session.token });
         if (!result.ok || !result.data?.ok)
             throw new Error(result.data?.code || "TRANSITION_FAILED");
+        matchInteractionReady = false;
         session.version = Number(result.data.version);
         session.mode = "impossible";
         session.rounds = Number(result.data.rounds);
@@ -218,9 +233,12 @@ async function beginImpossibleTransition() {
         renderMatch();
         await animateNewRoundIfNeeded(true);
         await showReadyGate();
+        matchInteractionReady = true;
+        renderMatch();
         await releaseCpuAfterReady();
     }
     catch (e) {
+        matchInteractionReady = readyBefore;
         toast(`遷移に失敗しました: ${e instanceof Error ? e.message : "ERROR"}`);
     }
     finally {
@@ -324,6 +342,7 @@ async function closeMatch(homeAfter = false) {
     const closing = session;
     session = null;
     snapshot = null;
+    matchInteractionReady = true;
     modal = null;
     pendingModeTransition = false;
     hiddenFirstEncounter = false;
