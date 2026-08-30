@@ -134,7 +134,6 @@
       const nextSnapshot=result.data.snapshot;
       if(!nextSnapshot)throw new Error("NEXT_ROUND_SNAPSHOT_MISSING");
 
-      // Keep the completed round visible. The next round must not exist in the DOM before shuffle finishes.
       renderMatch();
       if(!settings.skipNormalAnimations)await showShuffle(false);
 
@@ -167,11 +166,12 @@
 
   showCallout=async function(assetId){
     const isAgari=assetId==="effect.agari.text";
+    const label=isAgari?"あがり":"こいこい";
     const layer=document.createElement("div");
     layer.className=`fx-layer dramatic-callout-layer ${isAgari?"agari-dramatic":"koi-dramatic"}`;
-    layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="callout dramatic-callout"><img src="${assets.path(assetId)}" alt=""></div>`;
+    layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="dramatic-callout"><strong class="dramatic-callout-text">${label}</strong></div>`;
     matchEffectHost().append(layer);
-    await delay(isAgari?1450:1250);
+    await delay(isAgari?1650:1500);
     layer.remove();
   };
 
