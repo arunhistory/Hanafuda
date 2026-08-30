@@ -48,11 +48,11 @@ function presentationEvent(old:Snapshot|null,next:Snapshot,event:ActionEvent,act
 async function acceptSnapshot(next:Snapshot,event:ActionEvent|null,actor?:string){
   const old=snapshot;
   const visibleEvent=event?presentationEvent(old,next,event,actor):null;
-  snapshot=next;
-  renderMatch();
   if(visibleEvent)recordHistory(visibleEvent,actor);
+  if(visibleEvent&&!settings.skipNormalAnimations)await animateEvent(visibleEvent,next);
+  snapshot=next;
   if(old&&old.roundIndex!==next.roundIndex){roundHistory=[];currentRound=-1;}
-  if(visibleEvent&&!settings.skipNormalAnimations)await animateEvent(visibleEvent);
+  renderMatch();
 }
 function recordHistory(event:ActionEvent,actor?:string){
   const who=event.actor===playerSeat()||actor==="player"?"あなた":event.actor===opponentSeat()||actor==="cpu"?"相手":"システム";
@@ -83,10 +83,7 @@ async function sendAction(action:string,payload:Record<string,unknown>={}){
         if(Number.isSafeInteger(responseVersion))session.version=responseVersion;
         const next=result.data.snapshot as Snapshot;
         const rawEvent=result.data.actionEvent as ActionEvent|null;
-        const visibleEvent=rawEvent?presentationEvent(snapshot,next,rawEvent,"player"):null;
-        snapshot=next;
-        renderMatch();
-        if(visibleEvent){recordHistory(visibleEvent,"player");if(!settings.skipNormalAnimations)await animateEvent(visibleEvent);}
+        await acceptSnapshot(next,rawEvent,"player");
       }
     }
     renderMatch();await animateNewRoundIfNeeded(false);
@@ -133,21 +130,20 @@ async function animateNewRoundIfNeeded(force:boolean){
     if(corruptedShift)app.classList.remove("corrupted-round-shift");
   }
 }
-function confirmedSettlementYaku(event:ActionEvent){
+function confirmedSettlementYaku(event:ActionEvent,state:Snapshot|null){
   const winner=Number(event.settlement?.winner);
-  if(!snapshot||(winner!==0&&winner!==1))return "";
-  const special=specialName(snapshot.special[winner]);
+  if(!state||(winner!==0&&winner!==1))return "";
+  const special=specialName(state.special[winner]);
   if(special)return special;
-  const mask=event.yakuMasks?.[winner]??snapshot.yakuMasks[winner];
+  const mask=event.yakuMasks?.[winner]??state.yakuMasks[winner];
   return yakuNames(mask);
 }
 function matchEffectHost(){return document.documentElement.classList.contains("mobile-webapp")?app:document.body;}
-async function animateEvent(event:ActionEvent){
+async function animateEvent(event:ActionEvent,nextState:Snapshot|null=snapshot){
   await playVisibleActionSteps(event);
-  if(event.capturedCards?.length)await showCaptureTrail(event.capturedCards,event.actor===playerSeat());
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
-    const label=confirmedSettlementYaku(event);if(label&&label!=="なし")await showAgariYaku(label);
+    const label=confirmedSettlementYaku(event,nextState);if(label&&label!=="なし")await showAgariYaku(label);
   }
   emitAudioHook("card-action",{event});await delay(350);
 }
