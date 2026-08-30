@@ -141,9 +141,8 @@ function confirmedSettlementYaku(event:ActionEvent){
   const mask=event.yakuMasks?.[winner]??snapshot.yakuMasks[winner];
   return yakuNames(mask);
 }
+function matchEffectHost(){return document.documentElement.classList.contains("mobile-webapp")?app:document.body;}
 async function animateEvent(event:ActionEvent){
-  if(event.capturedCards?.length)toast(`${event.actor===playerSeat()?"あなた":"相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
-  if(event.newYakuMask)toast(`役成立: ${yakuNames(event.newYakuMask)}`);
   await playVisibleActionSteps(event);
   if(event.capturedCards?.length)await showCaptureTrail(event.capturedCards,event.actor===playerSeat());
   if(event.settlement&&event.settlement.winner!==2){
@@ -156,10 +155,10 @@ async function showShuffle(initial=false){
   const layer=document.createElement("div");layer.className=`fx-layer shuffle-layer${initial?" long-shuffle":""}`;layer.innerHTML='<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';document.body.append(layer);emitAudioHook("shuffle");await delay(initial?2250:1250);layer.remove();
 }
 async function showCallout(assetId:string){
-  const layer=document.createElement("div");layer.className="fx-layer";const particles=Array.from({length:22},(_,i)=>`<i class="particle" style="left:${10+(i*37)%80}%;top:${15+(i*53)%70}%;--dx:${((i%7)-3)*31}px;--dy:${((i%5)-2)*34}px"></i>`).join("");layer.innerHTML=`<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;document.body.append(layer);await delay(1850);layer.remove();
+  const layer=document.createElement("div");layer.className="fx-layer";const particles=Array.from({length:22},(_,i)=>`<i class="particle" style="left:${10+(i*37)%80}%;top:${15+(i*53)%70}%;--dx:${((i%7)-3)*31}px;--dy:${((i%5)-2)*34}px"></i>`).join("");layer.innerHTML=`<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;matchEffectHost().append(layer);await delay(1850);layer.remove();
 }
 async function showAgariYaku(label:string){
-  const layer=document.createElement("div");layer.className="fx-layer agari-yaku-layer";layer.innerHTML=`<div class="agari-yaku-card"><span>成立役</span><strong>${escapeHtml(label)}</strong></div>`;document.body.append(layer);await delay(1250);layer.remove();
+  const layer=document.createElement("div");layer.className="fx-layer agari-yaku-layer";layer.innerHTML=`<div class="agari-yaku-card"><span>成立役</span><strong>${escapeHtml(label)}</strong></div>`;matchEffectHost().append(layer);await delay(1250);layer.remove();
 }
 async function showCaptureTrail(cards:number[],toPlayer:boolean){
   const layer=document.createElement("div");layer.className=`capture-trail ${toPlayer?"to-player":"to-opponent"}`;
