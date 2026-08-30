@@ -157,11 +157,9 @@
       const nextSnapshot=result.data.snapshot;
       if(!nextSnapshot)throw new Error("NEXT_ROUND_SNAPSHOT_MISSING");
 
-      // Completed round stays visible for the whole shuffle.
       renderMatch();
       if(!settings.skipNormalAnimations)await showShuffle(false);
 
-      // Only after shuffle may the next-round DOM exist, and every dealt card starts hidden.
       snapshot=nextSnapshot;
       roundHistory=[];
       currentRound=nextSnapshot.roundIndex;
@@ -189,6 +187,10 @@
     const layer=document.createElement("div");
     layer.className=`fx-layer dramatic-callout-layer ${isAgari?"agari-dramatic":"koi-dramatic"}`;
     layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="dramatic-callout"><strong class="dramatic-callout-text">${label}</strong><img class="dramatic-callout-art" src="${assets.path(assetId)}" alt="${label}"></div>`;
+    const art=layer.querySelector(".dramatic-callout-art");
+    const markLoaded=()=>layer.querySelector(".dramatic-callout")?.classList.add("art-loaded");
+    art?.addEventListener("load",markLoaded,{once:true});
+    if(art?.complete&&art.naturalWidth>0)markLoaded();
     matchEffectHost().append(layer);
     await delay(isAgari?1750:1600);
     layer.remove();
