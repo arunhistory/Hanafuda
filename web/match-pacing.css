@@ -51,8 +51,8 @@ html.mobile-webapp.phone-landscape .table-capture-group{backface-visibility:hidd
 .dramatic-callout-layer .dramatic-callout{position:relative;z-index:3;width:min(92%,980px);height:min(72%,470px);display:flex;align-items:center;justify-content:center;overflow:visible}
 .dramatic-callout-layer .dramatic-callout::before{display:none!important}
 .dramatic-callout-layer .dramatic-callout img{max-width:92%;max-height:82%;filter:none!important;animation:dramatic-title-impact 1.25s cubic-bezier(.12,.82,.18,1) both;will-change:transform,opacity}
-.dramatic-rays{position:absolute;z-index:1;left:50%;top:50%;width:min(126vmax,1500px);aspect-ratio:1;transform:translate3d(-50%,-50%,0) scale(.5) rotate(-8deg);opacity:0;background:repeating-conic-gradient(from 0deg,rgba(255,236,177,.72) 0 2deg,transparent 2deg 8deg);mask-image:radial-gradient(circle,black 0 19%,rgba(0,0,0,.96) 27%,transparent 70%);-webkit-mask-image:radial-gradient(circle,black 0 19%,rgba(0,0,0,.96) 27%,transparent 70%);animation:dramatic-rays-hit 1.18s cubic-bezier(.12,.78,.2,1) both;will-change:transform,opacity}
-.dramatic-flash{position:absolute;z-index:2;left:50%;top:50%;width:min(68vmax,760px);aspect-ratio:1;border-radius:50%;transform:translate3d(-50%,-50%,0) scale(.25);opacity:0;background:radial-gradient(circle,rgba(255,255,255,.96) 0 7%,rgba(255,223,134,.72) 16%,rgba(255,139,55,.24) 36%,transparent 68%);animation:dramatic-flash-hit .78s ease-out both;will-change:transform,opacity}
+.dramatic-rays{position:absolute;z-index:1;left:50%;top:50%;width:min(160%,1500px);aspect-ratio:1;transform:translate3d(-50%,-50%,0) scale(.5) rotate(-8deg);opacity:0;background:repeating-conic-gradient(from 0deg,rgba(255,236,177,.72) 0 2deg,transparent 2deg 8deg);mask-image:radial-gradient(circle,black 0 19%,rgba(0,0,0,.96) 27%,transparent 70%);-webkit-mask-image:radial-gradient(circle,black 0 19%,rgba(0,0,0,.96) 27%,transparent 70%);animation:dramatic-rays-hit 1.18s cubic-bezier(.12,.78,.2,1) both;will-change:transform,opacity}
+.dramatic-flash{position:absolute;z-index:2;left:50%;top:50%;width:min(72%,760px);aspect-ratio:1;border-radius:50%;transform:translate3d(-50%,-50%,0) scale(.25);opacity:0;background:radial-gradient(circle,rgba(255,255,255,.96) 0 7%,rgba(255,223,134,.72) 16%,rgba(255,139,55,.24) 36%,transparent 68%);animation:dramatic-flash-hit .78s ease-out both;will-change:transform,opacity}
 .koi-dramatic .dramatic-rays{background:repeating-conic-gradient(from 3deg,rgba(255,226,132,.7) 0 2deg,transparent 2deg 9deg)}
 .agari-dramatic .dramatic-rays{background:repeating-conic-gradient(from 0deg,rgba(255,248,218,.9) 0 2deg,transparent 2deg 7deg)}
 .agari-dramatic .dramatic-callout img{transform-origin:center;animation-duration:1.42s}
@@ -62,8 +62,8 @@ html.mobile-webapp.phone-landscape .table-capture-group{backface-visibility:hidd
 
 .agari-yaku-layer{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;pointer-events:none}
 .agari-yaku-layer .agari-yaku-card{min-width:0;max-width:min(88%,900px);padding:8px 24px;border:0;background:transparent;box-shadow:none;animation:agari-yaku-impact 1.2s cubic-bezier(.14,.8,.2,1) both;will-change:transform,opacity}
-.agari-yaku-layer .agari-yaku-card span{margin-bottom:.18em;font-size:clamp(.72rem,1.7vw,1rem);letter-spacing:.34em;color:#fff0bd;text-shadow:0 2px 6px rgba(0,0,0,.9)}
-.agari-yaku-layer .agari-yaku-card strong{font-size:clamp(2rem,7vw,5.2rem);line-height:1.05;color:#fff9e9;text-shadow:0 3px 0 #702313,0 8px 18px rgba(0,0,0,.78);white-space:nowrap}
+.agari-yaku-layer .agari-yaku-card span{margin-bottom:.18em;font-size:.9rem;letter-spacing:.34em;color:#fff0bd;text-shadow:0 2px 6px rgba(0,0,0,.9)}
+.agari-yaku-layer .agari-yaku-card strong{font-size:4.5rem;line-height:1.05;color:#fff9e9;text-shadow:0 3px 0 #702313,0 8px 18px rgba(0,0,0,.78);white-space:nowrap}
 @keyframes agari-yaku-impact{0%{opacity:0;transform:translate3d(0,18px,0) scale(1.55)}20%{opacity:1;transform:translate3d(0,0,0) scale(.94)}34%{transform:scale(1.08)}55%,80%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.03)}}
 
 html.mobile-webapp .dramatic-callout-layer{position:absolute!important;inset:0!important;width:100%;height:100%;padding:0!important}
