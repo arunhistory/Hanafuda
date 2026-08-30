@@ -28,6 +28,10 @@ function boardForAction(){return app.querySelector<HTMLElement>(".board");}
 function boardMotion(board:HTMLElement){
   return {width:Math.max(1,board.clientWidth),height:Math.max(1,board.clientHeight)};
 }
+function visualBoardOffset(horizontal:number,vertical:number){
+  const rotated=document.documentElement.classList.contains("virtual-landscape");
+  return rotated?{x:vertical,y:-horizontal}:{x:horizontal,y:vertical};
+}
 function hideCapturedFieldCards(cards:number[]){
   if(!snapshot||!cards.length)return;
   const remaining=new Map<number,number>();
@@ -47,6 +51,15 @@ function restoreHiddenFieldCards(){
   for(const card of hiddenFieldDuringAction)card.classList.remove("capture-source-hidden");
   hiddenFieldDuringAction=[];
 }
+function reflectCapturedRail(event:ActionEvent,nextState:Snapshot|null){
+  if(!nextState)return;
+  const actorSeat=Number(event.actor);
+  if(actorSeat!==0&&actorSeat!==1)return;
+  const selector=actorSeat===playerSeat()?".player-zone>.captured-box .captured-row":".opponent-zone>.captured-box .captured-row";
+  const row=app.querySelector<HTMLElement>(selector);if(!row)return;
+  row.innerHTML=capturedHtml(nextState.captured[actorSeat]??[]);
+  row.classList.add("capture-rail-committed");
+}
 function actionLabel(event:ActionEvent,label:string){
   const el=document.createElement("div");
   el.className=`table-action-label ${Number(event.actor)===playerSeat()?"player-action":"opponent-action"}`;
@@ -58,46 +71,58 @@ async function showCardToField(event:ActionEvent,card:number,label:string,from:"
   const {width,height}=boardMotion(board);
   const layer=document.createElement("div");layer.className="table-action-layer";
   const origin=from==="deck"?"from-deck":Number(event.actor)===playerSeat()?"from-player":"from-opponent";
-  const fromX=from==="deck"?Math.round(width*.36):0;
-  const fromY=from==="deck"?0:Math.round(height*(Number(event.actor)===playerSeat()?.43:-.43));
-  layer.style.setProperty("--from-x",`${fromX}px`);
-  layer.style.setProperty("--from-y",`${fromY}px`);
+  const visualHorizontal=from==="deck"?Math.round(width*.36):0;
+  const visualVertical=from==="deck"?0:Math.round(height*(Number(event.actor)===playerSeat()?.43:-.43));
+  const offset=visualBoardOffset(visualHorizontal,visualVertical);
+  layer.style.setProperty("--from-x",`${offset.x}px`);
+  layer.style.setProperty("--from-y",`${offset.y}px`);
   layer.innerHTML=`<div class="table-action-card ${origin}">${cardImg(card)}</div>`;
   layer.append(actionLabel(event,label));board.append(layer);
   await delay(from==="deck"?900:880);
-  layer.remove();await delay(260);
+  layer.remove();await delay(180);
 }
 async function showDeckReveal(event:ActionEvent,card:number){
   const board=boardForAction();if(!board)return;
   const {width}=boardMotion(board);
-  const deckOffset=Math.round(width*.36),deckMidOffset=Math.round(deckOffset*.52);
+  const deckDistance=Math.round(width*.36),midDistance=Math.round(deckDistance*.52);
+  const start=visualBoardOffset(deckDistance,0),mid=visualBoardOffset(midDistance,0);
   const layer=document.createElement("div");layer.className="table-action-layer table-deck-layer";
-  layer.style.setProperty("--deck-offset",`${deckOffset}px`);
-  layer.style.setProperty("--deck-mid-offset",`${deckMidOffset}px`);
+  layer.style.setProperty("--deck-x",`${start.x}px`);
+  layer.style.setProperty("--deck-y",`${start.y}px`);
+  layer.style.setProperty("--deck-mid-x",`${mid.x}px`);
+  layer.style.setProperty("--deck-mid-y",`${mid.y}px`);
   layer.innerHTML=`<div class="table-deck-source"><img src="${assets.path("cards.back")}" alt="山札"></div><div class="table-draw-card"><img class="draw-back" src="${assets.path("cards.back")}" alt="山札"><img class="draw-face" src="${assets.card(card)}" alt="山札からめくった札"></div>`;
   layer.append(actionLabel(event,"山札"));board.append(layer);
-  await delay(1280);layer.remove();await delay(280);
+  await delay(1280);layer.remove();await delay(180);
 }
-async function showCaptureMove(event:ActionEvent,cards:number[]){
+async function showCaptureMove(event:ActionEvent,cards:number[],nextState:Snapshot|null){
   if(!cards.length)return;
   const board=boardForAction();if(!board)return;
   hideCapturedFieldCards(cards);
   const {width}=boardMotion(board);
   const toPlayer=Number(event.actor)===playerSeat();
-  const captureOffset=Math.round(width*(toPlayer?-.42:.42));
+  const target=visualBoardOffset(Math.round(width*(toPlayer?-.42:.42)),0);
   const layer=document.createElement("div");layer.className="table-action-layer";
-  layer.style.setProperty("--capture-x",`${captureOffset}px`);
+  layer.style.setProperty("--capture-x",`${target.x}px`);
+  layer.style.setProperty("--capture-y",`${target.y}px`);
   layer.innerHTML=`<div class="table-capture-group ${toPlayer?"to-player":"to-opponent"}">${cards.slice(0,4).map(card=>cardImg(card)).join("")}</div>`;
   layer.append(actionLabel(event,"取得"));board.append(layer);
-  await delay(1180);layer.remove();await delay(300);
+  await delay(1120);
+  reflectCapturedRail(event,nextState);
+  layer.remove();
 }
 async function showDecision(event:ActionEvent){
   const board=boardForAction();if(!board)return;
   const label=document.createElement("div");label.className="table-decision-label";label.textContent=event.chooseKoi?"こいこい":"あがり";board.append(label);
-  await delay(1500);label.remove();await delay(400);
+  await delay(1500);label.remove();await delay(220);
+}
+async function showReadyGate(){
+  const board=boardForAction();if(!board)return;
+  const label=document.createElement("div");label.className="table-ready-label";label.textContent="用意完了";board.append(label);
+  await delay(settings.skipNormalAnimations?220:720);label.remove();
 }
 
-async function playVisibleActionSteps(event:ActionEvent){
+async function playVisibleActionSteps(event:ActionEvent,nextState:Snapshot|null=snapshot){
   if(settings.skipNormalAnimations)return;
   hiddenFieldDuringAction=[];
   matchRecapBlocking=true;
@@ -106,17 +131,17 @@ async function playVisibleActionSteps(event:ActionEvent){
     const captures=captureGroups(event);
     if(hasHandPlay(event)){
       await showCardToField(event,event.playedCard!,"手札","hand");
-      if(captures.hand.length)await showCaptureMove(event,captures.hand);
+      if(captures.hand.length)await showCaptureMove(event,captures.hand,nextState);
     }
     if(hasDeckReveal(event)){
       await showDeckReveal(event,event.drawnCard!);
-      if(captures.draw.length)await showCaptureMove(event,captures.draw);
+      if(captures.draw.length)await showCaptureMove(event,captures.draw,nextState);
     }
     if(!hasHandPlay(event)&&!hasDeckReveal(event)&&event.capturedCards?.length){
-      await showCaptureMove(event,event.capturedCards);
+      await showCaptureMove(event,event.capturedCards,nextState);
     }
     if(event.type==="koi")await showDecision(event);
-    await delay(520);
+    await delay(160);
     completed=true;
   }finally{
     if(!completed)restoreHiddenFieldCards();
