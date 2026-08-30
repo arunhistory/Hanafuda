@@ -5,11 +5,13 @@ const UNLOCK_KEY = "hanafuda.impossible.unlocked.v1";
 type CpuMode = "beginner" | "amateur" | "pro" | "impossible";
 type UiScreen = "home" | "cpu-setup" | "online" | "settings" | "rules" | "yaku" | "match";
 type Seat = 0 | 1;
+type FirstDealer = -1 | 0 | 1;
 
 type Settings = {
   mode: CpuMode;
   rounds: number;
   koiEnabled: boolean;
+  firstDealer: FirstDealer;
   skipNormalAnimations: boolean;
 };
 
@@ -61,6 +63,7 @@ type CpuSession = {
   mode:CpuMode;
   rounds:number;
   koiEnabled:boolean;
+  firstDealer:FirstDealer;
   modeSessionId?:string;
   modeSessionToken?:string;
 };
@@ -137,14 +140,16 @@ let onlineReconfigureState:"none"|"host"|"guest"="none";
 let queuedToasts:string[]=[];
 
 function loadSettings():Settings{
-  const fallback:Settings={mode:"beginner",rounds:12,koiEnabled:true,skipNormalAnimations:false};
+  const fallback:Settings={mode:"beginner",rounds:12,koiEnabled:true,firstDealer:-1,skipNormalAnimations:false};
   try{
     const raw=localStorage.getItem(SETTINGS_KEY);if(!raw)return fallback;
     const value=JSON.parse(raw);
     const mode:[CpuMode,...CpuMode[]]=["beginner","amateur","pro","impossible"];
     const chosen=mode.includes(value?.mode)?value.mode:fallback.mode;
     const rounds=Number(value?.rounds);
-    return {mode:chosen,rounds:Number.isInteger(rounds)&&rounds>=1&&rounds<=12?rounds:12,koiEnabled:value?.koiEnabled!==false,skipNormalAnimations:value?.skipNormalAnimations===true};
+    const dealer=Number(value?.firstDealer);
+    const firstDealer:FirstDealer=dealer===0||dealer===1||dealer===-1?dealer:-1;
+    return {mode:chosen,rounds:Number.isInteger(rounds)&&rounds>=1&&rounds<=12?rounds:12,koiEnabled:value?.koiEnabled!==false,firstDealer,skipNormalAnimations:value?.skipNormalAnimations===true};
   }catch{return fallback;}
 }
 function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}
