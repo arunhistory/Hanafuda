@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const js=fs.readFileSync('web/turn-flow-v2.js','utf8');
+const supabaseFx=fs.readFileSync('web/supabase-effect-source-v1.js','utf8');
 const css=fs.readFileSync('web/turn-flow-v2.css','utf8');
 const pacingCss=fs.readFileSync('web/match-pacing.css','utf8');
 const overlayCss=fs.readFileSync('web/mobile-overlay-fix-v1.css','utf8');
@@ -9,6 +10,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/turn-flow-v2\.css/,'turn flow v2 CSS must be loaded');
 assert.match(html,/turn-flow-v2\.js/,'turn flow v2 controller must be loaded');
+assert.match(html,/supabase-effect-source-v1\.js/,'Supabase effect source must load after turn flow');
 assert.doesNotMatch(html,/selection-controller\.(?:css|js)/,'legacy selection controller must not be referenced');
 assert.match(js,/stagedHand/,'hand choice must be staged locally before committing');
 assert.match(js,/candidatesFor/,'field candidates must be derived from the selected hand card');
@@ -40,15 +42,17 @@ assert.match(js,/async function revealRoundDealSequentially\(\)/,'later rounds m
 assert.match(css,/round-deal-staging[\s\S]*visibility:hidden/,'all later-round cards must start visually hidden');
 assert.match(css,/deal-visible/,'each later-round card must be individually revealed');
 assert.match(js,/roundTransitionPending/,'later-round transitions must be serialized against double taps');
-assert.match(js,/dramatic-callout-art/,'koi/agari must render the original effect art');
-assert.match(js,/assets\.path\(assetId\)/,'original effect art must come from the registered asset');
-assert.match(js,/art-loaded/,'DOM text must remain only as an image-load fallback');
-assert.match(overlayCss,/\.dramatic-callout-art/,'original effect art must have a dedicated full-impact presentation style');
-assert.match(html,/preload[^>]+koikoi-text\.png/,'koi art must be preloaded before the match needs it');
-assert.match(html,/preload[^>]+agari-text\.png/,'agari art must be preloaded before the match needs it');
+
+assert.match(supabaseFx,/supabase-effect-art/,'the live koi/agari path must render only the Supabase effect art');
+assert.doesNotMatch(supabaseFx,/dramatic-callout-text/,'the live Supabase effect path must not recreate the legacy callout text');
+assert.doesNotMatch(supabaseFx,/dramatic-rays|dramatic-flash/,'the live Supabase effect path must not recreate legacy decorative callout layers');
+assert.match(supabaseFx,/supabase-effect-fallback/,'readable text must exist only as an image-error fallback');
+assert.match(overlayCss,/\.supabase-effect-layer\{[^\n]*inset:0[^\n]*width:100%[^\n]*height:100%/,'Supabase effect layer must cover the full landscape match host');
+assert.match(overlayCss,/\.supabase-effect-art\{[^\n]*left:50%!important;top:50%!important;[^\n]*translate3d\(-50%,-50%,0\)/,'Supabase effect art must be anchored to the exact center of the landscape host');
+assert.match(html,/preload[^>]+hanafuda-effects\/koikoi-text\.png/,'koi art must be preloaded from Supabase Storage');
+assert.match(html,/preload[^>]+hanafuda-effects\/agari-text\.png/,'agari art must be preloaded from Supabase Storage');
 assert.doesNotMatch(js,/Array\.from\(\{length:22\}/,'koi/agari must not recreate the old 22-node particle burst');
-assert.match(pacingCss,/\.dramatic-callout-layer\{background:transparent!important;backdrop-filter:none!important/,'dramatic callouts must keep the live table visible without a blurred dark backdrop');
-assert.match(pacingCss,/\.dramatic-callout-layer \.dramatic-callout::before\{display:none!important\}/,'the legacy nested callout background must be removed');
+assert.match(pacingCss,/\.dramatic-callout-layer\{background:transparent!important;backdrop-filter:none!important/,'legacy fallback callouts must keep the live table visible without a blurred dark backdrop');
 assert.match(pacingCss,/\.agari-yaku-layer\{background:transparent!important/,'agari yaku must not fall back to the old dark backdrop');
 
 console.log('turn flow v2 contract: PASS');
