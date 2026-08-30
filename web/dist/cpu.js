@@ -78,6 +78,7 @@ async function acceptSnapshot(next, event, actor) {
     const old = snapshot;
     const visibleEvent = event ? presentationEvent(old, next, event, actor) : null;
     snapshot = next;
+    renderMatch();
     if (visibleEvent)
         recordHistory(visibleEvent, actor);
     if (old && old.roundIndex !== next.roundIndex) {
@@ -138,6 +139,7 @@ async function sendAction(action, payload = {}) {
                 const rawEvent = result.data.actionEvent;
                 const visibleEvent = rawEvent ? presentationEvent(snapshot, next, rawEvent, "player") : null;
                 snapshot = next;
+                renderMatch();
                 if (visibleEvent) {
                     recordHistory(visibleEvent, "player");
                     if (!settings.skipNormalAnimations)
@@ -260,6 +262,7 @@ async function animateEvent(event) {
         toast(`${event.actor === playerSeat() ? "あなた" : "相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
     if (event.newYakuMask)
         toast(`役成立: ${yakuNames(event.newYakuMask)}`);
+    await playVisibleActionSteps(event);
     if (event.capturedCards?.length)
         await showCaptureTrail(event.capturedCards, event.actor === playerSeat());
     if (event.settlement && event.settlement.winner !== 2) {
@@ -269,7 +272,7 @@ async function animateEvent(event) {
             await showAgariYaku(label);
     }
     emitAudioHook("card-action", { event });
-    await delay(220);
+    await delay(350);
 }
 async function showShuffle(initial = false) {
     const layer = document.createElement("div");
@@ -302,7 +305,7 @@ async function showCaptureTrail(cards, toPlayer) {
     layer.className = `capture-trail ${toPlayer ? "to-player" : "to-opponent"}`;
     layer.innerHTML = cards.slice(0, 4).map((card, i) => `<span style="--trail-index:${i}">${cardImg(card)}</span>`).join("");
     document.body.append(layer);
-    await delay(760);
+    await delay(900);
     layer.remove();
 }
 async function showCollapse() {
