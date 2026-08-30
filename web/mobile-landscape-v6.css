@@ -20,6 +20,17 @@ html.mobile-webapp .panel{width:min(94%,1120px);max-width:none;max-height:calc(v
 html.mobile-webapp .settings-grid{grid-template-columns:minmax(90px,.5fr) minmax(150px,1fr) minmax(90px,.5fr) minmax(150px,1fr);gap:7px 12px}
 html.mobile-webapp .settings-grid select,html.mobile-webapp .settings-grid input[type="number"]{min-height:38px}
 html.mobile-webapp .icon-button,html.mobile-webapp .primary,html.mobile-webapp .secondary,html.mobile-webapp .danger,html.mobile-webapp .choice,html.mobile-webapp .menu-item{min-height:38px;padding:7px 12px}
+html.mobile-webapp .cpu-setup-panel{display:grid;gap:7px;overflow:hidden}
+html.mobile-webapp .setup-row{display:grid;grid-template-columns:minmax(82px,.18fr) minmax(0,1fr);align-items:center;gap:8px}
+html.mobile-webapp .setup-row>strong{font-size:.72rem;white-space:nowrap}
+html.mobile-webapp .setup-choice-row{display:flex;gap:5px;min-width:0}
+html.mobile-webapp .setup-choice{appearance:none;-webkit-appearance:none;flex:1 1 0;min-width:0;min-height:34px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:rgba(27,17,16,.9);color:var(--cream);font:inherit;font-size:.72rem;white-space:nowrap;touch-action:manipulation}
+html.mobile-webapp .setup-choice.selected{background:linear-gradient(180deg,#8b3422,#54170f);border-color:rgba(255,226,160,.72);box-shadow:inset 0 0 0 1px rgba(255,226,160,.18)}
+html.mobile-webapp .setup-choice:disabled{opacity:.72}
+html.mobile-webapp .round-choice-row{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+html.mobile-webapp .round-choice{padding:4px 2px;min-height:32px}
+html.mobile-webapp .cpu-setup-panel .screen-actions{margin-top:2px}
+html.mobile-webapp .cpu-setup-panel .screen-actions .primary{min-width:180px}
 html.mobile-webapp .match-screen{padding:4px 7px;gap:4px;position:relative;isolation:isolate}
 html.mobile-webapp .match-hud{height:34px;min-height:34px;padding:2px 9px;border-radius:8px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;background:rgba(10,5,5,.82)}
 html.mobile-webapp .scorebox{font-size:.72rem;gap:7px;white-space:nowrap}
@@ -77,6 +88,9 @@ html.mobile-webapp.compact-landscape .hand-card-button{min-width:50px;min-height
 html.mobile-webapp.compact-landscape .hand-card-button .card{height:94px}
 html.mobile-webapp.compact-landscape .card-back{height:46px;margin-left:-12px}
 html.mobile-webapp.compact-landscape .captured-row .card{height:30px}
+html.mobile-webapp.compact-landscape .setup-row{grid-template-columns:74px minmax(0,1fr);gap:5px}
+html.mobile-webapp.compact-landscape .setup-choice{min-height:28px;padding:3px 4px;font-size:.65rem}
+html.mobile-webapp.compact-landscape .round-choice{min-height:27px;padding:2px 1px}
 
 /* All match overlays are anchored to the already-rotated landscape canvas, never to the portrait browser viewport. */
 html.mobile-webapp .match-screen>.modal-layer{position:absolute;inset:0;z-index:72;padding:6px;background:rgba(4,2,2,.54);backdrop-filter:none;-webkit-backdrop-filter:none}
