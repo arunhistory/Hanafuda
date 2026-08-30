@@ -61,7 +61,7 @@ let hiddenFirstEncounter = false;
 let onlineReconfigureState = "none";
 let queuedToasts = [];
 function loadSettings() {
-    const fallback = { mode: "beginner", rounds: 12, koiEnabled: true, skipNormalAnimations: false };
+    const fallback = { mode: "beginner", rounds: 12, koiEnabled: true, firstDealer: -1, skipNormalAnimations: false };
     try {
         const raw = localStorage.getItem(SETTINGS_KEY);
         if (!raw)
@@ -70,7 +70,9 @@ function loadSettings() {
         const mode = ["beginner", "amateur", "pro", "impossible"];
         const chosen = mode.includes(value?.mode) ? value.mode : fallback.mode;
         const rounds = Number(value?.rounds);
-        return { mode: chosen, rounds: Number.isInteger(rounds) && rounds >= 1 && rounds <= 12 ? rounds : 12, koiEnabled: value?.koiEnabled !== false, skipNormalAnimations: value?.skipNormalAnimations === true };
+        const dealer = Number(value?.firstDealer);
+        const firstDealer = dealer === 0 || dealer === 1 || dealer === -1 ? dealer : -1;
+        return { mode: chosen, rounds: Number.isInteger(rounds) && rounds >= 1 && rounds <= 12 ? rounds : 12, koiEnabled: value?.koiEnabled !== false, firstDealer, skipNormalAnimations: value?.skipNormalAnimations === true };
     }
     catch {
         return fallback;
