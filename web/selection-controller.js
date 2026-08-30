@@ -56,7 +56,9 @@
     stagedHand=null;
     try{
       await sendAction("play",{handIndex});
-      if(fieldIndex!==null&&snapshot&&snapshot.turn===playerSeat()&&(snapshot.phase===2||snapshot.phase===3)){
+      // phase 2 is the capture decision for the hand card just selected.
+      // phase 3 belongs to the subsequently drawn deck card and must remain a separate choice.
+      if(fieldIndex!==null&&snapshot&&snapshot.turn===playerSeat()&&snapshot.phase===2){
         const pending=Array.isArray(snapshot.pendingMatches)?snapshot.pendingMatches:[];
         if(pending.includes(fieldIndex))await sendAction("capture",{fieldIndex});
       }
