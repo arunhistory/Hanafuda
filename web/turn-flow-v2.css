@@ -7,3 +7,13 @@ html.mobile-webapp .hand-card-button.selection-chosen{transform:translateY(-6px)
 html.mobile-webapp .field-card-button.selection-target{outline-width:2px;outline-offset:2px}
 html.mobile-webapp .field-empty-target{min-width:54px;min-height:82px}
 html.mobile-webapp.phone-landscape .field-empty-target{min-width:46px;min-height:70px}.field-empty-target:active{transform:scale(.96)}
+
+/* Later rounds are genuinely dealt after shuffle instead of rendering complete then faking motion. */
+.round-deal-staging .opponent-zone .card-back,
+.round-deal-staging .player-zone .hand-card-button .card,
+.round-deal-staging .field-card-button .card{visibility:hidden;opacity:0;transform:translate3d(0,-14px,0) scale(.9)}
+.round-deal-staging .opponent-zone .card-back.deal-visible,
+.round-deal-staging .player-zone .hand-card-button .card.deal-visible,
+.round-deal-staging .field-card-button .card.deal-visible{visibility:visible;animation:round-deal-reveal .34s cubic-bezier(.18,.76,.18,1) both}
+@keyframes round-deal-reveal{0%{opacity:0;transform:translate3d(0,-18px,0) scale(.86)}72%{opacity:1;transform:translate3d(0,2px,0) scale(1.025)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+html.mobile-webapp.chrome-mobile .round-deal-staging .card{filter:none!important;will-change:transform,opacity}
