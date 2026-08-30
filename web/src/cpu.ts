@@ -4,6 +4,18 @@ async function api(path:string,body:unknown,extra:RequestInit={}){
   return {ok:response.ok,status:response.status,data};
 }
 
+async function releaseCpuAfterReady(){
+  if(!session||session.kind!=="cpu")return;
+  const ready=await api("/api/cpu/ready",{sessionId:session.sessionId,token:session.token});
+  if(!ready.ok||!ready.data?.ok)throw new Error(ready.data?.code||"CPU_READY_FAILED");
+  session.version=Number(ready.data.version);
+  pendingModeTransition=ready.data.modeTransition?.transition==="impossible";
+  await acceptApiEvents((ready.data.events??[]) as ApiEvent[]);
+  snapshot=ready.data.snapshot;
+  if(ready.data.unlockGranted===true)grantUnlock();
+  renderMatch();
+}
+
 async function startCpu(){
   if(busy)return;busy=true;
   try{
@@ -19,16 +31,12 @@ async function startCpu(){
     const started=await api("/api/cpu/start",settings.mode==="impossible"?{mode:"impossible",rounds:settings.rounds,koiEnabled:settings.koiEnabled,unlocked:isUnlocked()}:{mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken});
     if(!started.ok||!started.data?.ok)throw new Error(started.data?.code||"CPU_START_FAILED");
     session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken};
-    const startEvents=(started.data.events??[]) as ApiEvent[];
-    const stagedStart=startEvents.find(event=>event?.snapshot)?.snapshot??started.data.snapshot;
-    snapshot=stagedStart;pendingModeTransition=started.data.modeTransition?.transition==="impossible";hiddenFirstEncounter=false;roundHistory=[];currentRound=-1;
+    snapshot=started.data.snapshot;pendingModeTransition=started.data.modeTransition?.transition==="impossible";hiddenFirstEncounter=false;roundHistory=[];currentRound=-1;
     stack=["home","cpu-setup","match"];
     renderMatch();
     await animateNewRoundIfNeeded(true);
-    await acceptApiEvents(startEvents);
-    snapshot=started.data.snapshot;
-    if(started.data.unlockGranted===true)grantUnlock();
-    renderMatch();
+    await showReadyGate();
+    await releaseCpuAfterReady();
   }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
 }
 
@@ -86,7 +94,12 @@ async function sendAction(action:string,payload:Record<string,unknown>={}){
         await acceptSnapshot(next,rawEvent,"player");
       }
     }
-    renderMatch();await animateNewRoundIfNeeded(false);
+    renderMatch();
+    await animateNewRoundIfNeeded(false);
+    if(action==="next_round"&&session?.kind==="cpu"){
+      await showReadyGate();
+      await releaseCpuAfterReady();
+    }
   }catch(e){toast(e instanceof Error?e.message:"操作に失敗しました");await refreshStatus();}finally{busy=false;renderMatch();}
 }
 async function chooseKoi(continueKoi:boolean){
@@ -114,7 +127,10 @@ async function beginImpossibleTransition(){
     const result=await api("/api/cpu/transition",{sessionId:session.sessionId,token:session.token});
     if(!result.ok||!result.data?.ok)throw new Error(result.data?.code||"TRANSITION_FAILED");
     session.version=Number(result.data.version);session.mode="impossible";session.rounds=Number(result.data.rounds);snapshot=result.data.snapshot;pendingModeTransition=false;hiddenFirstEncounter=true;roundHistory=[];currentRound=-1;
-    renderMatch();await animateNewRoundIfNeeded(true);await acceptApiEvents(result.data.events??[]);
+    renderMatch();
+    await animateNewRoundIfNeeded(true);
+    await showReadyGate();
+    await releaseCpuAfterReady();
   }catch(e){toast(`遷移に失敗しました: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
 }
 
@@ -140,15 +156,15 @@ function confirmedSettlementYaku(event:ActionEvent,state:Snapshot|null){
 }
 function matchEffectHost(){return document.documentElement.classList.contains("mobile-webapp")?app:document.body;}
 async function animateEvent(event:ActionEvent,nextState:Snapshot|null=snapshot){
-  await playVisibleActionSteps(event);
+  await playVisibleActionSteps(event,nextState);
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
     const label=confirmedSettlementYaku(event,nextState);if(label&&label!=="なし")await showAgariYaku(label);
   }
-  emitAudioHook("card-action",{event});await delay(350);
+  emitAudioHook("card-action",{event});await delay(120);
 }
 async function showShuffle(initial=false){
-  const layer=document.createElement("div");layer.className=`fx-layer shuffle-layer${initial?" long-shuffle":""}`;layer.innerHTML='<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';document.body.append(layer);emitAudioHook("shuffle");await delay(initial?2250:1250);layer.remove();
+  const layer=document.createElement("div");layer.className=`fx-layer shuffle-layer${initial?" long-shuffle":""}`;layer.innerHTML='<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';matchEffectHost().append(layer);emitAudioHook("shuffle");await delay(initial?2250:1250);layer.remove();
 }
 async function showCallout(assetId:string){
   const layer=document.createElement("div");layer.className="fx-layer";const particles=Array.from({length:22},(_,i)=>`<i class="particle" style="left:${10+(i*37)%80}%;top:${15+(i*53)%70}%;--dx:${((i%7)-3)*31}px;--dy:${((i%5)-2)*34}px"></i>`).join("");layer.innerHTML=`<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;matchEffectHost().append(layer);await delay(1850);layer.remove();
@@ -162,7 +178,7 @@ async function showCaptureTrail(cards:number[],toPlayer:boolean){
   document.body.append(layer);await delay(900);layer.remove();
 }
 async function showCollapse(){
-  const layer=document.createElement("div");layer.className="fx-layer collapse-layer";layer.innerHTML='<div class="collapse-stage"></div><div class="collapse-text">▧▒░ERROR░▒▧</div>';document.body.append(layer);emitAudioHook("impossible-collapse");await delay(3200);layer.remove();
+  const layer=document.createElement("div");layer.className="fx-layer collapse-layer";layer.innerHTML='<div class="collapse-stage"></div><div class="collapse-text">▧▒░ERROR░▒▧</div>';matchEffectHost().append(layer);emitAudioHook("impossible-collapse");await delay(3200);layer.remove();
 }
 function delay(ms:number){return new Promise<void>(resolve=>setTimeout(resolve,ms));}
 
