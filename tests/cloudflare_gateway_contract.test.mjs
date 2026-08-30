@@ -9,6 +9,8 @@ const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
 const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const onlineRoomSrc=fs.readFileSync(path.join(dir,'online-room.ts'),'utf8');
 const cpuSessionSrc=fs.readFileSync(path.join(dir,'cpu-session.ts'),'utf8');
+const dealerSrc=fs.readFileSync(path.join(dir,'cpu-session-dealer.ts'),'utf8');
+const workerSrc=fs.readFileSync(path.join(dir,'worker-v3.ts'),'utf8');
 const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);');
 const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',replacementPrior);
 const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',replacementAccept);
@@ -43,6 +45,10 @@ const checks=[
   ['player actions cannot race before ready',cpuSessionSrc.includes('SESSION_NOT_READY')&&cpuSessionSrc.includes('storage.get("ready")')],
   ['next round closes CPU gate before the new dealer can move',cpuSessionSrc.includes('if(kind==="next_round")')&&cpuSessionSrc.includes('ready:false,readyPayload:null')],
   ['hidden challenge transition also starts behind the ready gate',cpuSessionSrc.includes('developer:false,ready:false,readyPayload:null,transitionedAt')&&!cpuSessionSrc.slice(cpuSessionSrc.indexOf('async transition()'),cpuSessionSrc.indexOf('async status()')).includes('this.runCpu(events)')],
+  ['dealer input accepts only random/player/opponent',dealerSrc.includes('return n===-1||n===0||n===1?n:null;')],
+  ['dealer input reaches authoritative engine creation',dealerSrc.includes('firstDealer=parseFirstDealer')&&dealerSrc.includes('op:"create_internal"')&&dealerSrc.includes('firstDealer,koiEnabled')],
+  ['dealer value is persisted in CPU session state',dealerSrc.includes('koiEnabled,firstDealer,gameId')],
+  ['public Durable Object class name remains HanafudaCpuSession',workerSrc.includes('HanafudaCpuSessionDealer as HanafudaCpuSession')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['random matchmaking is WebSocket event-driven',src.includes('/api/online/random/connect')&&src.includes('new WebSocketPair()')&&src.includes('type:"matched"')&&!src.includes('op==="poll"')&&!src.includes('op==="enqueue"')],
   ['matchmaking sockets use Durable Object hibernation API',directorySrc.includes('this.state.acceptWebSocket(server')&&directorySrc.includes('this.state.getWebSockets(`ticket:${ticket}`)')&&directorySrc.includes('serializeAttachment')&&directorySrc.includes('webSocketMessage(')&&!directorySrc.includes('server.accept()')&&!directorySrc.includes('server.addEventListener(')],
