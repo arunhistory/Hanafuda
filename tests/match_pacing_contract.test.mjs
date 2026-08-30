@@ -17,6 +17,11 @@ assert.match(ts,/showCardToField/,'played cards must move onto the table rather 
 assert.match(ts,/showDeckReveal/,'the deck card must visibly reveal before play continues');
 assert.match(ts,/showCaptureMove/,'captured cards must visibly move toward the capturing side');
 assert.match(ts,/captureGroups/,'hand and deck captures must be separated by card month when possible');
+assert.match(ts,/function hideCapturedFieldCards\(cards:number\[\]\)/,'capture motion must explicitly hide authoritative field-card sources before the copy moves');
+assert.match(ts,/button\.classList\.add\("capture-source-hidden"\)/,'the actual field-card DOM must disappear at capture start');
+assert.match(ts,/hideCapturedFieldCards\(cards\);[\s\S]*--capture-x/,'the field source must be hidden before capture-to-rail motion begins');
+assert.match(ts,/if\(!completed\)restoreHiddenFieldCards\(\)/,'a failed animation must restore temporarily hidden field cards');
+assert.match(css,/\.field-card-button\.capture-source-hidden\{visibility:hidden!important\}/,'captured card faces must disappear without collapsing their two-row field slots');
 assert.match(ts,/function isTurnProgressEvent\(event:ActionEvent\)\{return event\.type==="play"\|\|event\.type==="cpu_step";\}/,'only real turn-progress events may drive hand/deck motion');
 assert.match(ts,/function hasDeckReveal\(event:ActionEvent\)\{return isTurnProgressEvent\(event\)&&Number\.isInteger\(event\.drawnCard\);\}/,'stale drawnCard data on capture events must never create a phantom deck animation');
 assert.match(ts,/if\(hasDeckReveal\(event\)\)\{/,'deck reveal must be gated by the validated deck-event predicate');
