@@ -1,0 +1,9 @@
+.hand-card-button.selection-chosen{transform:translateY(-10px) scale(1.06);outline:3px solid #ffd77a;outline-offset:3px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));z-index:6}
+.field-card-button.selection-target{cursor:pointer;outline:3px solid #ffd77a;outline-offset:3px;box-shadow:0 0 0 5px rgba(255,215,122,.18),0 8px 18px rgba(0,0,0,.38);animation:selection-pulse 1.1s ease-in-out infinite alternate}
+.field-empty-target{min-width:72px;min-height:104px;border:2px dashed rgba(255,215,122,.85);border-radius:10px;background:rgba(42,25,16,.62);color:#fff1cf;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.field-empty-target span{font-size:.72rem;opacity:.8}.field-empty-target strong{font-size:.82rem}
+@keyframes selection-pulse{from{filter:brightness(1)}to{filter:brightness(1.18)}}
+html.mobile-webapp .hand-card-button.selection-chosen{transform:translateY(-6px) scale(1.05);outline-width:2px;outline-offset:2px}
+html.mobile-webapp .field-card-button.selection-target{outline-width:2px;outline-offset:2px}
+html.mobile-webapp .field-empty-target{min-width:54px;min-height:82px}
+html.mobile-webapp.phone-landscape .field-empty-target{min-width:46px;min-height:70px}.field-empty-target:active{transform:scale(.96)}
