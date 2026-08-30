@@ -63,7 +63,7 @@ assert.match(mobileCss,/\.callout \.particle\{display:none!important\}/,'phone k
 assert.match(mobileCss,/chrome-mobile \.card[^\n]*filter:none!important/,'Chrome mobile must not run expensive card filters during match animation');
 assert.match(css,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone action animations must remove expensive drop-shadow filters');
 assert.match(ts,/async function showReadyGate\(\)/,'CPU start must expose a visible ready gate after dealing');
-assert.match(cpu,/await animateNewRoundIfNeeded\(true\);\s*await showReadyGate\(\);\s*await releaseCpuAfterReady\(\);/,'initial CPU release must occur only after shuffle, deal and ready presentation');
+assert.match(cpu,/await animateNewRoundIfNeeded\(true\);\s*await showReadyGate\(\);\s*matchInteractionReady=true;\s*renderMatch\(\);\s*await releaseCpuAfterReady\(\);/,'initial CPU release must occur only after shuffle, deal, ready presentation and explicit frontend interaction unlock');
 
 const acceptStart=cpu.indexOf('async function acceptSnapshot');
 const acceptEnd=cpu.indexOf('function recordHistory',acceptStart);
