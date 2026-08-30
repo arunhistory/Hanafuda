@@ -49,6 +49,7 @@ async function acceptSnapshot(next:Snapshot,event:ActionEvent|null,actor?:string
   const old=snapshot;
   const visibleEvent=event?presentationEvent(old,next,event,actor):null;
   snapshot=next;
+  renderMatch();
   if(visibleEvent)recordHistory(visibleEvent,actor);
   if(old&&old.roundIndex!==next.roundIndex){roundHistory=[];currentRound=-1;}
   if(visibleEvent&&!settings.skipNormalAnimations)await animateEvent(visibleEvent);
@@ -84,6 +85,7 @@ async function sendAction(action:string,payload:Record<string,unknown>={}){
         const rawEvent=result.data.actionEvent as ActionEvent|null;
         const visibleEvent=rawEvent?presentationEvent(snapshot,next,rawEvent,"player"):null;
         snapshot=next;
+        renderMatch();
         if(visibleEvent){recordHistory(visibleEvent,"player");if(!settings.skipNormalAnimations)await animateEvent(visibleEvent);}
       }
     }
@@ -142,12 +144,13 @@ function confirmedSettlementYaku(event:ActionEvent){
 async function animateEvent(event:ActionEvent){
   if(event.capturedCards?.length)toast(`${event.actor===playerSeat()?"あなた":"相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
   if(event.newYakuMask)toast(`役成立: ${yakuNames(event.newYakuMask)}`);
+  await playVisibleActionSteps(event);
   if(event.capturedCards?.length)await showCaptureTrail(event.capturedCards,event.actor===playerSeat());
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
     const label=confirmedSettlementYaku(event);if(label&&label!=="なし")await showAgariYaku(label);
   }
-  emitAudioHook("card-action",{event});await delay(220);
+  emitAudioHook("card-action",{event});await delay(350);
 }
 async function showShuffle(initial=false){
   const layer=document.createElement("div");layer.className=`fx-layer shuffle-layer${initial?" long-shuffle":""}`;layer.innerHTML='<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';document.body.append(layer);emitAudioHook("shuffle");await delay(initial?2250:1250);layer.remove();
@@ -161,7 +164,7 @@ async function showAgariYaku(label:string){
 async function showCaptureTrail(cards:number[],toPlayer:boolean){
   const layer=document.createElement("div");layer.className=`capture-trail ${toPlayer?"to-player":"to-opponent"}`;
   layer.innerHTML=cards.slice(0,4).map((card,i)=>`<span style="--trail-index:${i}">${cardImg(card)}</span>`).join("");
-  document.body.append(layer);await delay(760);layer.remove();
+  document.body.append(layer);await delay(900);layer.remove();
 }
 async function showCollapse(){
   const layer=document.createElement("div");layer.className="fx-layer collapse-layer";layer.innerHTML='<div class="collapse-stage"></div><div class="collapse-text">▧▒░ERROR░▒▧</div>';document.body.append(layer);emitAudioHook("impossible-collapse");await delay(3200);layer.remove();
