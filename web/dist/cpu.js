@@ -257,11 +257,8 @@ function confirmedSettlementYaku(event) {
     const mask = event.yakuMasks?.[winner] ?? snapshot.yakuMasks[winner];
     return yakuNames(mask);
 }
+function matchEffectHost() { return document.documentElement.classList.contains("mobile-webapp") ? app : document.body; }
 async function animateEvent(event) {
-    if (event.capturedCards?.length)
-        toast(`${event.actor === playerSeat() ? "あなた" : "相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
-    if (event.newYakuMask)
-        toast(`役成立: ${yakuNames(event.newYakuMask)}`);
     await playVisibleActionSteps(event);
     if (event.capturedCards?.length)
         await showCaptureTrail(event.capturedCards, event.actor === playerSeat());
@@ -288,7 +285,7 @@ async function showCallout(assetId) {
     layer.className = "fx-layer";
     const particles = Array.from({ length: 22 }, (_, i) => `<i class="particle" style="left:${10 + (i * 37) % 80}%;top:${15 + (i * 53) % 70}%;--dx:${((i % 7) - 3) * 31}px;--dy:${((i % 5) - 2) * 34}px"></i>`).join("");
     layer.innerHTML = `<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;
-    document.body.append(layer);
+    matchEffectHost().append(layer);
     await delay(1850);
     layer.remove();
 }
@@ -296,7 +293,7 @@ async function showAgariYaku(label) {
     const layer = document.createElement("div");
     layer.className = "fx-layer agari-yaku-layer";
     layer.innerHTML = `<div class="agari-yaku-card"><span>成立役</span><strong>${escapeHtml(label)}</strong></div>`;
-    document.body.append(layer);
+    matchEffectHost().append(layer);
     await delay(1250);
     layer.remove();
 }
