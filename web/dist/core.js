@@ -54,6 +54,7 @@ let snapshot = null;
 let currentRound = -1;
 let roundHistory = [];
 let busy = false;
+let matchInteractionReady = true;
 let modal = null;
 let pendingModeTransition = false;
 let hiddenFirstEncounter = false;
@@ -86,6 +87,8 @@ function goHome() { stack = ["home"]; modal = null; render(); }
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function modeLabel(mode) { return mode === "beginner" ? "初心者" : mode === "amateur" ? "アマチュア" : mode === "pro" ? "プロ" : "人知不能"; }
 function phaseLabel(s) {
+    if (session?.kind === "cpu" && !matchInteractionReady)
+        return "対局準備中";
     if (s.phase === 1)
         return s.turn === playerSeat() ? "手札から1枚選んでください" : "相手の手番です";
     if (s.phase === 2 || s.phase === 3)
