@@ -1,6 +1,7 @@
 (()=>{
   let stagedHand=null;
   let committing=false;
+  let koiDecisionPending=false;
 
   function inPlayerPlayPhase(){
     return typeof snapshot!=="undefined"&&snapshot&&snapshot.turn===playerSeat()&&snapshot.phase===1&&!busy&&!committing;
@@ -115,5 +116,23 @@
     }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;if(snapshot&&currentScreen()==="match")renderMatch();}
   };
 
-  window.__hanafudaTurnFlowVersion="2";
+  const baseChooseKoi=chooseKoi;
+  chooseKoi=async function(continueKoi){
+    if(koiDecisionPending)return;
+    koiDecisionPending=true;
+    try{
+      for(let guard=0;busy&&guard<240;guard++)await delay(25);
+      if(busy){toast("前の処理が完了するまでお待ちください");return;}
+      if(!snapshot||snapshot.phase!==4||snapshot.turn!==playerSeat())return;
+      await baseChooseKoi(continueKoi);
+    }catch(e){
+      toast(`こいこい選択に失敗しました: ${e instanceof Error?e.message:"ERROR"}`);
+      try{await refreshStatus();}catch{}
+    }finally{
+      koiDecisionPending=false;
+      if(snapshot&&currentScreen()==="match")renderMatch();
+    }
+  };
+
+  window.__hanafudaTurnFlowVersion="2.1";
 })();
