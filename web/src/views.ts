@@ -20,8 +20,14 @@ function difficultyOptions(){
   if(!modes.includes(settings.mode))settings.mode="pro";
   return modes.map(m=>`<option value="${m}" ${settings.mode===m?"selected":""}>${modeLabel(m)}</option>`).join("");
 }
+function cpuModeChoices(){
+  const modes:CpuMode[]=isUnlocked()?["beginner","amateur","pro","impossible"]:["beginner","amateur","pro"];
+  if(!modes.includes(settings.mode))settings.mode="pro";
+  return modes.map(m=>`<button type="button" class="setup-choice ${settings.mode===m?"selected":""}" data-cpu-mode="${m}" aria-pressed="${settings.mode===m}">${modeLabel(m)}</button>`).join("");
+}
+function roundChoices(){return Array.from({length:12},(_,i)=>i+1).map(n=>`<button type="button" class="setup-choice round-choice ${settings.rounds===n?"selected":""}" data-cpu-rounds="${n}" aria-pressed="${settings.rounds===n}">${n}</button>`).join("");}
 function renderCpuSetup(){
-  app.innerHTML=`<main class="${screenClass()}">${topbar("CPU対戦設定")}<section class="panel"><div class="settings-grid"><label for="cpu-mode">CPU難易度</label><select id="cpu-mode">${difficultyOptions()}</select><label for="rounds">局数</label><select id="rounds">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${settings.rounds===i+1?"selected":""}>${i+1}局</option>`).join("")}</select><label for="dealer-mode">親決め</label><select id="dealer-mode"><option value="random">ランダム</option></select><label for="koi-enabled">こいこい</label><div class="check-row"><input id="koi-enabled" type="checkbox" ${settings.koiEnabled?"checked":""}><span>使用する</span></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
+  app.innerHTML=`<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row"><button type="button" class="setup-choice selected" disabled>ランダム</button></div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled?"selected":""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled?"selected":""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
 }
 
 function renderOnline(){
@@ -112,6 +118,9 @@ function bindGlobalActions(){
   app.querySelectorAll<HTMLElement>("[data-nav]").forEach(el=>el.onclick=()=>push(el.dataset.nav as UiScreen));
   app.querySelectorAll<HTMLElement>("[data-action='back']").forEach(el=>el.onclick=()=>back());
   app.querySelectorAll<HTMLElement>("[data-action='home']").forEach(el=>el.onclick=()=>goHome());
+  app.querySelectorAll<HTMLElement>("[data-cpu-mode]").forEach(el=>el.onclick=()=>{settings.mode=el.dataset.cpuMode as CpuMode;saveSettings();renderCpuSetup();bindGlobalActions();});
+  app.querySelectorAll<HTMLElement>("[data-cpu-rounds]").forEach(el=>el.onclick=()=>{settings.rounds=Number(el.dataset.cpuRounds);saveSettings();renderCpuSetup();bindGlobalActions();});
+  app.querySelectorAll<HTMLElement>("[data-cpu-koi]").forEach(el=>el.onclick=()=>{settings.koiEnabled=el.dataset.cpuKoi==="true";saveSettings();renderCpuSetup();bindGlobalActions();});
   const mode=app.querySelector<HTMLSelectElement>("#cpu-mode");if(mode)mode.onchange=()=>{settings.mode=mode.value as CpuMode;saveSettings();};
   const rounds=app.querySelector<HTMLSelectElement>("#rounds");if(rounds)rounds.onchange=()=>{settings.rounds=Number(rounds.value);saveSettings();};
   const koi=app.querySelector<HTMLInputElement>("#koi-enabled");if(koi)koi.onchange=()=>{settings.koiEnabled=koi.checked;saveSettings();};
@@ -140,4 +149,3 @@ function bindMatchActions(){
   app.querySelectorAll<HTMLElement>("[data-postmatch]").forEach(el=>el.onclick=()=>void onlinePostmatch(el.dataset.postmatch as "reconfigure"|"same"|"home"));
   app.querySelector<HTMLElement>("[data-action='apply-online-reconfigure']")?.addEventListener("click",()=>void applyOnlineReconfigure());
 }
-
