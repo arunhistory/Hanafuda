@@ -64,9 +64,10 @@ async function handleOnlineMessage(msg:any){
     if(msg.epoch)session.epoch=incomingEpoch;if(Number.isSafeInteger(incomingVersion))session.version=incomingVersion;
     if(epochChanged){roundHistory=[];currentRound=-1;}
     if(msg.snapshot){
-      snapshot=msg.snapshot;onlineReconfigureState="none";
-      if(isNewAction){recordHistory(msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");if(!settings.skipNormalAnimations)await animateEvent(msg.actionEvent);}
-      renderMatch();await animateNewRoundIfNeeded(!prior||epochChanged);
+      onlineReconfigureState="none";
+      if(isNewAction)await acceptSnapshot(msg.snapshot,msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");
+      else{snapshot=msg.snapshot;renderMatch();}
+      await animateNewRoundIfNeeded(!prior||epochChanged);
     }
   }else if(msg?.type==="postmatch_choice"){
     if(msg.choice==="reconfigure"){onlineReconfigureState=session.seat===0?"host":"guest";renderMatch();}
