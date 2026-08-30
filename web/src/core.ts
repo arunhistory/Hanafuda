@@ -63,7 +63,7 @@ type CpuSession = {
   mode:CpuMode;
   rounds:number;
   koiEnabled:boolean;
-  firstDealer:FirstDealer;
+  firstDealer?:FirstDealer;
   modeSessionId?:string;
   modeSessionToken?:string;
 };
