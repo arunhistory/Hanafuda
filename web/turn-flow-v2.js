@@ -140,6 +140,13 @@
     screen.classList.remove("round-deal-staging");
   }
 
+  function clearRoundSettlementOverlay(){
+    app.querySelector(".settlement-layer")?.remove();
+    app.querySelector(".settlement-card")?.remove();
+    const status=app.querySelector(".status-message");
+    if(status)status.textContent="次局準備中";
+  }
+
   const baseSendAction=sendAction;
   sendAction=async function(action,payload={}){
     if(action!=="next_round"||session?.kind!=="cpu")return baseSendAction(action,payload);
@@ -149,6 +156,9 @@
     matchInteractionReady=false;
     busy=true;
     try{
+      clearRoundSettlementOverlay();
+      if(!settings.skipNormalAnimations)await showShuffle(false);
+
       const result=await api("/api/cpu/action",{sessionId:session.sessionId,token:session.token,version:session.version,action,...payload});
       if(!result.ok||!result.data?.ok)throw new Error(result.data?.code||"ACTION_FAILED");
       session.version=Number(result.data.version);
@@ -156,9 +166,6 @@
       if(result.data.unlockGranted===true)grantUnlock();
       const nextSnapshot=result.data.snapshot;
       if(!nextSnapshot)throw new Error("NEXT_ROUND_SNAPSHOT_MISSING");
-
-      renderMatch();
-      if(!settings.skipNormalAnimations)await showShuffle(false);
 
       snapshot=nextSnapshot;
       roundHistory=[];
