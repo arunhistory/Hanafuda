@@ -1,0 +1,16 @@
+.hand-card-button:disabled,.field-card-button:disabled{opacity:1}
+.match-action-recap{position:absolute;inset:0;z-index:58;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(4,2,2,.16)}
+.match-action-card{min-width:min(420px,72%);max-width:78%;display:grid;gap:8px;padding:12px 16px;border:1px solid rgba(255,225,171,.55);border-radius:16px;background:rgba(15,7,6,.94);box-shadow:0 16px 50px rgba(0,0,0,.55);text-align:center}
+.match-action-card>strong{font-size:1.15rem;color:var(--gold);letter-spacing:.08em}
+.match-action-card>div{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px}
+.match-action-card>div>span{min-width:4.8em;font-weight:700}
+.match-action-card .card{height:64px;width:auto}
+.match-action-card .recap-cards{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
+.match-action-card .decision{font-size:1.35rem;color:var(--cream)}
+html.mobile-webapp .match-action-card{min-width:min(520px,64%);max-width:70%;padding:9px 14px;gap:5px}
+html.mobile-webapp .match-action-card>div{min-height:50px}
+html.mobile-webapp .match-action-card .card{height:54px}
+html.mobile-webapp.phone-landscape .match-action-card{min-width:min(440px,66%);max-width:72%;padding:7px 10px}
+html.mobile-webapp.phone-landscape .match-action-card>strong{font-size:.95rem}
+html.mobile-webapp.phone-landscape .match-action-card>div{min-height:42px;gap:7px;font-size:.78rem}
+html.mobile-webapp.phone-landscape .match-action-card .card{height:44px}
