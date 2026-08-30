@@ -134,5 +134,5 @@
     }
   };
 
-  window.__hanafudaTurnFlowVersion="2.1";
+  window.__hanafudaTurnFlowVersion="2";
 })();
