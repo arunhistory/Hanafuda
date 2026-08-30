@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const html=fs.readFileSync('web/index.html','utf8');
 const gate=fs.readFileSync('web/pregame-gate-v3.js','utf8');
+const core=fs.readFileSync('web/src/core.ts','utf8');
 const views=fs.readFileSync('web/src/views.ts','utf8');
 
 assert.match(html,/pregame-gate-v3\.js/,'the authoritative pregame gate must be loaded');
@@ -28,13 +29,17 @@ assert.ok(cpuReadyPos>readyVisualPos,'server-side CPU release must wait for read
 assert.ok(openPos>cpuReadyPos,'player interaction must not open before the ready handshake succeeds');
 assert.match(gate,/session=null;\s*snapshot=null;[\s\S]*renderCpuPreparationScreenV3\(\);[\s\S]*await showShuffle\(true\);/,'no authoritative game snapshot may exist during shuffle');
 assert.match(gate,/if\(!authoritativeGameCreated\)[\s\S]*stack=\["home","cpu-setup"\][\s\S]*else[\s\S]*renderMatch\(\)/,'a post-deal ready failure must preserve the created game instead of returning to setup');
-assert.doesNotMatch(views,/function renderCpuSetup\(\)[\s\S]{0,1600}<select id="cpu-mode"/,'CPU setup must not use a native popup select for difficulty');
+
+assert.doesNotMatch(views,/function renderCpuSetup\(\)[\s\S]{0,2000}<select id="cpu-mode"/,'CPU setup must not use a native popup select for difficulty');
 assert.match(views,/data-cpu-mode=/,'CPU setup must expose in-canvas difficulty choices');
 assert.match(views,/data-cpu-rounds=/,'CPU setup must expose in-canvas round choices');
-assert.match(gate,/\[\[-1,"ランダム"\],\[0,"あなた"\],\[1,"相手"\]\]/,'dealer choice must offer random, player and opponent in-canvas');
-assert.match(gate,/data-cpu-dealer=/,'dealer choice must use in-canvas buttons instead of a native popup');
-assert.match(gate,/n===-1\|\|n===0\|\|n===1/,'dealer choice must accept only -1, 0 or 1');
-assert.match(gate,/const firstDealer=dealerChoiceV3\(\)/,'selected dealer must be resolved before CPU start');
-assert.ok((gate.match(/firstDealer/g)||[]).length>=4,'firstDealer must be passed through both normal and impossible CPU start payloads');
+assert.match(views,/\[\[-1,"ランダム"\],\[0,"あなたが親"\],\[1,"相手が親"\]\]/,'dealer choice must offer random, player and opponent in-canvas');
+assert.match(views,/data-cpu-dealer=/,'dealer choice must use in-canvas buttons instead of a native popup');
+assert.match(views,/value!==-1&&value!==0&&value!==1/,'dealer choice must reject values outside -1, 0 or 1');
+assert.match(core,/type FirstDealer = -1 \| 0 \| 1;/,'dealer setting must be strongly limited to -1, 0 or 1');
+assert.match(core,/firstDealer:-1/,'old settings must default safely to random dealer');
+assert.match(gate,/const firstDealer=settings\.firstDealer;/,'pregame must use the canonical settings value');
+assert.ok((gate.match(/firstDealer/g)||[]).length>=5,'firstDealer must be passed through both normal and impossible CPU start payloads and session state');
+assert.doesNotMatch(gate,/hanafuda\.cpu\.firstDealer/,'dealer selection must not create a second localStorage source of truth');
 
-console.log('pregame engine-start ordering, landscape setup and dealer contract v3: PASS');
+console.log('pregame engine-start ordering, landscape setup and canonical dealer contract v3: PASS');
