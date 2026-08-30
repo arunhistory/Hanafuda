@@ -1,5 +1,6 @@
 let matchRecapBlocking=false;
 let hiddenFieldDuringAction:HTMLElement[]=[];
+let hiddenHandDuringAction:HTMLElement[]=[];
 
 function actionActorLabel(event:ActionEvent){
   return Number(event.actor)===playerSeat()?"あなた":"相手";
@@ -29,6 +30,20 @@ function boardMotion(board:HTMLElement){
   return {width:Math.max(1,board.clientWidth),height:Math.max(1,board.clientHeight)};
 }
 function visualBoardOffset(horizontal:number,vertical:number){
+  const viewport=document.querySelector<HTMLElement>(".webapp-viewport");
+  const transform=viewport?getComputedStyle(viewport).transform:"none";
+  if(transform&&transform!=="none"){
+    try{
+      const matrix=new DOMMatrixReadOnly(transform);
+      const determinant=matrix.a*matrix.d-matrix.b*matrix.c;
+      if(Math.abs(determinant)>0.000001){
+        return {
+          x:(matrix.d*horizontal-matrix.c*vertical)/determinant,
+          y:(-matrix.b*horizontal+matrix.a*vertical)/determinant,
+        };
+      }
+    }catch{}
+  }
   const rotated=document.documentElement.classList.contains("virtual-landscape");
   return rotated?{x:vertical,y:-horizontal}:{x:horizontal,y:vertical};
 }
@@ -47,9 +62,30 @@ function hideCapturedFieldCards(cards:number[]){
     remaining.set(card!,left-1);
   });
 }
-function restoreHiddenFieldCards(){
+function hidePlayedHandSource(event:ActionEvent,card:number){
+  const actorSeat=Number(event.actor);
+  if(actorSeat===playerSeat()&&snapshot){
+    const index=snapshot.hand.findIndex(value=>value===card);
+    if(index<0)return;
+    const button=app.querySelector<HTMLElement>(`.player-zone>.hand-row .hand-card-button[data-hand-index="${index}"]`);
+    if(!button||button.classList.contains("capture-source-hidden"))return;
+    button.classList.add("capture-source-hidden");
+    hiddenHandDuringAction.push(button);
+    return;
+  }
+  if(actorSeat===opponentSeat()){
+    const backs=app.querySelectorAll<HTMLElement>(".opponent-zone>.hand-row .card-back:not(.capture-source-hidden)");
+    const back=backs.item(backs.length-1);
+    if(!back)return;
+    back.classList.add("capture-source-hidden");
+    hiddenHandDuringAction.push(back);
+  }
+}
+function restoreHiddenSources(){
   for(const card of hiddenFieldDuringAction)card.classList.remove("capture-source-hidden");
+  for(const card of hiddenHandDuringAction)card.classList.remove("capture-source-hidden");
   hiddenFieldDuringAction=[];
+  hiddenHandDuringAction=[];
 }
 function reflectCapturedRail(event:ActionEvent,nextState:Snapshot|null){
   if(!nextState)return;
@@ -68,6 +104,7 @@ function actionLabel(event:ActionEvent,label:string){
 }
 async function showCardToField(event:ActionEvent,card:number,label:string,from:"hand"|"deck"){
   const board=boardForAction();if(!board)return;
+  if(from==="hand")hidePlayedHandSource(event,card);
   const {width,height}=boardMotion(board);
   const layer=document.createElement("div");layer.className="table-action-layer";
   const origin=from==="deck"?"from-deck":Number(event.actor)===playerSeat()?"from-player":"from-opponent";
@@ -125,6 +162,7 @@ async function showReadyGate(){
 async function playVisibleActionSteps(event:ActionEvent,nextState:Snapshot|null=snapshot){
   if(settings.skipNormalAnimations)return;
   hiddenFieldDuringAction=[];
+  hiddenHandDuringAction=[];
   matchRecapBlocking=true;
   let completed=false;
   try{
@@ -144,7 +182,7 @@ async function playVisibleActionSteps(event:ActionEvent,nextState:Snapshot|null=
     await delay(160);
     completed=true;
   }finally{
-    if(!completed)restoreHiddenFieldCards();
+    if(!completed)restoreHiddenSources();
     matchRecapBlocking=false;
   }
 }
