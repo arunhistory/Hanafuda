@@ -16,6 +16,10 @@ assert.match(ts,/showCardToField/,'played cards must move onto the table rather 
 assert.match(ts,/showDeckReveal/,'the deck card must visibly reveal before play continues');
 assert.match(ts,/showCaptureMove/,'captured cards must visibly move toward the capturing side');
 assert.match(ts,/captureGroups/,'hand and deck captures must be separated by card month when possible');
+assert.match(ts,/function isTurnProgressEvent\(event:ActionEvent\)\{return event\.type==="play"\|\|event\.type==="cpu_step";\}/,'only real turn-progress events may drive hand/deck motion');
+assert.match(ts,/function hasDeckReveal\(event:ActionEvent\)\{return isTurnProgressEvent\(event\)&&Number\.isInteger\(event\.drawnCard\);\}/,'stale drawnCard data on capture events must never create a phantom deck animation');
+assert.match(ts,/if\(hasDeckReveal\(event\)\)\{/,'deck reveal must be gated by the validated deck-event predicate');
+assert.match(ts,/if\(!hasHandPlay\(event\)&&!hasDeckReveal\(event\)&&event\.capturedCards\?\.length\)/,'capture-only events must render as capture-only without replaying hand/deck motion');
 assert.doesNotMatch(ts,/match-action-recap|match-action-card/,'the old full-board recap card must be removed');
 assert.match(css,/\.table-action-layer/,'table motion must have a dedicated non-blocking visual layer');
 assert.match(css,/\.table-action-card/,'played-card motion must be rendered on the table');
