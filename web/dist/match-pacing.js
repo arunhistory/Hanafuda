@@ -1,5 +1,6 @@
 "use strict";
 let matchRecapBlocking = false;
+let hiddenFieldDuringAction = [];
 function actionActorLabel(event) {
     return Number(event.actor) === playerSeat() ? "あなた" : "相手";
 }
@@ -31,6 +32,30 @@ function captureGroups(event) {
 function boardForAction() { return app.querySelector(".board"); }
 function boardMotion(board) {
     return { width: Math.max(1, board.clientWidth), height: Math.max(1, board.clientHeight) };
+}
+function hideCapturedFieldCards(cards) {
+    if (!snapshot || !cards.length)
+        return;
+    const remaining = new Map();
+    for (const card of cards)
+        remaining.set(card, (remaining.get(card) ?? 0) + 1);
+    app.querySelectorAll(".field-card-button[data-field-index]").forEach(button => {
+        const index = Number(button.dataset.fieldIndex);
+        const card = Number.isInteger(index) ? snapshot?.field[index] : undefined;
+        if (!Number.isInteger(card))
+            return;
+        const left = remaining.get(card) ?? 0;
+        if (left <= 0)
+            return;
+        button.classList.add("capture-source-hidden");
+        hiddenFieldDuringAction.push(button);
+        remaining.set(card, left - 1);
+    });
+}
+function restoreHiddenFieldCards() {
+    for (const card of hiddenFieldDuringAction)
+        card.classList.remove("capture-source-hidden");
+    hiddenFieldDuringAction = [];
 }
 function actionLabel(event, label) {
     const el = document.createElement("div");
@@ -80,6 +105,7 @@ async function showCaptureMove(event, cards) {
     const board = boardForAction();
     if (!board)
         return;
+    hideCapturedFieldCards(cards);
     const { width } = boardMotion(board);
     const toPlayer = Number(event.actor) === playerSeat();
     const captureOffset = Math.round(width * (toPlayer ? -.42 : .42));
@@ -108,7 +134,9 @@ async function showDecision(event) {
 async function playVisibleActionSteps(event) {
     if (settings.skipNormalAnimations)
         return;
+    hiddenFieldDuringAction = [];
     matchRecapBlocking = true;
+    let completed = false;
     try {
         const captures = captureGroups(event);
         if (hasHandPlay(event)) {
@@ -127,8 +155,11 @@ async function playVisibleActionSteps(event) {
         if (event.type === "koi")
             await showDecision(event);
         await delay(520);
+        completed = true;
     }
     finally {
+        if (!completed)
+            restoreHiddenFieldCards();
         matchRecapBlocking = false;
     }
 }
