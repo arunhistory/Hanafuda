@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const ts=fs.readFileSync('web/src/match-pacing.ts','utf8');
 const cpu=fs.readFileSync('web/src/cpu.ts','utf8');
 const css=fs.readFileSync('web/match-pacing.css','utf8');
-const mobileCss=fs.readFileSync('web/mobile-landscape-v5.css','utf8');
+const mobileCss=fs.readFileSync('web/mobile-landscape-v6.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/match-pacing\.css/,'match animation CSS must be loaded');
@@ -36,6 +36,7 @@ assert.match(mobileCss,/\.match-screen>\.modal-layer\{position:absolute;inset:0/
 assert.match(mobileCss,/#app>\.fx-layer\{position:absolute/,'dynamic koi/agari effects must be anchored inside the virtual landscape app');
 assert.match(mobileCss,/html\.mobile-webapp\.phone-landscape \.agari-yaku-card/,'agari yaku presentation must have phone landscape sizing');
 assert.match(mobileCss,/\.callout \.particle\{display:none!important\}/,'phone koi/agari callouts must avoid particle-heavy rendering');
+assert.match(mobileCss,/chrome-mobile \.card[^\n]*filter:none!important/,'Chrome mobile must not run expensive card filters during match animation');
 assert.match(css,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone action animations must remove expensive drop-shadow filters');
 
 console.log('board-first DS-style match animation contract: PASS');
