@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const ts=fs.readFileSync('web/src/match-pacing.ts','utf8');
 const cpu=fs.readFileSync('web/src/cpu.ts','utf8');
 const css=fs.readFileSync('web/match-pacing.css','utf8');
+const mobileCss=fs.readFileSync('web/mobile-landscape-v4.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/match-pacing\.css/,'match animation CSS must be loaded');
@@ -27,5 +28,11 @@ assert.match(css,/\.table-draw-card/,'draw animation must include a visible card
 assert.match(css,/\.table-capture-group/,'capture motion must be rendered toward a capture rail');
 assert.doesNotMatch(css,/\.match-action-recap|\.match-action-card/,'old modal-like recap presentation must not remain');
 assert.match(css,/\.hand-card-button:disabled,\.field-card-button:disabled\{opacity:1\}/,'temporarily disabled cards must stay opaque');
+assert.doesNotMatch(cpu,/if\(event\.capturedCards\?\.length\)toast\(/,'ordinary capture events must not create accumulating toast notifications');
+assert.doesNotMatch(cpu,/if\(event\.newYakuMask\)toast\(/,'ordinary yaku events must not create accumulating toast notifications');
+assert.match(cpu,/function matchEffectHost\(\)\{return document\.documentElement\.classList\.contains\("mobile-webapp"\)\?app:document\.body;\}/,'mobile match effects must be mounted inside the rotated landscape application');
+assert.match(cpu,/matchEffectHost\(\)\.append\(layer\)/,'koi/agari effects must use the landscape-aware effect host');
+assert.match(mobileCss,/html\.mobile-webapp\.phone-landscape \.modal:has\(\.koi-choice\)/,'koi/agari choice modal must have phone landscape sizing');
+assert.match(mobileCss,/html\.mobile-webapp\.phone-landscape \.agari-yaku-card/,'agari yaku presentation must have phone landscape sizing');
 
 console.log('board-first DS-style match animation contract: PASS');
