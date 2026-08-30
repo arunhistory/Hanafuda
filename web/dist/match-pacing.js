@@ -62,10 +62,11 @@ async function showDeckReveal(event, card) {
     if (!board)
         return;
     const { width } = boardMotion(board);
-    const deckOffset = Math.round(width * .36);
+    const deckOffset = Math.round(width * .36), deckMidOffset = Math.round(deckOffset * .52);
     const layer = document.createElement("div");
     layer.className = "table-action-layer table-deck-layer";
     layer.style.setProperty("--deck-offset", `${deckOffset}px`);
+    layer.style.setProperty("--deck-mid-offset", `${deckMidOffset}px`);
     layer.innerHTML = `<div class="table-deck-source"><img src="${assets.path("cards.back")}" alt="山札"></div><div class="table-draw-card"><img class="draw-back" src="${assets.path("cards.back")}" alt="山札"><img class="draw-face" src="${assets.card(card)}" alt="山札からめくった札"></div>`;
     layer.append(actionLabel(event, "山札"));
     board.append(layer);
