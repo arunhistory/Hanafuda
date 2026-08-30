@@ -11,6 +11,7 @@ on:
       - 'tests/mobile_landscape_contract.test.mjs'
       - 'tests/match_pacing_contract.test.mjs'
       - 'tests/turn_selection_contract.test.mjs'
+      - 'tests/mobile_match_visibility_and_cpu_capture.test.mjs'
       - '.github/workflows/build-web.yml'
   workflow_dispatch:
 
@@ -45,6 +46,7 @@ jobs:
           node tests/mobile_landscape_contract.test.mjs
           node tests/match_pacing_contract.test.mjs
           node tests/turn_selection_contract.test.mjs
+          node tests/mobile_match_visibility_and_cpu_capture.test.mjs
       - name: Reject secrets and hidden trigger details
         run: |
           if grep -R -E 'DEVELOPER_MODE_KEY|x-hanafuda-developer|SUPABASE_SERVICE_ROLE_KEY|playerTotal|cpuTotal|should_force_impossible' web; then
