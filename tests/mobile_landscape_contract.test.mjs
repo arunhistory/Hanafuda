@@ -13,7 +13,7 @@ assert.doesNotMatch(html,/mobile-landscape-v5\.css|mobile-landscape-v4\.css/,'su
 assert.match(html,/mobile-phone-home-fix-v1\.css/,'the phone-specific overflow correction must be loaded after the base mobile layout');
 assert.match(html,/dist\/mobile-launch\.js/,'the mobile web-app launcher must be loaded');
 assert.doesNotMatch(html,/mobile-landscape-v3\.css|dist\/ui-profile\.js|mobile-landscape-v2\.css/,'obsolete mobile layout assets must not be loaded');
-assert.doesNotMatch(html,/mpuhgfbdkxmhynytwhzu\.supabase\.co/,'mobile launch must not depend on a Supabase orientation service');
+assert.doesNotMatch(ts,/supabase\.co|hanafuda-ui-profile/,'mobile launch must not depend on a Supabase orientation service');
 
 assert.match(ts,/function isMobileOrTablet\(\)/,'mobile/tablet launch detection must exist in the web app');
 assert.match(ts,/function isChromeMobile\(\)/,'Chrome mobile must have a dedicated performance path');
