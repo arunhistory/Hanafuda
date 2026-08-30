@@ -201,14 +201,13 @@ async function handleOnlineMessage(msg) {
             currentRound = -1;
         }
         if (msg.snapshot) {
-            snapshot = msg.snapshot;
             onlineReconfigureState = "none";
-            if (isNewAction) {
-                recordHistory(msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
-                if (!settings.skipNormalAnimations)
-                    await animateEvent(msg.actionEvent);
+            if (isNewAction)
+                await acceptSnapshot(msg.snapshot, msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
+            else {
+                snapshot = msg.snapshot;
+                renderMatch();
             }
-            renderMatch();
             await animateNewRoundIfNeeded(!prior || epochChanged);
         }
     }
