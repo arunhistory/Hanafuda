@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 const js=fs.readFileSync('web/turn-flow-v2.js','utf8');
 const supabaseFx=fs.readFileSync('web/supabase-effect-source-v1.js','utf8');
+const finalFix=fs.readFileSync('web/final-result-fix-v1.js','utf8');
+const finalCss=fs.readFileSync('web/final-result-fix-v1.css','utf8');
 const css=fs.readFileSync('web/turn-flow-v2.css','utf8');
 const pacingCss=fs.readFileSync('web/match-pacing.css','utf8');
 const overlayCss=fs.readFileSync('web/mobile-overlay-fix-v1.css','utf8');
@@ -11,6 +13,8 @@ const html=fs.readFileSync('web/index.html','utf8');
 assert.match(html,/turn-flow-v2\.css/,'turn flow v2 CSS must be loaded');
 assert.match(html,/turn-flow-v2\.js/,'turn flow v2 controller must be loaded');
 assert.match(html,/supabase-effect-source-v1\.js/,'Supabase effect source must load after turn flow');
+assert.match(html,/final-result-fix-v1\.js/,'dedicated final result controller must be loaded');
+assert.match(html,/final-result-fix-v1\.css/,'dedicated final result styles must be loaded');
 assert.doesNotMatch(html,/selection-controller\.(?:css|js)/,'legacy selection controller must not be referenced');
 assert.match(js,/stagedHand/,'hand choice must be staged locally before committing');
 assert.match(js,/candidatesFor/,'field candidates must be derived from the selected hand card');
@@ -59,5 +63,11 @@ assert.match(html,/preload[^>]+hanafuda-effects\/agari-text\.png/,'agari art mus
 assert.doesNotMatch(js,/Array\.from\(\{length:22\}/,'koi/agari must not recreate the old 22-node particle burst');
 assert.match(pacingCss,/\.dramatic-callout-layer\{background:transparent!important;backdrop-filter:none!important/,'legacy fallback callouts must keep the live table visible without a blurred dark backdrop');
 assert.match(pacingCss,/\.agari-yaku-layer\{background:transparent!important/,'agari yaku must not fall back to the old dark backdrop');
+
+assert.match(finalFix,/snapshot\?\.phase===6/,'phase 6 must switch to a dedicated final result renderer');
+assert.match(finalFix,/final-result-screen/,'final result must use a dedicated screen instead of a board overlay');
+assert.doesNotMatch(finalFix,/class="modal-layer"/,'dedicated final result must not recreate the match overlay');
+assert.match(finalFix,/chooser\?\.remove\(\)/,'koi/agari chooser must disappear immediately when a decision is made');
+assert.match(finalCss,/\.final-result-screen\{display:flex;align-items:center;justify-content:center/,'final result must occupy its own centered screen');
 
 console.log('turn flow v2 contract: PASS');
