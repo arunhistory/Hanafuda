@@ -1,18 +1,9 @@
 "use strict";
 
-const DEALER_KEY_V3="hanafuda.cpu.firstDealer.v1";
-function dealerChoiceV3(){const n=Number(localStorage.getItem(DEALER_KEY_V3)??-1);return n===0||n===1?n:-1;}
 function dealerLabelV3(v){return v===0?"あなた":v===1?"相手":"ランダム";}
-function enhanceDealerChoiceV3(){
-  if(!app||currentScreen?.()!=="cpu-setup")return;
-  const row=[...app.querySelectorAll(".setup-row")].find(r=>r.querySelector("strong")?.textContent?.trim()==="親決め");
-  const host=row?.querySelector(".setup-choice-row");if(!host)return;
-  const selected=dealerChoiceV3();
-  host.innerHTML=[[-1,"ランダム"],[0,"あなた"],[1,"相手"]].map(([v,label])=>`<button type="button" class="setup-choice ${selected===v?"selected":""}" data-cpu-dealer="${v}" aria-pressed="${selected===v}">${label}</button>`).join("");
-}
 
 function renderCpuPreparationScreenV3(){
-  app.innerHTML=`<main class="${screenClass("match-screen pre-match-preparing")}"><header class="match-hud"><div class="scorebox"><span>CPU / ${escapeHtml(modeLabel(settings.mode))}</span><span class="score">0</span></div><div class="round-info">対局準備<br>親: ${escapeHtml(dealerLabelV3(dealerChoiceV3()))}</div><div class="scorebox right"><span class="score">0</span><span>あなた</span></div></header><section class="board"><div class="opponent-zone"><div class="hand-row"></div><div class="captured-box"><div class="captured-title">相手の取得札</div><div class="captured-row"></div></div></div><div class="field-wrap"><div class="field-grid"></div></div><div class="player-zone"><div class="captured-box"><div class="captured-title">あなたの取得札</div><div class="captured-row"></div></div><div class="hand-row"></div></div></section><div class="status-strip"><span class="status-message">対局準備中</span><span class="status-actions"></span></div></main>`;
+  app.innerHTML=`<main class="${screenClass("match-screen pre-match-preparing")}"><header class="match-hud"><div class="scorebox"><span>CPU / ${escapeHtml(modeLabel(settings.mode))}</span><span class="score">0</span></div><div class="round-info">対局準備<br>親: ${escapeHtml(dealerLabelV3(settings.firstDealer))}</div><div class="scorebox right"><span class="score">0</span><span>あなた</span></div></header><section class="board"><div class="opponent-zone"><div class="hand-row"></div><div class="captured-box"><div class="captured-title">相手の取得札</div><div class="captured-row"></div></div></div><div class="field-wrap"><div class="field-grid"></div></div><div class="player-zone"><div class="captured-box"><div class="captured-title">あなたの取得札</div><div class="captured-row"></div></div><div class="hand-row"></div></div></section><div class="status-strip"><span class="status-message">対局準備中</span><span class="status-actions"></span></div></main>`;
 }
 
 async function dealPreparedSnapshotV3(){
@@ -40,11 +31,8 @@ async function startCpuSequencedV3(){
   let modeSessionId,modeSessionToken;
   let authoritativeGameCreated=false;
   try{
-    settings.mode=(app.querySelector("#cpu-mode")?.value??settings.mode);
-    settings.rounds=Number(app.querySelector("#rounds")?.value??settings.rounds);
-    settings.koiEnabled=app.querySelector("#koi-enabled")?.checked??settings.koiEnabled;
     saveSettings();
-    const firstDealer=dealerChoiceV3();
+    const firstDealer=settings.firstDealer;
 
     matchInteractionReady=false;
     session=null;
@@ -72,7 +60,7 @@ async function startCpuSequencedV3(){
       :{mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,firstDealer,modeSessionId,modeSessionToken});
     if(!started.ok||!started.data?.ok)throw new Error(started.data?.code||"CPU_START_FAILED");
 
-    session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken};
+    session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,firstDealer,modeSessionId,modeSessionToken};
     snapshot=started.data.snapshot;
     authoritativeGameCreated=true;
     pendingModeTransition=started.data.modeTransition?.transition==="impossible";
@@ -85,7 +73,7 @@ async function startCpuSequencedV3(){
     await dealPreparedSnapshotV3();
     await showReadyGate();
 
-    // Release the server-side CPU first. Interaction is opened only after that succeeds.
+    // Release server-side CPU only after shuffle, deal and ready presentation are complete.
     await releaseCpuAfterReadyV3();
     matchInteractionReady=true;
     busy=false;
@@ -97,7 +85,6 @@ async function startCpuSequencedV3(){
       snapshot=null;
       stack=["home","cpu-setup"];
       await render();
-      enhanceDealerChoiceV3();
     }else{
       // Never destroy a successfully created/dealt game because the ready handshake failed.
       renderMatch();
@@ -109,16 +96,11 @@ async function startCpuSequencedV3(){
   }
 }
 
-// Dealer selection stays inside the virtual landscape canvas; no native popup/select is used.
+// Capture phase: prevent every legacy start handler from firing.
 document.addEventListener("click",event=>{
-  const dealer=event.target instanceof Element?event.target.closest("[data-cpu-dealer]"):null;
-  if(dealer){event.preventDefault();event.stopImmediatePropagation();const n=Number(dealer.getAttribute("data-cpu-dealer"));if(n===-1||n===0||n===1){localStorage.setItem(DEALER_KEY_V3,String(n));enhanceDealerChoiceV3();}return;}
   const target=event.target instanceof Element?event.target.closest("[data-action='start-cpu']"):null;
   if(!target)return;
   event.preventDefault();
   event.stopImmediatePropagation();
   void startCpuSequencedV3();
 },true);
-
-new MutationObserver(()=>enhanceDealerChoiceV3()).observe(app,{childList:true,subtree:true});
-queueMicrotask(()=>enhanceDealerChoiceV3());
