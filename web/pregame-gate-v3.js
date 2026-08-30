@@ -12,10 +12,22 @@ async function dealPreparedSnapshotV3(){
   emitAudioHook("deal");
 }
 
+async function releaseCpuAfterReadyV3(){
+  if(!session||session.kind!=="cpu")return;
+  const ready=await api("/api/cpu/ready",{sessionId:session.sessionId,token:session.token});
+  if(!ready.ok||!ready.data?.ok)throw new Error(ready.data?.code||"CPU_READY_FAILED");
+  session.version=Number(ready.data.version);
+  pendingModeTransition=ready.data.modeTransition?.transition==="impossible";
+  await acceptApiEvents(ready.data.events??[]);
+  snapshot=ready.data.snapshot;
+  if(ready.data.unlockGranted===true)grantUnlock();
+}
+
 async function startCpuSequencedV3(){
   if(busy)return;
   busy=true;
   let modeSessionId,modeSessionToken;
+  let authoritativeGameCreated=false;
   try{
     settings.mode=(app.querySelector("#cpu-mode")?.value??settings.mode);
     settings.rounds=Number(app.querySelector("#rounds")?.value??settings.rounds);
@@ -32,10 +44,10 @@ async function startCpuSequencedV3(){
     stack=["home","cpu-setup","match"];
     renderCpuPreparationScreenV3();
 
-    // Nothing game-related is started while shuffle is running.
+    // No mode authority, game engine, or CPU execution exists during shuffle.
     await showShuffle(true);
 
-    // Start mode authority only after shuffle, then immediately create the game.
+    // Start authority only when the actual game is about to be created.
     if(settings.mode!=="impossible"){
       const mode=await api("/api/mode/start",{mode:settings.mode,rounds:settings.rounds,developer:false});
       if(!mode.ok||!mode.data?.ok)throw new Error(mode.data?.code||"MODE_START_FAILED");
@@ -50,25 +62,33 @@ async function startCpuSequencedV3(){
 
     session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken};
     snapshot=started.data.snapshot;
+    authoritativeGameCreated=true;
     pendingModeTransition=started.data.modeTransition?.transition==="impossible";
     hiddenFirstEncounter=false;
     roundHistory=[];
     currentRound=snapshot.roundIndex;
 
-    // Snapshot exists now, but match input remains locked until deal + ready finish.
+    // CPU remains server-gated while the complete initial deal is shown.
     renderMatch();
     await dealPreparedSnapshotV3();
     await showReadyGate();
 
+    // Release the server-side CPU first. Interaction is opened only after that succeeds.
+    await releaseCpuAfterReadyV3();
     matchInteractionReady=true;
+    busy=false;
     renderMatch();
-    await releaseCpuAfterReady();
   }catch(e){
-    matchInteractionReady=true;
-    session=null;
-    snapshot=null;
-    stack=["home","cpu-setup"];
-    await render();
+    matchInteractionReady=false;
+    if(!authoritativeGameCreated){
+      session=null;
+      snapshot=null;
+      stack=["home","cpu-setup"];
+      await render();
+    }else{
+      // Never destroy a successfully created/dealt game because the ready handshake failed.
+      renderMatch();
+    }
     toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);
   }finally{
     busy=false;
