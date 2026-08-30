@@ -77,3 +77,14 @@ html.mobile-webapp.compact-landscape .hand-card-button{min-width:50px;min-height
 html.mobile-webapp.compact-landscape .hand-card-button .card{height:94px}
 html.mobile-webapp.compact-landscape .card-back{height:46px;margin-left:-12px}
 html.mobile-webapp.compact-landscape .captured-row .card{height:30px}
+
+/* Koi/agari presentation must live inside the virtual landscape canvas. */
+html.mobile-webapp.phone-landscape .modal:has(.koi-choice){width:min(76%,680px);max-height:72%;padding:10px 16px;overflow:hidden;display:grid;grid-template-rows:auto auto auto;align-content:center}
+html.mobile-webapp.phone-landscape .modal:has(.koi-choice) h2{font-size:1.05rem;margin:.1em 0 .35em}
+html.mobile-webapp.phone-landscape .modal:has(.koi-choice) p{font-size:.78rem;line-height:1.3;margin:.15em 0;text-align:center}
+html.mobile-webapp.phone-landscape .koi-choice{grid-template-columns:repeat(2,minmax(150px,240px));gap:14px;margin-top:8px}
+html.mobile-webapp.phone-landscape .koi-choice button{min-height:56px;font-size:1rem}
+html.mobile-webapp.phone-landscape .fx-layer{width:100%;height:var(--table-h);inset:0;padding:4px}
+html.mobile-webapp.phone-landscape .callout{width:min(66%,620px);height:min(62%,260px)}
+html.mobile-webapp.phone-landscape .agari-yaku-card{min-width:min(58%,520px);max-width:68%;padding:12px 20px}
+html.mobile-webapp.phone-landscape .agari-yaku-card strong{font-size:clamp(1.4rem,calc(var(--mobile-canvas-height)*.052),2.2rem)}
