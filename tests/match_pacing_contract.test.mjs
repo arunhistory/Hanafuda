@@ -39,4 +39,17 @@ assert.match(mobileCss,/\.callout \.particle\{display:none!important\}/,'phone k
 assert.match(mobileCss,/chrome-mobile \.card[^\n]*filter:none!important/,'Chrome mobile must not run expensive card filters during match animation');
 assert.match(css,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone action animations must remove expensive drop-shadow filters');
 
+const acceptStart=cpu.indexOf('async function acceptSnapshot');
+const acceptEnd=cpu.indexOf('function recordHistory',acceptStart);
+assert.ok(acceptStart>=0&&acceptEnd>acceptStart,'acceptSnapshot must exist');
+const acceptBlock=cpu.slice(acceptStart,acceptEnd);
+const animateIndex=acceptBlock.indexOf('await animateEvent(visibleEvent,next)');
+const commitIndex=acceptBlock.indexOf('snapshot=next');
+const renderIndex=acceptBlock.lastIndexOf('renderMatch()');
+assert.ok(animateIndex>=0&&commitIndex>animateIndex,'the visible action must finish before the authoritative next snapshot is committed to the board');
+assert.ok(renderIndex>commitIndex,'the post-action board and settlement UI must render only after animation completion');
+assert.doesNotMatch(cpu,/event\.capturedCards\?\.length\)await showCaptureTrail/,'legacy capture trail must not add a second delayed capture after the board-first capture motion');
+assert.match(cpu,/async function animateEvent\(event:ActionEvent,nextState:Snapshot\|null=snapshot\)/,'event animation must receive the upcoming authoritative state without displaying it early');
+assert.match(cpu,/await showCallout\("effect\.agari\.text"\);[\s\S]*confirmedSettlementYaku\(event,nextState\)/,'agari and confirmed yaku must be presented from the upcoming settlement state before settlement UI is committed');
+
 console.log('board-first DS-style match animation contract: PASS');
