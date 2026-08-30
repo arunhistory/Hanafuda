@@ -31,5 +31,10 @@ assert.match(gate,/if\(!authoritativeGameCreated\)[\s\S]*stack=\["home","cpu-set
 assert.doesNotMatch(views,/function renderCpuSetup\(\)[\s\S]{0,1600}<select id="cpu-mode"/,'CPU setup must not use a native popup select for difficulty');
 assert.match(views,/data-cpu-mode=/,'CPU setup must expose in-canvas difficulty choices');
 assert.match(views,/data-cpu-rounds=/,'CPU setup must expose in-canvas round choices');
+assert.match(gate,/\[\[-1,"ランダム"\],\[0,"あなた"\],\[1,"相手"\]\]/,'dealer choice must offer random, player and opponent in-canvas');
+assert.match(gate,/data-cpu-dealer=/,'dealer choice must use in-canvas buttons instead of a native popup');
+assert.match(gate,/n===-1\|\|n===0\|\|n===1/,'dealer choice must accept only -1, 0 or 1');
+assert.match(gate,/const firstDealer=dealerChoiceV3\(\)/,'selected dealer must be resolved before CPU start');
+assert.ok((gate.match(/firstDealer/g)||[]).length>=4,'firstDealer must be passed through both normal and impossible CPU start payloads');
 
-console.log('pregame engine-start ordering and landscape setup contract v3: PASS');
+console.log('pregame engine-start ordering, landscape setup and dealer contract v3: PASS');
