@@ -2,6 +2,7 @@
   let stagedHand=null;
   let committing=false;
   let koiDecisionPending=false;
+  let roundTransitionPending=false;
 
   function inPlayerPlayPhase(){
     return typeof snapshot!=="undefined"&&snapshot&&snapshot.turn===playerSeat()&&snapshot.phase===1&&!busy&&!committing;
@@ -114,6 +115,64 @@
       if(started.data.unlockGranted===true)grantUnlock();
       renderMatch();
     }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;if(snapshot&&currentScreen()==="match")renderMatch();}
+  };
+
+  const baseSendAction=sendAction;
+  sendAction=async function(action,payload={}){
+    if(action!=="next_round"||session?.kind!=="cpu")return baseSendAction(action,payload);
+    if(busy||roundTransitionPending||!session||!snapshot)return;
+    roundTransitionPending=true;
+    const readyBefore=matchInteractionReady;
+    matchInteractionReady=false;
+    busy=true;
+    try{
+      const result=await api("/api/cpu/action",{sessionId:session.sessionId,token:session.token,version:session.version,action,...payload});
+      if(!result.ok||!result.data?.ok)throw new Error(result.data?.code||"ACTION_FAILED");
+      session.version=Number(result.data.version);
+      pendingModeTransition=result.data.modeTransition?.transition==="impossible";
+      if(result.data.unlockGranted===true)grantUnlock();
+      const nextSnapshot=result.data.snapshot;
+      if(!nextSnapshot)throw new Error("NEXT_ROUND_SNAPSHOT_MISSING");
+
+      // Keep the completed round visible. The next round must not exist in the DOM before shuffle finishes.
+      renderMatch();
+      if(!settings.skipNormalAnimations)await showShuffle(false);
+
+      snapshot=nextSnapshot;
+      roundHistory=[];
+      currentRound=nextSnapshot.roundIndex;
+      renderMatch();
+      const board=app.querySelector(".board");
+      if(!settings.skipNormalAnimations){
+        board?.classList.add("dealing");
+        if(board)void board.offsetWidth;
+        await delay(Math.min(1200,700+(snapshot.hand?.length??8)*55));
+        board?.classList.remove("dealing");
+      }
+      emitAudioHook("deal");
+      await showReadyGate();
+      matchInteractionReady=true;
+      renderMatch();
+      await releaseCpuAfterReady();
+    }catch(e){
+      matchInteractionReady=readyBefore;
+      toast(e instanceof Error?e.message:"次局の開始に失敗しました");
+      try{await refreshStatus();}catch{}
+    }finally{
+      busy=false;
+      roundTransitionPending=false;
+      if(snapshot&&currentScreen()==="match")renderMatch();
+    }
+  };
+
+  showCallout=async function(assetId){
+    const isAgari=assetId==="effect.agari.text";
+    const layer=document.createElement("div");
+    layer.className=`fx-layer dramatic-callout-layer ${isAgari?"agari-dramatic":"koi-dramatic"}`;
+    layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="callout dramatic-callout"><img src="${assets.path(assetId)}" alt=""></div>`;
+    matchEffectHost().append(layer);
+    await delay(isAgari?1450:1250);
+    layer.remove();
   };
 
   const baseChooseKoi=chooseKoi;
