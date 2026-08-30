@@ -4,6 +4,9 @@ function actionActorLabel(event) {
     return Number(event.actor) === playerSeat() ? "あなた" : "相手";
 }
 function actionMonth(card) { return Math.floor(card / 4); }
+function isTurnProgressEvent(event) { return event.type === "play" || event.type === "cpu_step"; }
+function hasHandPlay(event) { return isTurnProgressEvent(event) && Number.isInteger(event.playedCard); }
+function hasDeckReveal(event) { return isTurnProgressEvent(event) && Number.isInteger(event.drawnCard); }
 function captureGroups(event) {
     const pool = [...(event.capturedCards ?? [])];
     const takeFor = (card) => {
@@ -15,10 +18,10 @@ function captureGroups(event) {
                 taken.unshift(pool.splice(i, 1)[0]);
         return taken;
     };
-    const hand = takeFor(event.playedCard);
-    const draw = takeFor(event.drawnCard);
+    const hand = takeFor(hasHandPlay(event) ? event.playedCard : null);
+    const draw = takeFor(hasDeckReveal(event) ? event.drawnCard : null);
     if (pool.length) {
-        if (Number.isInteger(event.drawnCard))
+        if (hasDeckReveal(event))
             draw.push(...pool.splice(0));
         else
             hand.push(...pool.splice(0));
@@ -93,17 +96,17 @@ async function playVisibleActionSteps(event) {
     matchRecapBlocking = true;
     try {
         const captures = captureGroups(event);
-        if (Number.isInteger(event.playedCard)) {
+        if (hasHandPlay(event)) {
             await showCardToField(event, event.playedCard, "手札", "hand");
             if (captures.hand.length)
                 await showCaptureMove(event, captures.hand);
         }
-        if (Number.isInteger(event.drawnCard)) {
+        if (hasDeckReveal(event)) {
             await showDeckReveal(event, event.drawnCard);
             if (captures.draw.length)
                 await showCaptureMove(event, captures.draw);
         }
-        if (!Number.isInteger(event.playedCard) && !Number.isInteger(event.drawnCard) && event.capturedCards?.length) {
+        if (!hasHandPlay(event) && !hasDeckReveal(event) && event.capturedCards?.length) {
             await showCaptureMove(event, event.capturedCards);
         }
         if (event.type === "koi")
