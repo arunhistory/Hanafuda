@@ -129,6 +129,7 @@ let snapshot:Snapshot|null=null;
 let currentRound=-1;
 let roundHistory:string[]=[];
 let busy=false;
+let matchInteractionReady=true;
 let modal:"pause"|"yaku"|"state"|"history"|"rules"|"settings"|"giveup"|null=null;
 let pendingModeTransition=false;
 let hiddenFirstEncounter=false;
@@ -156,6 +157,7 @@ function goHome(){stack=["home"];modal=null;render();}
 function escapeHtml(value:unknown){return String(value).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]!));}
 function modeLabel(mode:CpuMode){return mode==="beginner"?"初心者":mode==="amateur"?"アマチュア":mode==="pro"?"プロ":"人知不能";}
 function phaseLabel(s:Snapshot){
+  if(session?.kind==="cpu"&&!matchInteractionReady)return "対局準備中";
   if(s.phase===1)return s.turn===playerSeat()?"手札から1枚選んでください":"相手の手番です";
   if(s.phase===2||s.phase===3)return s.turn===playerSeat()?"取る場札を選んでください":"相手が取得札を選択中";
   if(s.phase===4)return s.turn===playerSeat()?"役が成立しました":"相手がこいこいを判断中";
@@ -173,4 +175,3 @@ function renderToasts(){let el=document.querySelector<HTMLElement>("#toast-stack
 
 function topbar(title:string,backEnabled=true){return `<header class="topbar">${backEnabled?'<button class="icon-button" data-action="back" aria-label="戻る">←</button>':'<span></span>'}<h1>${escapeHtml(title)}</h1><button class="icon-button" data-action="home" aria-label="ホーム">⌂</button></header>`;}
 function screenClass(extra=""){return `screen ${extra}`.trim();}
-
