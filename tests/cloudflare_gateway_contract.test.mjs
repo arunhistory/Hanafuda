@@ -8,6 +8,7 @@ const files=fs.readdirSync(dir).filter(x=>x.endsWith('.ts')).sort();
 const src=files.map(x=>fs.readFileSync(path.join(dir,x),'utf8')).join('\n');
 const directorySrc=fs.readFileSync(path.join(dir,'directory.ts'),'utf8');
 const onlineRoomSrc=fs.readFileSync(path.join(dir,'online-room.ts'),'utf8');
+const cpuSessionSrc=fs.readFileSync(path.join(dir,'cpu-session.ts'),'utf8');
 const replacementPrior=onlineRoomSrc.indexOf('const prior=this.socketFor(seat);');
 const replacementAccept=onlineRoomSrc.indexOf('this.state.acceptWebSocket(server',replacementPrior);
 const replacementStore=onlineRoomSrc.indexOf('[this.connectionKey(seat)]:connectionId',replacementAccept);
@@ -15,6 +16,12 @@ const replacementClose=onlineRoomSrc.indexOf('prior?.close(4001,"replaced")',rep
 const postmatchStart=onlineRoomSrc.indexOf('async postmatch(body:any)');
 const postmatchLock=onlineRoomSrc.indexOf('await this.state.storage.put({postmatchChoice:choice',postmatchStart);
 const postmatchRematchCreate=onlineRoomSrc.indexOf('op:"create_internal"',postmatchLock);
+const cpuInitStart=cpuSessionSrc.indexOf('async init(body:any)');
+const cpuInitEnd=cpuSessionSrc.indexOf('async modeSession()',cpuInitStart);
+const cpuInitBlock=cpuSessionSrc.slice(cpuInitStart,cpuInitEnd);
+const cpuReadyStart=cpuSessionSrc.indexOf('async ready()');
+const cpuReadyEnd=cpuSessionSrc.indexOf('async action(body:any)',cpuReadyStart);
+const cpuReadyBlock=cpuSessionSrc.slice(cpuReadyStart,cpuReadyEnd);
 const checks=[
   ['internal Supabase boundary',src.includes('"x-hanafuda-internal":internal')],
   ['no service-role secret in Cloudflare source',!src.includes('SUPABASE_SERVICE_ROLE_KEY')],
@@ -30,6 +37,12 @@ const checks=[
   ['challenge creates private CPU profile only after transition',src.includes('cpuProfile:3')&&src.includes('CHALLENGE_ENGINE_CREATE_FAILED')],
   ['developer challenge cannot grant normal unlock',src.includes('challengeTestOnly:testOnly')&&src.includes('challengeTestOnly')],
   ['direct hidden mode requires local unlock signal and official origin',src.includes('body?.unlocked!==true')&&src.includes('req.headers.get("Origin")!==env.APP_ORIGIN')&&src.includes('MODE_LOCKED')],
+  ['CPU start endpoint does not advance the CPU before presentation readiness',cpuInitStart>=0&&cpuInitEnd>cpuInitStart&&!cpuInitBlock.includes('this.runCpu(events)')&&cpuInitBlock.includes('ready:false')],
+  ['CPU ready endpoint is explicit and authenticated',cpuSessionSrc.includes('/api/cpu/ready')&&cpuSessionSrc.includes('if(op==="ready")return this.ready();')&&cpuReadyStart>=0],
+  ['CPU moves only after ready gate opens',cpuReadyBlock.includes('this.runCpu(events)')&&cpuReadyBlock.includes('ready:true')],
+  ['player actions cannot race before ready',cpuSessionSrc.includes('SESSION_NOT_READY')&&cpuSessionSrc.includes('storage.get("ready")')],
+  ['next round closes CPU gate before the new dealer can move',cpuSessionSrc.includes('if(kind==="next_round")')&&cpuSessionSrc.includes('ready:false,readyPayload:null')],
+  ['hidden challenge transition also starts behind the ready gate',cpuSessionSrc.includes('developer:false,ready:false,readyPayload:null,transitionedAt')&&!cpuSessionSrc.slice(cpuSessionSrc.indexOf('async transition()'),cpuSessionSrc.indexOf('async status()')).includes('this.runCpu(events)')],
   ['random matching segregates RuleSet',src.includes('waiting:${key}')&&src.includes('ruleKey(rules)')],
   ['random matchmaking is WebSocket event-driven',src.includes('/api/online/random/connect')&&src.includes('new WebSocketPair()')&&src.includes('type:"matched"')&&!src.includes('op==="poll"')&&!src.includes('op==="enqueue"')],
   ['matchmaking sockets use Durable Object hibernation API',directorySrc.includes('this.state.acceptWebSocket(server')&&directorySrc.includes('this.state.getWebSockets(`ticket:${ticket}`)')&&directorySrc.includes('serializeAttachment')&&directorySrc.includes('webSocketMessage(')&&!directorySrc.includes('server.accept()')&&!directorySrc.includes('server.addEventListener(')],
