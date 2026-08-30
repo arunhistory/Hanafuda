@@ -1,0 +1,13 @@
+.dramatic-callout-text{display:block;position:relative;z-index:4;margin:0;padding:0 .08em;color:#fff8e7;font-size:clamp(3.2rem,9rem,9rem);font-weight:1000;line-height:.92;letter-spacing:.08em;white-space:nowrap;text-align:center;text-shadow:0 4px 0 #7a2515,0 10px 24px rgba(0,0,0,.8),0 0 18px rgba(255,226,142,.88);animation:dramatic-title-impact 1.35s cubic-bezier(.12,.82,.18,1) both;will-change:transform,opacity}
+.koi-dramatic .dramatic-callout-text{color:#ffe6a0;text-shadow:0 4px 0 #7f3512,0 10px 24px rgba(0,0,0,.82),0 0 20px rgba(255,191,56,.94)}
+.agari-dramatic .dramatic-callout-text{font-size:clamp(3.6rem,10rem,10rem);letter-spacing:.14em;color:#fffdf4;text-shadow:0 5px 0 #8b2115,0 12px 28px rgba(0,0,0,.86),0 0 24px rgba(255,240,189,.98)}
+html.mobile-webapp .dramatic-callout-text{font-size:clamp(3rem,calc(var(--mobile-canvas-height)*.16),7rem)}
+html.mobile-webapp .agari-dramatic .dramatic-callout-text{font-size:clamp(3.2rem,calc(var(--mobile-canvas-height)*.18),7.5rem)}
+html.mobile-webapp.phone-landscape .match-screen>.modal-layer{align-items:center;justify-content:center;padding:4px}
+html.mobile-webapp.phone-landscape .match-screen>.modal-layer>.modal{width:min(90%,820px);max-height:calc(100% - 8px);padding:8px 12px;overflow:auto;overscroll-behavior:contain}
+html.mobile-webapp.phone-landscape .match-screen>.modal-layer>.modal:has(>.modal-list){width:min(94%,900px);max-height:calc(100% - 6px)}
+html.mobile-webapp.phone-landscape .modal-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+html.mobile-webapp.phone-landscape .modal-list .menu-item{min-height:34px;padding:5px 8px;font-size:.74rem;line-height:1.15}
+html.mobile-webapp.phone-landscape .modal-list .menu-item span{font-size:.62rem}
+html.mobile-webapp.compact-landscape .modal-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+html.mobile-webapp.compact-landscape .modal-list .menu-item{min-height:30px;padding:4px 6px;font-size:.68rem}
