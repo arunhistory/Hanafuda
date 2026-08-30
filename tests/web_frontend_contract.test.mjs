@@ -40,7 +40,7 @@ const checks=[
   ['capture animation exists',ts.includes('showCaptureTrail')&&css.includes('@keyframes captureFly')],
   ['koi and agari use registered text assets',ts.includes('effect.koikoi.text')&&ts.includes('effect.agari.text')],
   ['important callout text is held beyond one second',ts.includes('await delay(1850)')],
-  ['agari reveals authoritative yaku before settlement',ts.includes('function confirmedSettlementYaku(event:ActionEvent)')&&ts.includes('await showCallout("effect.agari.text");')&&ts.includes('await showAgariYaku(label)')&&ts.includes('await delay(1250)')&&experienceCss.includes('.agari-yaku-card')],
+  ['agari reveals authoritative yaku before settlement',ts.includes('function confirmedSettlementYaku(event:ActionEvent,state:Snapshot|null)')&&ts.includes('await showCallout("effect.agari.text");')&&ts.includes('confirmedSettlementYaku(event,nextState)')&&ts.includes('await showAgariYaku(label)')&&ts.includes('await delay(1250)')&&experienceCss.includes('.agari-yaku-card')],
   ['simultaneous deal specials display both sides',ts.includes('function decorateSimultaneousSpecials(breakdown:HTMLElement)')&&ts.includes('snapshot.lastRoundWinner!==2')&&ts.includes('`あなた: ${mine} / 相手: ${theirs}`')],
   ['settlement order includes yaku base multiplier round cumulative next dealer',['成立役','基礎点','こいこい倍率','局得点','累計点','次局親'].every(x=>ts.includes(x))],
   ['settlement controls wait for the next-dealer row',experienceCss.includes('settlementControlsReveal .42s ease 3.18s both')],
