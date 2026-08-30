@@ -1,0 +1,40 @@
+name: Migrate Hanafuda effect art
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/migrate-hanafuda-effects.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload fixed effect assets to Supabase Storage
+        env:
+          SUPABASE_URL: https://mpuhgfbdkxmhynytwhzu.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_POCxau9QCPFlF0J11o-ZFg_-QY4b8gF
+        run: |
+          set -euo pipefail
+          upload() {
+            local src="$1"
+            local dst="$2"
+            curl --fail-with-body --silent --show-error \
+              -X POST "$SUPABASE_URL/storage/v1/object/hanafuda-effects/$dst" \
+              -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+              -H "Content-Type: image/png" \
+              -H "Cache-Control: max-age=31536000" \
+              --data-binary "@$src"
+          }
+          upload assets/effects/koikoi/koikoi-text.png koikoi-text.png
+          upload assets/effects/agari/agari-text.png agari-text.png
+      - name: Verify public objects
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --head https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/koikoi-text.png
+          curl --fail --silent --show-error --head https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/agari-text.png
