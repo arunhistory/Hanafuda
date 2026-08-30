@@ -11,6 +11,7 @@ assert.match(gate,/stopImmediatePropagation\(\)/,'v3 must block every legacy sta
 assert.match(gate,/addEventListener\("click"[\s\S]*true\);/,'the pregame start interception must run in capture phase');
 
 const shufflePos=gate.indexOf('await showShuffle(true);');
+const modePos=gate.indexOf('const mode=await api("/api/mode/start"');
 const startPos=gate.indexOf('const started=await api("/api/cpu/start"');
 const dealPos=gate.indexOf('await dealPreparedSnapshotV3();');
 const readyPos=gate.indexOf('await showReadyGate();');
@@ -18,7 +19,8 @@ const openPos=gate.indexOf('matchInteractionReady=true;',readyPos);
 const cpuReadyPos=gate.indexOf('await releaseCpuAfterReady();',openPos);
 
 assert.ok(shufflePos>=0,'shuffle must exist');
-assert.ok(startPos>shufflePos,'authoritative game creation must happen only after shuffle completes');
+assert.ok(modePos>shufflePos,'mode authority must not start until shuffle completes');
+assert.ok(startPos>modePos,'CPU game creation must immediately follow mode authority after shuffle');
 assert.ok(dealPos>startPos,'deal presentation must happen after the authoritative initial snapshot exists');
 assert.ok(readyPos>dealPos,'ready presentation must wait for dealing to finish');
 assert.ok(openPos>readyPos,'player interaction must remain closed through the ready presentation');
