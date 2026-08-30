@@ -1,21 +1,22 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const css=fs.readFileSync('web/mobile-landscape-v5.css','utf8');
+const css=fs.readFileSync('web/mobile-landscape-v6.css','utf8');
 const phoneCss=fs.readFileSync('web/mobile-phone-home-fix-v1.css','utf8');
 const pacingCss=fs.readFileSync('web/match-pacing.css','utf8');
 const ts=fs.readFileSync('web/src/mobile-launch.ts','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/id="webapp-viewport" class="webapp-viewport"/,'the web app must have one virtual landscape viewport wrapper');
-assert.match(html,/mobile-landscape-v5\.css/,'the current mobile match stylesheet must be loaded');
-assert.doesNotMatch(html,/mobile-landscape-v4\.css/,'the superseded v4 stylesheet must not be loaded');
+assert.match(html,/mobile-landscape-v6\.css/,'the current mobile match stylesheet must be loaded');
+assert.doesNotMatch(html,/mobile-landscape-v5\.css|mobile-landscape-v4\.css/,'superseded mobile stylesheets must not be loaded');
 assert.match(html,/mobile-phone-home-fix-v1\.css/,'the phone-specific overflow correction must be loaded after the base mobile layout');
 assert.match(html,/dist\/mobile-launch\.js/,'the mobile web-app launcher must be loaded');
 assert.doesNotMatch(html,/mobile-landscape-v3\.css|dist\/ui-profile\.js|mobile-landscape-v2\.css/,'obsolete mobile layout assets must not be loaded');
 assert.doesNotMatch(html,/mpuhgfbdkxmhynytwhzu\.supabase\.co/,'mobile launch must not depend on a Supabase orientation service');
 
 assert.match(ts,/function isMobileOrTablet\(\)/,'mobile/tablet launch detection must exist in the web app');
+assert.match(ts,/function isChromeMobile\(\)/,'Chrome mobile must have a dedicated performance path');
 assert.match(ts,/window\.visualViewport/,'the canvas must use the actual browser content viewport');
 assert.match(ts,/canvasWidth=portrait\?height:width/,'portrait browsers must expose their long dimension as landscape width');
 assert.match(ts,/canvasHeight=portrait\?width:height/,'portrait browsers must expose their short dimension as landscape height');
@@ -23,6 +24,9 @@ assert.match(ts,/virtual-landscape/,'portrait mobile browsers must activate the 
 assert.match(ts,/compact-landscape/,'short phone canvases must have an explicit playable layout mode');
 assert.match(ts,/phone-landscape/,'phone-sized virtual landscape canvases must have a dedicated non-overflow layout');
 assert.match(ts,/const phoneLandscape=canvasHeight<=520/,'phone layout must be selected from the effective landscape canvas height');
+assert.match(ts,/setTimeout\(\(\)=>\{mobileCanvasTimer=undefined;syncMobileCanvas\(\);\},140\)/,'continuous visualViewport resize events must be coalesced before relayout');
+assert.match(ts,/if\(canvasWidth!==lastCanvasWidth\)/,'unchanged canvas width must not rewrite layout variables');
+assert.match(ts,/if\(canvasHeight!==lastCanvasHeight\)/,'unchanged canvas height must not rewrite layout variables');
 assert.doesNotMatch(ts,/orientation\.lock|requestFullscreen|hanafuda-ui-profile/,'launch must not rotate the OS, force fullscreen, or call an orientation service');
 
 assert.match(css,/html\.mobile-webapp\.virtual-landscape \.webapp-viewport[^\n]*rotate\(90deg\)/,'only the completed landscape canvas may be placed sideways inside a portrait browser');
@@ -43,6 +47,8 @@ assert.match(css,/\.match-screen>\.modal-layer\{position:absolute;inset:0/,'matc
 assert.match(css,/#app>\.fx-layer\{position:absolute/,'dynamic agari/koi effects must be anchored inside the virtual landscape app');
 assert.match(css,/\.callout \.particle\{display:none!important\}/,'phone callouts must not animate particle swarms');
 assert.match(css,/backdrop-filter:none/,'mobile overlays must disable expensive backdrop filtering');
+assert.match(css,/chrome-mobile \.webapp-viewport\{[^\n]*will-change:transform[^\n]*contain:layout paint size style/,'Chrome mobile must keep the rotated app in one composited contained layer');
+assert.match(css,/chrome-mobile \.card[^\n]*filter:none!important/,'Chrome mobile cards must avoid expensive per-card filters');
 assert.match(pacingCss,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone card motion must disable expensive image filters');
 assert.match(pacingCss,/translate3d/,'mobile-friendly action motion must use compositor transforms');
 
