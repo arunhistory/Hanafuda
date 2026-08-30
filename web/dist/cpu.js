@@ -25,23 +25,28 @@ async function startCpu() {
         if (!started.ok || !started.data?.ok)
             throw new Error(started.data?.code || "CPU_START_FAILED");
         session = { kind: "cpu", sessionId: started.data.sessionId, token: started.data.token, version: Number(started.data.version), mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken };
-        snapshot = started.data.snapshot;
+        const startEvents = (started.data.events ?? []);
+        const stagedStart = startEvents.find(event => event?.snapshot)?.snapshot ?? started.data.snapshot;
+        snapshot = stagedStart;
         pendingModeTransition = started.data.modeTransition?.transition === "impossible";
         hiddenFirstEncounter = false;
         roundHistory = [];
         currentRound = -1;
         stack = ["home", "cpu-setup", "match"];
-        await acceptApiEvents(started.data.events ?? []);
+        renderMatch();
+        await animateNewRoundIfNeeded(true);
+        await acceptApiEvents(startEvents);
+        snapshot = started.data.snapshot;
         if (started.data.unlockGranted === true)
             grantUnlock();
         renderMatch();
-        await animateNewRoundIfNeeded(true);
     }
     catch (e) {
         toast(`開始できません: ${e instanceof Error ? e.message : "ERROR"}`);
     }
     finally {
         busy = false;
+        renderMatch();
     }
 }
 async function acceptApiEvents(events) { for (const event of events) {
@@ -50,17 +55,37 @@ async function acceptApiEvents(events) { for (const event of events) {
     if (session?.kind === "cpu")
         session.version = Number(event.version);
 } }
+function newlyCaptured(before, after) {
+    const counts = new Map();
+    for (const card of before)
+        counts.set(card, (counts.get(card) ?? 0) + 1);
+    const added = [];
+    for (const card of after) {
+        const left = counts.get(card) ?? 0;
+        if (left > 0)
+            counts.set(card, left - 1);
+        else
+            added.push(card);
+    }
+    return added;
+}
+function presentationEvent(old, next, event, actor) {
+    const actorSeat = Number.isInteger(event.actor) ? Number(event.actor) : actor === "cpu" ? opponentSeat() : actor === "player" ? playerSeat() : null;
+    const captured = event.capturedCards?.length ? event.capturedCards : (old && actorSeat !== null ? newlyCaptured(old.captured[actorSeat] ?? [], next.captured[actorSeat] ?? []) : []);
+    return { ...event, actor: actorSeat === null ? event.actor : actorSeat, capturedCards: captured };
+}
 async function acceptSnapshot(next, event, actor) {
     const old = snapshot;
+    const visibleEvent = event ? presentationEvent(old, next, event, actor) : null;
     snapshot = next;
-    if (event)
-        recordHistory(event, actor);
+    if (visibleEvent)
+        recordHistory(visibleEvent, actor);
     if (old && old.roundIndex !== next.roundIndex) {
         roundHistory = [];
         currentRound = -1;
     }
-    if (event && !settings.skipNormalAnimations)
-        await animateEvent(event);
+    if (visibleEvent && !settings.skipNormalAnimations)
+        await animateEvent(visibleEvent);
 }
 function recordHistory(event, actor) {
     const who = event.actor === playerSeat() || actor === "player" ? "あなた" : event.actor === opponentSeat() || actor === "cpu" ? "相手" : "システム";
@@ -109,12 +134,14 @@ async function sendAction(action, payload = {}) {
             if (!alreadyApplied) {
                 if (Number.isSafeInteger(responseVersion))
                     session.version = responseVersion;
-                snapshot = result.data.snapshot;
-                const event = result.data.actionEvent;
-                if (event) {
-                    recordHistory(event, "player");
+                const next = result.data.snapshot;
+                const rawEvent = result.data.actionEvent;
+                const visibleEvent = rawEvent ? presentationEvent(snapshot, next, rawEvent, "player") : null;
+                snapshot = next;
+                if (visibleEvent) {
+                    recordHistory(visibleEvent, "player");
                     if (!settings.skipNormalAnimations)
-                        await animateEvent(event);
+                        await animateEvent(visibleEvent);
                 }
             }
         }
@@ -180,9 +207,9 @@ async function beginImpossibleTransition() {
         hiddenFirstEncounter = true;
         roundHistory = [];
         currentRound = -1;
-        await acceptApiEvents(result.data.events ?? []);
         renderMatch();
         await animateNewRoundIfNeeded(true);
+        await acceptApiEvents(result.data.events ?? []);
     }
     catch (e) {
         toast(`遷移に失敗しました: ${e instanceof Error ? e.message : "ERROR"}`);
@@ -230,7 +257,7 @@ function confirmedSettlementYaku(event) {
 }
 async function animateEvent(event) {
     if (event.capturedCards?.length)
-        toast(`取得: ${event.capturedCards.map(cardName).join("・")}`);
+        toast(`${event.actor === playerSeat() ? "あなた" : "相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
     if (event.newYakuMask)
         toast(`役成立: ${yakuNames(event.newYakuMask)}`);
     if (event.capturedCards?.length)
@@ -242,7 +269,7 @@ async function animateEvent(event) {
             await showAgariYaku(label);
     }
     emitAudioHook("card-action", { event });
-    await delay(120);
+    await delay(220);
 }
 async function showShuffle(initial = false) {
     const layer = document.createElement("div");
@@ -275,7 +302,7 @@ async function showCaptureTrail(cards, toPlayer) {
     layer.className = `capture-trail ${toPlayer ? "to-player" : "to-opponent"}`;
     layer.innerHTML = cards.slice(0, 4).map((card, i) => `<span style="--trail-index:${i}">${cardImg(card)}</span>`).join("");
     document.body.append(layer);
-    await delay(520);
+    await delay(760);
     layer.remove();
 }
 async function showCollapse() {
