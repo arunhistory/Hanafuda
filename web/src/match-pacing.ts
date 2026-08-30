@@ -4,6 +4,9 @@ function actionActorLabel(event:ActionEvent){
   return Number(event.actor)===playerSeat()?"あなた":"相手";
 }
 function actionMonth(card:number){return Math.floor(card/4);}
+function isTurnProgressEvent(event:ActionEvent){return event.type==="play"||event.type==="cpu_step";}
+function hasHandPlay(event:ActionEvent){return isTurnProgressEvent(event)&&Number.isInteger(event.playedCard);}
+function hasDeckReveal(event:ActionEvent){return isTurnProgressEvent(event)&&Number.isInteger(event.drawnCard);}
 function captureGroups(event:ActionEvent){
   const pool=[...(event.capturedCards??[])];
   const takeFor=(card:number|null|undefined)=>{
@@ -12,10 +15,10 @@ function captureGroups(event:ActionEvent){
     for(let i=pool.length-1;i>=0;i--)if(actionMonth(pool[i])===month)taken.unshift(pool.splice(i,1)[0]);
     return taken;
   };
-  const hand=takeFor(event.playedCard);
-  const draw=takeFor(event.drawnCard);
+  const hand=takeFor(hasHandPlay(event)?event.playedCard:null);
+  const draw=takeFor(hasDeckReveal(event)?event.drawnCard:null);
   if(pool.length){
-    if(Number.isInteger(event.drawnCard))draw.push(...pool.splice(0));
+    if(hasDeckReveal(event))draw.push(...pool.splice(0));
     else hand.push(...pool.splice(0));
   }
   return {hand,draw};
@@ -63,15 +66,15 @@ async function playVisibleActionSteps(event:ActionEvent){
   matchRecapBlocking=true;
   try{
     const captures=captureGroups(event);
-    if(Number.isInteger(event.playedCard)){
+    if(hasHandPlay(event)){
       await showCardToField(event,event.playedCard!,"手札","hand");
       if(captures.hand.length)await showCaptureMove(event,captures.hand);
     }
-    if(Number.isInteger(event.drawnCard)){
+    if(hasDeckReveal(event)){
       await showDeckReveal(event,event.drawnCard!);
       if(captures.draw.length)await showCaptureMove(event,captures.draw);
     }
-    if(!Number.isInteger(event.playedCard)&&!Number.isInteger(event.drawnCard)&&event.capturedCards?.length){
+    if(!hasHandPlay(event)&&!hasDeckReveal(event)&&event.capturedCards?.length){
       await showCaptureMove(event,event.capturedCards);
     }
     if(event.type==="koi")await showDecision(event);
