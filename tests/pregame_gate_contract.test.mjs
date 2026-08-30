@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const html=fs.readFileSync('web/index.html','utf8');
 const gate=fs.readFileSync('web/pregame-gate-v3.js','utf8');
+const views=fs.readFileSync('web/src/views.ts','utf8');
 
 assert.match(html,/pregame-gate-v3\.js/,'the authoritative pregame gate must be loaded');
 assert.doesNotMatch(html,/pregame-gate-v2\.js/,'the obsolete pregame gate must not be loaded');
@@ -14,17 +15,21 @@ const shufflePos=gate.indexOf('await showShuffle(true);');
 const modePos=gate.indexOf('const mode=await api("/api/mode/start"');
 const startPos=gate.indexOf('const started=await api("/api/cpu/start"');
 const dealPos=gate.indexOf('await dealPreparedSnapshotV3();');
-const readyPos=gate.indexOf('await showReadyGate();');
-const openPos=gate.indexOf('matchInteractionReady=true;',readyPos);
-const cpuReadyPos=gate.indexOf('await releaseCpuAfterReady();',openPos);
+const readyVisualPos=gate.indexOf('await showReadyGate();');
+const cpuReadyPos=gate.indexOf('await releaseCpuAfterReadyV3();',readyVisualPos);
+const openPos=gate.indexOf('matchInteractionReady=true;',cpuReadyPos);
 
 assert.ok(shufflePos>=0,'shuffle must exist');
 assert.ok(modePos>shufflePos,'mode authority must not start until shuffle completes');
 assert.ok(startPos>modePos,'CPU game creation must immediately follow mode authority after shuffle');
 assert.ok(dealPos>startPos,'deal presentation must happen after the authoritative initial snapshot exists');
-assert.ok(readyPos>dealPos,'ready presentation must wait for dealing to finish');
-assert.ok(openPos>readyPos,'player interaction must remain closed through the ready presentation');
-assert.ok(cpuReadyPos>openPos,'CPU may be released only after the real match-start boundary');
+assert.ok(readyVisualPos>dealPos,'ready presentation must wait for dealing to finish');
+assert.ok(cpuReadyPos>readyVisualPos,'server-side CPU release must wait for ready presentation');
+assert.ok(openPos>cpuReadyPos,'player interaction must not open before the ready handshake succeeds');
 assert.match(gate,/session=null;\s*snapshot=null;[\s\S]*renderCpuPreparationScreenV3\(\);[\s\S]*await showShuffle\(true\);/,'no authoritative game snapshot may exist during shuffle');
+assert.match(gate,/if\(!authoritativeGameCreated\)[\s\S]*stack=\["home","cpu-setup"\][\s\S]*else[\s\S]*renderMatch\(\)/,'a post-deal ready failure must preserve the created game instead of returning to setup');
+assert.doesNotMatch(views,/function renderCpuSetup\(\)[\s\S]{0,1600}<select id="cpu-mode"/,'CPU setup must not use a native popup select for difficulty');
+assert.match(views,/data-cpu-mode=/,'CPU setup must expose in-canvas difficulty choices');
+assert.match(views,/data-cpu-rounds=/,'CPU setup must expose in-canvas round choices');
 
-console.log('pregame engine-start ordering contract v3: PASS');
+console.log('pregame engine-start ordering and landscape setup contract v3: PASS');
