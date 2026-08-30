@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const css=fs.readFileSync('web/mobile-landscape-v4.css','utf8');
+const css=fs.readFileSync('web/mobile-landscape-v5.css','utf8');
 const phoneCss=fs.readFileSync('web/mobile-phone-home-fix-v1.css','utf8');
+const pacingCss=fs.readFileSync('web/match-pacing.css','utf8');
 const ts=fs.readFileSync('web/src/mobile-launch.ts','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/id="webapp-viewport" class="webapp-viewport"/,'the web app must have one virtual landscape viewport wrapper');
-assert.match(html,/mobile-landscape-v4\.css/,'the rebuilt mobile match stylesheet must be loaded');
+assert.match(html,/mobile-landscape-v5\.css/,'the current mobile match stylesheet must be loaded');
+assert.doesNotMatch(html,/mobile-landscape-v4\.css/,'the superseded v4 stylesheet must not be loaded');
 assert.match(html,/mobile-phone-home-fix-v1\.css/,'the phone-specific overflow correction must be loaded after the base mobile layout');
 assert.match(html,/dist\/mobile-launch\.js/,'the mobile web-app launcher must be loaded');
 assert.doesNotMatch(html,/mobile-landscape-v3\.css|dist\/ui-profile\.js|mobile-landscape-v2\.css/,'obsolete mobile layout assets must not be loaded');
@@ -37,6 +39,12 @@ assert.match(css,/\.opponent-zone>\.captured-box\{grid-column:3/,'opponent captu
 assert.match(css,/\.koi-choice button\{min-height:64px/,'koi/agari choices must be large, immediate touch actions');
 assert.match(css,/\.capture-trail span\{width:48px/,'transient capture effects must never cover the whole table');
 assert.match(css,/html\.mobile-webapp\.compact-landscape/,'short Safari viewports must retain a dedicated playable layout');
+assert.match(css,/\.match-screen>\.modal-layer\{position:absolute;inset:0/,'match modals including koi/agari must be anchored to the rotated landscape screen, not the portrait viewport');
+assert.match(css,/#app>\.fx-layer\{position:absolute/,'dynamic agari/koi effects must be anchored inside the virtual landscape app');
+assert.match(css,/\.callout \.particle\{display:none!important\}/,'phone callouts must not animate particle swarms');
+assert.match(css,/backdrop-filter:none/,'mobile overlays must disable expensive backdrop filtering');
+assert.match(pacingCss,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone card motion must disable expensive image filters');
+assert.match(pacingCss,/translate3d/,'mobile-friendly action motion must use compositor transforms');
 
 assert.match(phoneCss,/html\.mobile-webapp\.phone-landscape \.hero\{[^\n]*height:calc\(var\(--table-h\) - 10px\)/,'phone home must fit inside the real virtual table height');
 assert.match(phoneCss,/grid-template-columns:minmax\(150px,34%\) minmax\(0,66%\)/,'phone home must reserve bounded title and action columns');
