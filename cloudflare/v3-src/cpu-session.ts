@@ -79,11 +79,30 @@ export class HanafudaCpuSession {
   }
 
   async runCpu(events:any[]){
+    const mode=String(await this.state.storage.get("mode")??"");
     for(let guard=0;guard<8;guard++){
       const last=events[events.length-1];
       const snap=last?.snapshot;
       if(!snap||snap.turn!==1||!CPU_PHASES.has(Number(snap.phase)))return {ok:true};
-      const result=await this.engineAction({action:"cpu_step",actor:1});
+      let result:any;
+      if(mode==="beginner"){
+        const phase=Number(snap.phase);
+        const randomIndex=(n:number)=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return n>0?a[0]%n:0;};
+        if(phase===1){
+          const count=Math.max(0,Number(snap.opponentHandCount??0));
+          if(count<1)return {ok:false,response:json({ok:false,code:"BEGINNER_NO_HAND"},500)};
+          result=await this.engineAction({action:"play",actor:1,handIndex:randomIndex(count)});
+        }else if(phase===2||phase===3){
+          const pending=Array.isArray(snap.pendingMatches)?snap.pendingMatches.filter((x:any)=>Number.isInteger(Number(x))).map(Number):[];
+          if(!pending.length)return {ok:false,response:json({ok:false,code:"BEGINNER_NO_CAPTURE"},500)};
+          result=await this.engineAction({action:"capture",actor:1,fieldIndex:pending[randomIndex(pending.length)]});
+        }else if(phase===4){
+          const a=new Uint32Array(1);crypto.getRandomValues(a);
+          result=await this.engineAction({action:"koi",actor:1,chooseKoi:(a[0]&1)===1});
+        }else return {ok:true};
+      }else{
+        result=await this.engineAction({action:"cpu_step",actor:1});
+      }
       if(!result.ok||!result.data?.ok)return {ok:false,response:json({ok:false,code:"CPU_ENGINE_FAILED",detail:result.data?.code??null},result.status||502)};
       events.push({actor:"cpu",snapshot:result.data.snapshot,version:Number(result.data.version),actionEvent:result.data?.actionEvent??null});
       if(result.data?.modeTransition?.transition==="impossible"){
