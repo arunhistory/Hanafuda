@@ -18,10 +18,12 @@ assert.match(ts,/showDeckReveal/,'the deck card must visibly reveal before play 
 assert.match(ts,/showCaptureMove/,'captured cards must visibly move toward the capturing side');
 assert.match(ts,/captureGroups/,'hand and deck captures must be separated by card month when possible');
 assert.match(ts,/function hideCapturedFieldCards\(cards:number\[\]\)/,'capture motion must explicitly hide authoritative field-card sources before the copy moves');
+assert.match(ts,/function hidePlayedHandSource\(event:ActionEvent,card:number\)/,'played hand source must have an explicit hide path');
+assert.match(ts,/if\(from==="hand"\)hidePlayedHandSource\(event,card\);/,'played hand source must disappear as soon as its table motion starts');
 assert.match(ts,/button\.classList\.add\("capture-source-hidden"\)/,'the actual field-card DOM must disappear at capture start');
-assert.match(ts,/hideCapturedFieldCards\(cards\);[\s\S]*--capture-x/,'the field source must be hidden before capture-to-rail motion begins');
-assert.match(ts,/if\(!completed\)restoreHiddenFieldCards\(\)/,'a failed animation must restore temporarily hidden field cards');
-assert.match(css,/\.field-card-button\.capture-source-hidden\{visibility:hidden!important\}/,'captured card faces must disappear without collapsing their two-row field slots');
+assert.match(ts,/hiddenHandDuringAction\.push/,'hidden hand sources must be tracked for failure recovery');
+assert.match(ts,/if\(!completed\)restoreHiddenSources\(\)/,'a failed animation must restore temporarily hidden field and hand cards');
+assert.match(css,/\.field-card-button\.capture-source-hidden,\.hand-card-button\.capture-source-hidden,\.card-back\.capture-source-hidden\{visibility:hidden!important\}/,'field, player hand and opponent hand sources must all support non-collapsing hiding');
 assert.match(ts,/function reflectCapturedRail\(event:ActionEvent,nextState:Snapshot\|null\)/,'capture completion must have an explicit immediate destination update');
 assert.match(ts,/reflectCapturedRail\(event,nextState\);\s*layer\.remove\(\)/,'captured cards must appear in the capture rail at the instant capture motion finishes');
 assert.match(ts,/function isTurnProgressEvent\(event:ActionEvent\)\{return event\.type==="play"\|\|event\.type==="cpu_step";\}/,'only real turn-progress events may drive hand/deck motion');
@@ -31,8 +33,10 @@ assert.match(ts,/if\(!hasHandPlay\(event\)&&!hasDeckReveal\(event\)&&event\.capt
 assert.doesNotMatch(ts,/match-action-recap|match-action-card/,'the old full-board recap card must be removed');
 assert.match(ts,/board\.clientWidth/,'animation distances must be derived from the landscape board width');
 assert.match(ts,/board\.clientHeight/,'hand extraction must be derived from the landscape board height');
-assert.match(ts,/function visualBoardOffset\(horizontal:number,vertical:number\)/,'animation must convert visual landscape axes into local rotated-canvas axes');
-assert.match(ts,/rotated\?\{x:vertical,y:-horizontal\}:\{x:horizontal,y:vertical\}/,'virtual landscape must swap X/Y so visible horizontal motion stays horizontal after the 90 degree canvas rotation');
+assert.match(ts,/function visualBoardOffset\(horizontal:number,vertical:number\)/,'animation must convert visible landscape axes into local canvas axes');
+assert.match(ts,/new DOMMatrixReadOnly\(transform\)/,'visual motion must use the actual rendered viewport transform rather than assuming a fixed browser axis');
+assert.match(ts,/matrix\.a\*matrix\.d-matrix\.b\*matrix\.c/,'visual motion must invert the actual transform linear matrix');
+assert.match(ts,/rotated\?\{x:vertical,y:-horizontal\}:\{x:horizontal,y:vertical\}/,'fixed 90 degree mapping must remain only as a fallback');
 assert.match(ts,/--deck-x/,'deck extraction must receive an explicit local X offset');
 assert.match(ts,/--deck-y/,'deck extraction must receive an explicit local Y offset');
 assert.match(ts,/--capture-x/,'capture motion must receive a board-relative X distance');
