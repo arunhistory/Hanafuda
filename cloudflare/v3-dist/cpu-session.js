@@ -20,6 +20,8 @@ export class HanafudaCpuSession {
         const storedHash = String(await this.state.storage.get("tokenHash") ?? "");
         if (!validOpaqueToken(token) || !storedHash || !timingSafe(await sha256Hex(token), storedHash))
             return json({ ok: false, code: "UNAUTHORIZED" }, 401);
+        if (op === "ready")
+            return this.ready();
         if (op === "action")
             return this.action(body);
         if (op === "status")
@@ -58,7 +60,7 @@ export class HanafudaCpuSession {
         const created = await engineCall(this.env, { op: "create_internal", rounds, cpuProfile: modeCode(mode), firstDealer: -1, koiEnabled });
         if (!created.ok || !created.data?.ok || !created.data?.gameId)
             return json({ ok: false, code: "ENGINE_CREATE_FAILED" }, 502);
-        await this.state.storage.put({ initialized: true, closed: false, tokenHash: await sha256Hex(token), mode, rounds, koiEnabled, gameId: created.data.gameId, version: Number(created.data.version), modeSessionId: mode === "impossible" ? null : modeSessionId, modeSessionToken: mode === "impossible" ? null : modeSessionToken, developer, pendingTransition: false, challenge: false, challengeTestOnly: false, unlockGranted: false, createdAt: Date.now() });
+        await this.state.storage.put({ initialized: true, closed: false, ready: false, tokenHash: await sha256Hex(token), mode, rounds, koiEnabled, gameId: created.data.gameId, version: Number(created.data.version), modeSessionId: mode === "impossible" ? null : modeSessionId, modeSessionToken: mode === "impossible" ? null : modeSessionToken, developer, pendingTransition: false, challenge: false, challengeTestOnly: false, unlockGranted: false, createdAt: Date.now() });
         const events = [{ actor: "system", snapshot: created.data.snapshot, version: Number(created.data.version), actionEvent: null }];
         let modeTransition = null;
         if (Number(created.data.snapshot?.phase) === 5 && mode !== "impossible") {
@@ -66,18 +68,12 @@ export class HanafudaCpuSession {
             const check = ms ? await engineCall(this.env, { op: "mode_check", gameId: String(created.data.gameId), seat: 0, modeSession: ms }) : null;
             if (check?.ok && check.data?.ok && check.data?.modeTransition?.transition === "impossible") {
                 modeTransition = check.data.modeTransition;
-                await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(modeTransition.forcedRounds ?? 6) });
+                await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(modeTransition.forcedRounds ?? 6), pendingModeTransition: modeTransition });
             }
-        }
-        else if (Number(created.data.snapshot?.turn) === 1 && CPU_PHASES.has(Number(created.data.snapshot?.phase))) {
-            const cpu = await this.runCpu(events);
-            if (!cpu.ok)
-                return cpu.response;
-            modeTransition = cpu.modeTransition ?? null;
         }
         const finalEvent = events[events.length - 1];
         const unlockGranted = await this.maybeGrantUnlock(finalEvent.snapshot);
-        return json({ ok: true, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, modeTransition, unlockGranted, mode, rounds, koiEnabled });
+        return json({ ok: true, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, modeTransition, unlockGranted, mode, rounds, koiEnabled, ready: false });
     }
     async modeSession() {
         const sessionId = String(await this.state.storage.get("modeSessionId") ?? ""), token = String(await this.state.storage.get("modeSessionToken") ?? "");
@@ -117,16 +113,46 @@ export class HanafudaCpuSession {
                 return { ok: false, response: json({ ok: false, code: "CPU_ENGINE_FAILED", detail: result.data?.code ?? null }, result.status || 502) };
             events.push({ actor: "cpu", snapshot: result.data.snapshot, version: Number(result.data.version), actionEvent: result.data?.actionEvent ?? null });
             if (result.data?.modeTransition?.transition === "impossible") {
-                await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6) });
+                await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6), pendingModeTransition: result.data.modeTransition });
                 return { ok: true, modeTransition: result.data.modeTransition };
             }
             await this.maybeGrantUnlock(result.data.snapshot);
         }
         return { ok: false, response: json({ ok: false, code: "CPU_STEP_GUARD" }, 500) };
     }
+    async ready() {
+        if ((await this.state.storage.get("closed")) === true)
+            return json({ ok: false, code: "SESSION_CLOSED" }, 410);
+        if ((await this.state.storage.get("ready")) === true) {
+            const cached = await this.state.storage.get("readyPayload");
+            if (cached)
+                return json(cached);
+        }
+        const gameId = String(await this.state.storage.get("gameId") ?? "");
+        const current = await engineCall(this.env, { op: "snapshot", gameId, seat: 0 });
+        if (!current.ok || !current.data?.ok)
+            return json({ ok: false, code: "ENGINE_STATUS_FAILED" }, current.status || 502);
+        const version = Number(current.data.version);
+        await this.state.storage.put("version", version);
+        const events = [{ actor: "system", snapshot: current.data.snapshot, version, actionEvent: null }];
+        let modeTransition = await this.state.storage.get("pendingModeTransition") ?? null;
+        if (!(await this.state.storage.get("pendingTransition")) && Number(current.data.snapshot?.turn) === 1 && CPU_PHASES.has(Number(current.data.snapshot?.phase))) {
+            const cpu = await this.runCpu(events);
+            if (!cpu.ok)
+                return cpu.response;
+            modeTransition = cpu.modeTransition ?? modeTransition;
+        }
+        const finalEvent = events[events.length - 1];
+        const unlockGranted = await this.maybeGrantUnlock(finalEvent.snapshot);
+        const payload = { ok: true, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, modeTransition, unlockGranted, ready: true };
+        await this.state.storage.put({ ready: true, readyPayload: payload, readyAt: Date.now() });
+        return json(payload);
+    }
     async action(body) {
         if ((await this.state.storage.get("closed")) === true)
             return json({ ok: false, code: "SESSION_CLOSED" }, 410);
+        if ((await this.state.storage.get("ready")) !== true)
+            return json({ ok: false, code: "SESSION_NOT_READY" }, 409);
         const clientVersion = Number(body?.version), storedVersion = Number(await this.state.storage.get("version") ?? -1);
         if (!Number.isSafeInteger(clientVersion) || clientVersion !== storedVersion)
             return json({ ok: false, code: "VERSION_CONFLICT", version: storedVersion }, 409);
@@ -148,15 +174,20 @@ export class HanafudaCpuSession {
             return json({ ok: false, code: result.data?.code ?? "ENGINE_ACTION_FAILED", version: Number(result.data?.version ?? storedVersion), snapshot: result.data?.snapshot ?? null }, result.status || 502);
         const events = [{ actor: "player", snapshot: result.data.snapshot, version: Number(result.data.version), actionEvent: result.data?.actionEvent ?? null }];
         if (result.data?.modeTransition?.transition === "impossible") {
-            await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6) });
+            await this.state.storage.put({ pendingTransition: true, forcedRounds: Number(result.data.modeTransition.forcedRounds ?? 6), pendingModeTransition: result.data.modeTransition });
             return json({ ok: true, version: Number(result.data.version), snapshot: result.data.snapshot, events, modeTransition: result.data.modeTransition, unlockGranted: false });
+        }
+        if (kind === "next_round") {
+            const payload = { ok: true, version: Number(result.data.version), snapshot: result.data.snapshot, events, modeTransition: null, unlockGranted: false, ready: false };
+            await this.state.storage.put({ ready: false, readyPayload: null, readyAt: null });
+            return json(payload);
         }
         const cpu = await this.runCpu(events);
         if (!cpu.ok)
             return cpu.response;
         const finalEvent = events[events.length - 1];
         const unlockGranted = await this.maybeGrantUnlock(finalEvent.snapshot);
-        return json({ ok: true, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, modeTransition: cpu.modeTransition ?? null, unlockGranted });
+        return json({ ok: true, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, modeTransition: cpu.modeTransition ?? null, unlockGranted, ready: true });
     }
     async transition() {
         if ((await this.state.storage.get("closed")) === true)
@@ -184,17 +215,12 @@ export class HanafudaCpuSession {
             await engineCall(this.env, { op: "close", gameId: String(created.data.gameId) }).catch(() => null);
             return json({ ok: false, code: "TRANSITION_ACK_FAILED" }, ack.status || 502);
         }
-        await this.state.storage.put({ mode: "impossible", rounds: forcedRounds, gameId: String(created.data.gameId), version: Number(created.data.version), pendingTransition: false, forcedRounds, challenge: true, challengeTestOnly: testOnly, unlockGranted: false, developer: false, transitionedAt: Date.now() });
+        await this.state.storage.put({ mode: "impossible", rounds: forcedRounds, gameId: String(created.data.gameId), version: Number(created.data.version), pendingTransition: false, pendingModeTransition: null, forcedRounds, challenge: true, challengeTestOnly: testOnly, unlockGranted: false, developer: false, ready: false, readyPayload: null, transitionedAt: Date.now() });
         if (oldGameId)
             await engineCall(this.env, { op: "close", gameId: oldGameId }).catch(() => null);
         const events = [{ actor: "system", snapshot: created.data.snapshot, version: Number(created.data.version), actionEvent: null }];
-        if (Number(created.data.snapshot?.turn) === 1 && CPU_PHASES.has(Number(created.data.snapshot?.phase))) {
-            const cpu = await this.runCpu(events);
-            if (!cpu.ok)
-                return cpu.response;
-        }
         const finalEvent = events[events.length - 1];
-        return json({ ok: true, mode: "impossible", rounds: forcedRounds, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, unskippable: true, unlockGranted: false });
+        return json({ ok: true, mode: "impossible", rounds: forcedRounds, version: Number(finalEvent.version), snapshot: finalEvent.snapshot, events, unskippable: true, unlockGranted: false, ready: false });
     }
     async status() {
         if ((await this.state.storage.get("closed")) === true)
@@ -206,7 +232,7 @@ export class HanafudaCpuSession {
         const version = Number(result.data.version);
         await this.state.storage.put("version", version);
         const unlockGranted = await this.maybeGrantUnlock(result.data.snapshot);
-        return json({ ok: true, mode: await this.state.storage.get("mode"), rounds: Number(await this.state.storage.get("rounds") ?? 0), version, snapshot: result.data.snapshot, pendingTransition: (await this.state.storage.get("pendingTransition")) === true, forcedRounds: Number(await this.state.storage.get("forcedRounds") ?? 0), unlockGranted });
+        return json({ ok: true, mode: await this.state.storage.get("mode"), rounds: Number(await this.state.storage.get("rounds") ?? 0), version, snapshot: result.data.snapshot, pendingTransition: (await this.state.storage.get("pendingTransition")) === true, forcedRounds: Number(await this.state.storage.get("forcedRounds") ?? 0), unlockGranted, ready: (await this.state.storage.get("ready")) === true });
     }
     async close() {
         if ((await this.state.storage.get("closed")) === true)
@@ -217,7 +243,7 @@ export class HanafudaCpuSession {
             if (!result.ok && !([404, 410].includes(result.status)))
                 return json({ ok: false, code: "ENGINE_CLOSE_FAILED" }, result.status || 502);
         }
-        await this.state.storage.put({ closed: true, pendingTransition: false, closedAt: Date.now() });
+        await this.state.storage.put({ closed: true, pendingTransition: false, ready: false, closedAt: Date.now() });
         return json({ ok: true, closed: true });
     }
 }
@@ -246,7 +272,7 @@ export async function routeCpu(req, env, url) {
         const data = await response.json().catch(() => null);
         if (!response.ok || !data?.ok)
             return json(data ?? { ok: false, code: "CPU_SESSION_INIT_FAILED" }, response.status || 502);
-        return json({ ok: true, sessionId: id.toString(), token, version: data.version, snapshot: data.snapshot, events: data.events ?? [], modeTransition: data.modeTransition ?? null, unlockGranted: data.unlockGranted === true, mode, rounds, koiEnabled });
+        return json({ ok: true, sessionId: id.toString(), token, version: data.version, snapshot: data.snapshot, events: data.events ?? [], modeTransition: data.modeTransition ?? null, unlockGranted: data.unlockGranted === true, mode, rounds, koiEnabled, ready: false });
     }
     const sessionId = String(body?.sessionId ?? ""), token = String(body?.token ?? "");
     if (!validOpaqueToken(sessionId) || !validOpaqueToken(token))
@@ -259,7 +285,7 @@ export async function routeCpu(req, env, url) {
         return json({ ok: false, code: "INVALID_SESSION" }, 400);
     }
     const stub = env.CPU_SESSIONS.get(id);
-    const op = url.pathname === "/api/cpu/action" ? "action" : url.pathname === "/api/cpu/status" ? "status" : url.pathname === "/api/cpu/transition" ? "transition" : url.pathname === "/api/cpu/close" ? "close" : null;
+    const op = url.pathname === "/api/cpu/ready" ? "ready" : url.pathname === "/api/cpu/action" ? "action" : url.pathname === "/api/cpu/status" ? "status" : url.pathname === "/api/cpu/transition" ? "transition" : url.pathname === "/api/cpu/close" ? "close" : null;
     if (!op)
         return json({ ok: false, code: "NOT_FOUND" }, 404);
     const response = await stub.fetch("https://cpu/op", { method: "POST", body: JSON.stringify({ ...body, op, token }) });
