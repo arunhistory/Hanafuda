@@ -117,6 +117,29 @@
     }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;if(snapshot&&currentScreen()==="match")renderMatch();}
   };
 
+  async function revealRoundDealSequentially(){
+    const screen=app.querySelector(".match-screen");
+    const board=app.querySelector(".board");
+    if(!screen||!board)return;
+    screen.classList.add("round-deal-staging");
+    const opponent=[...board.querySelectorAll(".opponent-zone .card-back")];
+    const player=[...board.querySelectorAll(".player-zone .hand-card-button .card")];
+    const field=[...board.querySelectorAll(".field-card-button .card")];
+    const sequence=[];
+    const max=Math.max(opponent.length,player.length,field.length);
+    for(let i=0;i<max;i++){
+      if(opponent[i])sequence.push(opponent[i]);
+      if(player[i])sequence.push(player[i]);
+      if(field[i])sequence.push(field[i]);
+    }
+    for(const card of sequence){
+      card.classList.add("deal-visible");
+      await delay(88);
+    }
+    await delay(220);
+    screen.classList.remove("round-deal-staging");
+  }
+
   const baseSendAction=sendAction;
   sendAction=async function(action,payload={}){
     if(action!=="next_round"||session?.kind!=="cpu")return baseSendAction(action,payload);
@@ -134,20 +157,16 @@
       const nextSnapshot=result.data.snapshot;
       if(!nextSnapshot)throw new Error("NEXT_ROUND_SNAPSHOT_MISSING");
 
+      // Completed round stays visible for the whole shuffle.
       renderMatch();
       if(!settings.skipNormalAnimations)await showShuffle(false);
 
+      // Only after shuffle may the next-round DOM exist, and every dealt card starts hidden.
       snapshot=nextSnapshot;
       roundHistory=[];
       currentRound=nextSnapshot.roundIndex;
       renderMatch();
-      const board=app.querySelector(".board");
-      if(!settings.skipNormalAnimations){
-        board?.classList.add("dealing");
-        if(board)void board.offsetWidth;
-        await delay(Math.min(1200,700+(snapshot.hand?.length??8)*55));
-        board?.classList.remove("dealing");
-      }
+      if(!settings.skipNormalAnimations)await revealRoundDealSequentially();
       emitAudioHook("deal");
       await showReadyGate();
       matchInteractionReady=true;
@@ -169,9 +188,9 @@
     const label=isAgari?"あがり":"こいこい";
     const layer=document.createElement("div");
     layer.className=`fx-layer dramatic-callout-layer ${isAgari?"agari-dramatic":"koi-dramatic"}`;
-    layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="dramatic-callout"><strong class="dramatic-callout-text">${label}</strong></div>`;
+    layer.innerHTML=`<div class="dramatic-rays" aria-hidden="true"></div><div class="dramatic-flash" aria-hidden="true"></div><div class="dramatic-callout"><strong class="dramatic-callout-text">${label}</strong><img class="dramatic-callout-art" src="${assets.path(assetId)}" alt="${label}"></div>`;
     matchEffectHost().append(layer);
-    await delay(isAgari?1650:1500);
+    await delay(isAgari?1750:1600);
     layer.remove();
   };
 
