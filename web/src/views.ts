@@ -26,8 +26,12 @@ function cpuModeChoices(){
   return modes.map(m=>`<button type="button" class="setup-choice ${settings.mode===m?"selected":""}" data-cpu-mode="${m}" aria-pressed="${settings.mode===m}">${modeLabel(m)}</button>`).join("");
 }
 function roundChoices(){return Array.from({length:12},(_,i)=>i+1).map(n=>`<button type="button" class="setup-choice round-choice ${settings.rounds===n?"selected":""}" data-cpu-rounds="${n}" aria-pressed="${settings.rounds===n}">${n}</button>`).join("");}
+function dealerChoices(){
+  const choices:Array<[FirstDealer,string]>=[[-1,"ランダム"],[0,"あなたが親"],[1,"相手が親"]];
+  return choices.map(([value,label])=>`<button type="button" class="setup-choice ${settings.firstDealer===value?"selected":""}" data-cpu-dealer="${value}" aria-pressed="${settings.firstDealer===value}">${label}</button>`).join("");
+}
 function renderCpuSetup(){
-  app.innerHTML=`<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row"><button type="button" class="setup-choice selected" disabled>ランダム</button></div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled?"selected":""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled?"selected":""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
+  app.innerHTML=`<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row dealer-choice-row">${dealerChoices()}</div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled?"selected":""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled?"selected":""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
 }
 
 function renderOnline(){
@@ -50,11 +54,11 @@ function cardImg(card:number,className="card"){return `<img class="${className}"
 function backs(count:number){const src=assets.path("cards.back");return Array.from({length:Math.min(count,8)},()=>`<img class="card card-back" src="${src}" alt="裏向きの札" draggable="false">`).join("");}
 function capturedHtml(cards:number[]){return cards.map(c=>cardImg(c)).join("");}
 function handHtml(s:Snapshot){
-  const clickable=s.turn===playerSeat()&&s.phase===1&&!busy;
+  const clickable=matchInteractionReady&&s.turn===playerSeat()&&s.phase===1&&!busy;
   return s.hand.map((c,i)=>`<button class="hand-card-button" style="--deal-index:${i}" data-hand-index="${i}" ${clickable?"":"disabled"}>${cardImg(c)}</button>`).join("");
 }
 function fieldHtml(s:Snapshot){
-  const choosing=s.turn===playerSeat()&&(s.phase===2||s.phase===3);
+  const choosing=matchInteractionReady&&s.turn===playerSeat()&&(s.phase===2||s.phase===3);
   const pending=new Set(s.pendingMatches);
   return s.field.map((c,i)=>`<div class="field-slot"><button class="field-card-button ${choosing&&pending.has(i)?"selectable":""}" style="--deal-index:${8+i}" data-field-index="${i}" ${choosing&&pending.has(i)&&!busy?"":"disabled"}>${cardImg(c)}</button></div>`).join("");
 }
@@ -120,6 +124,7 @@ function bindGlobalActions(){
   app.querySelectorAll<HTMLElement>("[data-action='home']").forEach(el=>el.onclick=()=>goHome());
   app.querySelectorAll<HTMLElement>("[data-cpu-mode]").forEach(el=>el.onclick=()=>{settings.mode=el.dataset.cpuMode as CpuMode;saveSettings();renderCpuSetup();bindGlobalActions();});
   app.querySelectorAll<HTMLElement>("[data-cpu-rounds]").forEach(el=>el.onclick=()=>{settings.rounds=Number(el.dataset.cpuRounds);saveSettings();renderCpuSetup();bindGlobalActions();});
+  app.querySelectorAll<HTMLElement>("[data-cpu-dealer]").forEach(el=>el.onclick=()=>{const value=Number(el.dataset.cpuDealer);if(value!==-1&&value!==0&&value!==1)return;settings.firstDealer=value as FirstDealer;saveSettings();renderCpuSetup();bindGlobalActions();});
   app.querySelectorAll<HTMLElement>("[data-cpu-koi]").forEach(el=>el.onclick=()=>{settings.koiEnabled=el.dataset.cpuKoi==="true";saveSettings();renderCpuSetup();bindGlobalActions();});
   const mode=app.querySelector<HTMLSelectElement>("#cpu-mode");if(mode)mode.onchange=()=>{settings.mode=mode.value as CpuMode;saveSettings();};
   const rounds=app.querySelector<HTMLSelectElement>("#rounds");if(rounds)rounds.onchange=()=>{settings.rounds=Number(rounds.value);saveSettings();};
