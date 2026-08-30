@@ -27,8 +27,15 @@ function difficultyOptions() {
         settings.mode = "pro";
     return modes.map(m => `<option value="${m}" ${settings.mode === m ? "selected" : ""}>${modeLabel(m)}</option>`).join("");
 }
+function cpuModeChoices() {
+    const modes = isUnlocked() ? ["beginner", "amateur", "pro", "impossible"] : ["beginner", "amateur", "pro"];
+    if (!modes.includes(settings.mode))
+        settings.mode = "pro";
+    return modes.map(m => `<button type="button" class="setup-choice ${settings.mode === m ? "selected" : ""}" data-cpu-mode="${m}" aria-pressed="${settings.mode === m}">${modeLabel(m)}</button>`).join("");
+}
+function roundChoices() { return Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<button type="button" class="setup-choice round-choice ${settings.rounds === n ? "selected" : ""}" data-cpu-rounds="${n}" aria-pressed="${settings.rounds === n}">${n}</button>`).join(""); }
 function renderCpuSetup() {
-    app.innerHTML = `<main class="${screenClass()}">${topbar("CPU対戦設定")}<section class="panel"><div class="settings-grid"><label for="cpu-mode">CPU難易度</label><select id="cpu-mode">${difficultyOptions()}</select><label for="rounds">局数</label><select id="rounds">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${settings.rounds === i + 1 ? "selected" : ""}>${i + 1}局</option>`).join("")}</select><label for="dealer-mode">親決め</label><select id="dealer-mode"><option value="random">ランダム</option></select><label for="koi-enabled">こいこい</label><div class="check-row"><input id="koi-enabled" type="checkbox" ${settings.koiEnabled ? "checked" : ""}><span>使用する</span></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
+    app.innerHTML = `<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row"><button type="button" class="setup-choice selected" disabled>ランダム</button></div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled ? "selected" : ""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled ? "selected" : ""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
 }
 function renderOnline() {
     app.innerHTML = `<main class="${screenClass()}">${topbar("オンライン対戦")}<section class="panel"><h2>部屋を作る</h2><div class="settings-grid"><label for="online-rounds">局数</label><select id="online-rounds">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${settings.rounds === i + 1 ? "selected" : ""}>${i + 1}局</option>`).join("")}</select><label for="online-koi">こいこい</label><div class="check-row"><input id="online-koi" type="checkbox" ${settings.koiEnabled ? "checked" : ""}><span>使用する</span></div></div><div class="screen-actions"><button class="primary" data-action="online-create">部屋作成</button><button class="secondary" data-action="online-random">ランダム対戦</button></div></section><section class="panel"><h2>ルームコードで参加</h2><div class="settings-grid"><label for="room-code">ルームコード</label><input id="room-code" maxlength="6" autocomplete="off" inputmode="text" style="text-transform:uppercase" placeholder="6文字"></div><div id="room-inspect" class="notice" style="margin-top:10px">コードを入力すると参加前にルールを確認できます。</div><div class="screen-actions"><button class="primary" data-action="online-inspect">ルール確認</button><button class="secondary" data-action="online-join" disabled>参加</button></div></section></main>`;
@@ -136,6 +143,9 @@ function bindGlobalActions() {
     app.querySelectorAll("[data-nav]").forEach(el => el.onclick = () => push(el.dataset.nav));
     app.querySelectorAll("[data-action='back']").forEach(el => el.onclick = () => back());
     app.querySelectorAll("[data-action='home']").forEach(el => el.onclick = () => goHome());
+    app.querySelectorAll("[data-cpu-mode]").forEach(el => el.onclick = () => { settings.mode = el.dataset.cpuMode; saveSettings(); renderCpuSetup(); bindGlobalActions(); });
+    app.querySelectorAll("[data-cpu-rounds]").forEach(el => el.onclick = () => { settings.rounds = Number(el.dataset.cpuRounds); saveSettings(); renderCpuSetup(); bindGlobalActions(); });
+    app.querySelectorAll("[data-cpu-koi]").forEach(el => el.onclick = () => { settings.koiEnabled = el.dataset.cpuKoi === "true"; saveSettings(); renderCpuSetup(); bindGlobalActions(); });
     const mode = app.querySelector("#cpu-mode");
     if (mode)
         mode.onchange = () => { settings.mode = mode.value; saveSettings(); };
