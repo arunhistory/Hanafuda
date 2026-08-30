@@ -4,6 +4,20 @@ async function api(path, body, extra = {}) {
     const data = await response.json().catch(() => null);
     return { ok: response.ok, status: response.status, data };
 }
+async function releaseCpuAfterReady() {
+    if (!session || session.kind !== "cpu")
+        return;
+    const ready = await api("/api/cpu/ready", { sessionId: session.sessionId, token: session.token });
+    if (!ready.ok || !ready.data?.ok)
+        throw new Error(ready.data?.code || "CPU_READY_FAILED");
+    session.version = Number(ready.data.version);
+    pendingModeTransition = ready.data.modeTransition?.transition === "impossible";
+    await acceptApiEvents((ready.data.events ?? []));
+    snapshot = ready.data.snapshot;
+    if (ready.data.unlockGranted === true)
+        grantUnlock();
+    renderMatch();
+}
 async function startCpu() {
     if (busy)
         return;
@@ -25,9 +39,7 @@ async function startCpu() {
         if (!started.ok || !started.data?.ok)
             throw new Error(started.data?.code || "CPU_START_FAILED");
         session = { kind: "cpu", sessionId: started.data.sessionId, token: started.data.token, version: Number(started.data.version), mode: settings.mode, rounds: settings.rounds, koiEnabled: settings.koiEnabled, modeSessionId, modeSessionToken };
-        const startEvents = (started.data.events ?? []);
-        const stagedStart = startEvents.find(event => event?.snapshot)?.snapshot ?? started.data.snapshot;
-        snapshot = stagedStart;
+        snapshot = started.data.snapshot;
         pendingModeTransition = started.data.modeTransition?.transition === "impossible";
         hiddenFirstEncounter = false;
         roundHistory = [];
@@ -35,11 +47,8 @@ async function startCpu() {
         stack = ["home", "cpu-setup", "match"];
         renderMatch();
         await animateNewRoundIfNeeded(true);
-        await acceptApiEvents(startEvents);
-        snapshot = started.data.snapshot;
-        if (started.data.unlockGranted === true)
-            grantUnlock();
-        renderMatch();
+        await showReadyGate();
+        await releaseCpuAfterReady();
     }
     catch (e) {
         toast(`開始できません: ${e instanceof Error ? e.message : "ERROR"}`);
@@ -142,6 +151,10 @@ async function sendAction(action, payload = {}) {
         }
         renderMatch();
         await animateNewRoundIfNeeded(false);
+        if (action === "next_round" && session?.kind === "cpu") {
+            await showReadyGate();
+            await releaseCpuAfterReady();
+        }
     }
     catch (e) {
         toast(e instanceof Error ? e.message : "操作に失敗しました");
@@ -204,7 +217,8 @@ async function beginImpossibleTransition() {
         currentRound = -1;
         renderMatch();
         await animateNewRoundIfNeeded(true);
-        await acceptApiEvents(result.data.events ?? []);
+        await showReadyGate();
+        await releaseCpuAfterReady();
     }
     catch (e) {
         toast(`遷移に失敗しました: ${e instanceof Error ? e.message : "ERROR"}`);
@@ -252,7 +266,7 @@ function confirmedSettlementYaku(event, state) {
 }
 function matchEffectHost() { return document.documentElement.classList.contains("mobile-webapp") ? app : document.body; }
 async function animateEvent(event, nextState = snapshot) {
-    await playVisibleActionSteps(event);
+    await playVisibleActionSteps(event, nextState);
     if (event.settlement && event.settlement.winner !== 2) {
         await showCallout("effect.agari.text");
         const label = confirmedSettlementYaku(event, nextState);
@@ -260,13 +274,13 @@ async function animateEvent(event, nextState = snapshot) {
             await showAgariYaku(label);
     }
     emitAudioHook("card-action", { event });
-    await delay(350);
+    await delay(120);
 }
 async function showShuffle(initial = false) {
     const layer = document.createElement("div");
     layer.className = `fx-layer shuffle-layer${initial ? " long-shuffle" : ""}`;
     layer.innerHTML = '<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';
-    document.body.append(layer);
+    matchEffectHost().append(layer);
     emitAudioHook("shuffle");
     await delay(initial ? 2250 : 1250);
     layer.remove();
@@ -300,7 +314,7 @@ async function showCollapse() {
     const layer = document.createElement("div");
     layer.className = "fx-layer collapse-layer";
     layer.innerHTML = '<div class="collapse-stage"></div><div class="collapse-text">▧▒░ERROR░▒▧</div>';
-    document.body.append(layer);
+    matchEffectHost().append(layer);
     emitAudioHook("impossible-collapse");
     await delay(3200);
     layer.remove();
