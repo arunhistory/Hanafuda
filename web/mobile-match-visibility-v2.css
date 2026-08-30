@@ -1,0 +1,36 @@
+/* Two-row adaptive field layout for mobile/tablet virtual landscape. Desktop unaffected. */
+html.mobile-webapp .board{grid-template-columns:minmax(92px,12%) minmax(0,76%) minmax(92px,12%);grid-template-rows:60px minmax(0,1fr) 124px}
+html.mobile-webapp .field-wrap{padding:2px 4px;overflow:hidden}
+html.mobile-webapp .field-grid{
+  width:min(96%,820px);
+  height:min(98%,286px);
+  display:grid;
+  grid-template-columns:none;
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(64px,1fr);
+  gap:8px clamp(3px,1.05vw,12px);
+  place-items:stretch center;
+  align-content:center;
+  justify-content:center;
+}
+html.mobile-webapp .field-slot,html.mobile-webapp .field-card-button{min-width:0;min-height:0;width:100%;height:100%}
+html.mobile-webapp .field-card-button{padding:1px}
+html.mobile-webapp .field-card-button .card{height:clamp(108px,calc(var(--mobile-canvas-height)*.245),146px);max-height:100%;max-width:100%;object-fit:contain}
+html.mobile-webapp .player-zone>.hand-row{height:124px}
+html.mobile-webapp .hand-card-button{min-width:62px;min-height:106px}
+html.mobile-webapp .hand-card-button .card{height:clamp(104px,calc(var(--mobile-canvas-height)*.235),136px)}
+html.mobile-webapp .captured-row{align-content:flex-start;padding-top:6px;gap:2px}
+html.mobile-webapp .captured-row .card{height:clamp(40px,calc(var(--mobile-canvas-height)*.083),52px)}
+
+html.mobile-webapp.phone-landscape .board{grid-template-columns:minmax(76px,11%) minmax(0,78%) minmax(76px,11%);grid-template-rows:50px minmax(0,1fr) 112px}
+html.mobile-webapp.phone-landscape .field-grid{width:98%;height:min(99%,252px);grid-auto-columns:minmax(56px,1fr);gap:5px clamp(2px,.8vw,8px)}
+html.mobile-webapp.phone-landscape .field-card-button .card{height:clamp(96px,calc(var(--mobile-canvas-height)*.235),128px)}
+html.mobile-webapp.phone-landscape .player-zone>.hand-row{height:112px}
+html.mobile-webapp.phone-landscape .hand-card-button{min-width:54px;min-height:94px}
+html.mobile-webapp.phone-landscape .hand-card-button .card{height:clamp(96px,calc(var(--mobile-canvas-height)*.225),122px)}
+html.mobile-webapp.phone-landscape .captured-row .card{height:40px}
+
+html.mobile-webapp.compact-landscape .field-grid{width:98%;height:min(99%,226px);grid-auto-columns:minmax(52px,1fr);gap:4px 3px}
+html.mobile-webapp.compact-landscape .field-card-button .card{height:100px}
+html.mobile-webapp.compact-landscape .hand-card-button .card{height:104px}
