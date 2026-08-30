@@ -19,19 +19,39 @@ async function startCpu(){
     const started=await api("/api/cpu/start",settings.mode==="impossible"?{mode:"impossible",rounds:settings.rounds,koiEnabled:settings.koiEnabled,unlocked:isUnlocked()}:{mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken});
     if(!started.ok||!started.data?.ok)throw new Error(started.data?.code||"CPU_START_FAILED");
     session={kind:"cpu",sessionId:started.data.sessionId,token:started.data.token,version:Number(started.data.version),mode:settings.mode,rounds:settings.rounds,koiEnabled:settings.koiEnabled,modeSessionId,modeSessionToken};
-    snapshot=started.data.snapshot;pendingModeTransition=started.data.modeTransition?.transition==="impossible";hiddenFirstEncounter=false;roundHistory=[];currentRound=-1;
+    const startEvents=(started.data.events??[]) as ApiEvent[];
+    const stagedStart=startEvents.find(event=>event?.snapshot)?.snapshot??started.data.snapshot;
+    snapshot=stagedStart;pendingModeTransition=started.data.modeTransition?.transition==="impossible";hiddenFirstEncounter=false;roundHistory=[];currentRound=-1;
     stack=["home","cpu-setup","match"];
-    await acceptApiEvents(started.data.events??[]);if(started.data.unlockGranted===true)grantUnlock();
-    renderMatch();await animateNewRoundIfNeeded(true);
-  }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;}
+    renderMatch();
+    await animateNewRoundIfNeeded(true);
+    await acceptApiEvents(startEvents);
+    snapshot=started.data.snapshot;
+    if(started.data.unlockGranted===true)grantUnlock();
+    renderMatch();
+  }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
 }
 
 async function acceptApiEvents(events:ApiEvent[]){for(const event of events){if(event?.snapshot)await acceptSnapshot(event.snapshot,event.actionEvent??null,event.actor);if(session?.kind==="cpu")session.version=Number(event.version);}}
+function newlyCaptured(before:number[],after:number[]){
+  const counts=new Map<number,number>();
+  for(const card of before)counts.set(card,(counts.get(card)??0)+1);
+  const added:number[]=[];
+  for(const card of after){const left=counts.get(card)??0;if(left>0)counts.set(card,left-1);else added.push(card);}
+  return added;
+}
+function presentationEvent(old:Snapshot|null,next:Snapshot,event:ActionEvent,actor?:string):ActionEvent{
+  const actorSeat=Number.isInteger(event.actor)?Number(event.actor):actor==="cpu"?opponentSeat():actor==="player"?playerSeat():null;
+  const captured=event.capturedCards?.length?event.capturedCards:(old&&actorSeat!==null?newlyCaptured(old.captured[actorSeat]??[],next.captured[actorSeat]??[]):[]);
+  return {...event,actor:actorSeat===null?event.actor:actorSeat,capturedCards:captured};
+}
 async function acceptSnapshot(next:Snapshot,event:ActionEvent|null,actor?:string){
-  const old=snapshot;snapshot=next;
-  if(event)recordHistory(event,actor);
+  const old=snapshot;
+  const visibleEvent=event?presentationEvent(old,next,event,actor):null;
+  snapshot=next;
+  if(visibleEvent)recordHistory(visibleEvent,actor);
   if(old&&old.roundIndex!==next.roundIndex){roundHistory=[];currentRound=-1;}
-  if(event&&!settings.skipNormalAnimations)await animateEvent(event);
+  if(visibleEvent&&!settings.skipNormalAnimations)await animateEvent(visibleEvent);
 }
 function recordHistory(event:ActionEvent,actor?:string){
   const who=event.actor===playerSeat()||actor==="player"?"あなた":event.actor===opponentSeat()||actor==="cpu"?"相手":"システム";
@@ -60,9 +80,11 @@ async function sendAction(action:string,payload:Record<string,unknown>={}){
       const responseVersion=Number(result.data.version),alreadyApplied=Number.isSafeInteger(responseVersion)&&session.version>=responseVersion;
       if(!alreadyApplied){
         if(Number.isSafeInteger(responseVersion))session.version=responseVersion;
-        snapshot=result.data.snapshot;
-        const event=result.data.actionEvent as ActionEvent|null;
-        if(event){recordHistory(event,"player");if(!settings.skipNormalAnimations)await animateEvent(event);}
+        const next=result.data.snapshot as Snapshot;
+        const rawEvent=result.data.actionEvent as ActionEvent|null;
+        const visibleEvent=rawEvent?presentationEvent(snapshot,next,rawEvent,"player"):null;
+        snapshot=next;
+        if(visibleEvent){recordHistory(visibleEvent,"player");if(!settings.skipNormalAnimations)await animateEvent(visibleEvent);}
       }
     }
     renderMatch();await animateNewRoundIfNeeded(false);
@@ -93,7 +115,7 @@ async function beginImpossibleTransition(){
     const result=await api("/api/cpu/transition",{sessionId:session.sessionId,token:session.token});
     if(!result.ok||!result.data?.ok)throw new Error(result.data?.code||"TRANSITION_FAILED");
     session.version=Number(result.data.version);session.mode="impossible";session.rounds=Number(result.data.rounds);snapshot=result.data.snapshot;pendingModeTransition=false;hiddenFirstEncounter=true;roundHistory=[];currentRound=-1;
-    await acceptApiEvents(result.data.events??[]);renderMatch();await animateNewRoundIfNeeded(true);
+    renderMatch();await animateNewRoundIfNeeded(true);await acceptApiEvents(result.data.events??[]);
   }catch(e){toast(`遷移に失敗しました: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
 }
 
@@ -118,14 +140,14 @@ function confirmedSettlementYaku(event:ActionEvent){
   return yakuNames(mask);
 }
 async function animateEvent(event:ActionEvent){
-  if(event.capturedCards?.length)toast(`取得: ${event.capturedCards.map(cardName).join("・")}`);
+  if(event.capturedCards?.length)toast(`${event.actor===playerSeat()?"あなた":"相手"}が取得: ${event.capturedCards.map(cardName).join("・")}`);
   if(event.newYakuMask)toast(`役成立: ${yakuNames(event.newYakuMask)}`);
   if(event.capturedCards?.length)await showCaptureTrail(event.capturedCards,event.actor===playerSeat());
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
     const label=confirmedSettlementYaku(event);if(label&&label!=="なし")await showAgariYaku(label);
   }
-  emitAudioHook("card-action",{event});await delay(120);
+  emitAudioHook("card-action",{event});await delay(220);
 }
 async function showShuffle(initial=false){
   const layer=document.createElement("div");layer.className=`fx-layer shuffle-layer${initial?" long-shuffle":""}`;layer.innerHTML='<div class="shuffle-deck"><i class="shuffle-card" style="--sx:1;--sr:1"></i><i class="shuffle-card" style="--sx:-1;--sr:-1"></i><i class="shuffle-card" style="--sx:1;--sr:-1"></i><i class="shuffle-card" style="--sx:-1;--sr:1"></i></div>';document.body.append(layer);emitAudioHook("shuffle");await delay(initial?2250:1250);layer.remove();
@@ -139,7 +161,7 @@ async function showAgariYaku(label:string){
 async function showCaptureTrail(cards:number[],toPlayer:boolean){
   const layer=document.createElement("div");layer.className=`capture-trail ${toPlayer?"to-player":"to-opponent"}`;
   layer.innerHTML=cards.slice(0,4).map((card,i)=>`<span style="--trail-index:${i}">${cardImg(card)}</span>`).join("");
-  document.body.append(layer);await delay(520);layer.remove();
+  document.body.append(layer);await delay(760);layer.remove();
 }
 async function showCollapse(){
   const layer=document.createElement("div");layer.className="fx-layer collapse-layer";layer.innerHTML='<div class="collapse-stage"></div><div class="collapse-text">▧▒░ERROR░▒▧</div>';document.body.append(layer);emitAudioHook("impossible-collapse");await delay(3200);layer.remove();
