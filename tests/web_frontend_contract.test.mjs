@@ -10,7 +10,7 @@ const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')
 const perfJs=fs.readFileSync(path.join(root,'web','initial-animation-performance-v1.js'),'utf8');
 const finalFix=fs.readFileSync(path.join(root,'web','final-result-fix-v1.js'),'utf8');
 const finalCss=fs.readFileSync(path.join(root,'web','final-result-fix-v1.css'),'utf8');
-const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js'];
+const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js','audio-engine-v1.js'];
 const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=>fs.readFileSync(path.join(root,'web','dist',x),'utf8')).join('\n');
 
 const checks=[
@@ -50,7 +50,7 @@ const checks=[
   ['final result uses Supabase background warmed after play starts',finalFix.includes('hanafuda-effects/settlement-bg.png')&&finalFix.includes('requestIdleCallback')&&finalCss.includes('hanafuda-effects/settlement-bg.png')],
   ['final result text is high contrast on gold background',finalCss.includes('color:#160a05')&&finalCss.includes('color:#140905')],
   ['corrupted play stays low intensity and strengthens only on round change',experienceCss.includes('.screen.corrupted::after')&&experienceCss.includes('.app-shell.corrupted-round-shift::after')&&ts.includes('app.classList.add("corrupted-round-shift")')&&ts.includes('app.classList.remove("corrupted-round-shift")')],
-  ['audio is hooks only',ts.includes('hanafuda-audio-hook')&&!html.includes('<audio')&&!ts.includes('new Audio(')],
+  ['audio runtime is TypeScript-backed generated output',fs.existsSync(path.join(root,'web','src','audio-engine-v1.ts'))&&fs.existsSync(path.join(root,'web','dist','audio-engine-v1.js'))&&ts.includes('new Audio()')&&ts.includes('hanafuda-audio-hook')&&ts.includes('hanafuda-audio/')&&html.includes('./dist/audio-engine-v1.js')&&!html.includes('./audio-engine-v1.js')],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
   ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
   ['random matchmaking is websocket event-driven',ts.includes('/api/online/random/connect')&&ts.includes('new WebSocket(url)')&&ts.includes('msg?.type!=="matched"')&&!ts.includes('for(let i=0;i<24&&!r.data.matched')&&!ts.includes('/api/online/random",{ticket')],
