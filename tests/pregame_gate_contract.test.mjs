@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const html=fs.readFileSync('web/index.html','utf8');
-const gate=fs.readFileSync('web/pregame-gate-v3.js','utf8');
+const gate=fs.readFileSync('web/src/pregame-gate-v3.ts','utf8');
 const core=fs.readFileSync('web/src/core.ts','utf8');
 const views=fs.readFileSync('web/src/views.ts','utf8');
 
-assert.match(html,/pregame-gate-v3\.js/,'the authoritative pregame gate must be loaded');
+assert.match(html,/\.\/dist\/pregame-gate-v3\.js/,'the generated authoritative pregame gate must be loaded');
+assert.doesNotMatch(html,/src="\.\/pregame-gate-v3\.js"/,'the handwritten pregame gate must not be loaded');
 assert.doesNotMatch(html,/pregame-gate-v2\.js/,'the obsolete pregame gate must not be loaded');
+assert.ok(fs.existsSync('web/dist/pregame-gate-v3.js'),'the generated pregame gate artifact must exist');
 assert.match(gate,/startCpuSequencedV3\(\)/,'v3 must own the sequenced CPU start path');
 assert.match(gate,/stopImmediatePropagation\(\)/,'v3 must block every legacy start click handler');
 assert.match(gate,/addEventListener\("click"[\s\S]*true\);/,'the pregame start interception must run in capture phase');
@@ -42,4 +44,4 @@ assert.match(gate,/const firstDealer=settings\.firstDealer;/,'pregame must use t
 assert.ok((gate.match(/firstDealer/g)||[]).length>=5,'canonical firstDealer must still flow through both normal and impossible CPU start payloads and session state');
 assert.doesNotMatch(gate,/hanafuda\.cpu\.firstDealer/,'dealer selection must not create a second localStorage source of truth');
 
-console.log('pregame engine-start ordering, landscape setup and canonical dealer contract v3: PASS');
+console.log('pregame engine-start ordering, generated runtime and canonical dealer contract v3: PASS');
