@@ -91,6 +91,12 @@
     if(!el)return;
     const action=el.getAttribute('data-action');
     const modal=el.getAttribute('data-modal');
+    if(action==='start-cpu'){
+      const selected=document.querySelector<HTMLElement>('[data-cpu-mode].selected');
+      const mode=selected?.getAttribute('data-cpu-mode');
+      setBgm(mode==='impossible'?'impossible':'normal');
+      return;
+    }
     if(action==='pause'){playSe(SOURCES.pauseOpen,.85);return;}
     if(modal==='close'){playSe(SOURCES.pauseClose,.85);return;}
     if(el.closest('.modal')||modal)playSe(SOURCES.menuSelect,.72);
