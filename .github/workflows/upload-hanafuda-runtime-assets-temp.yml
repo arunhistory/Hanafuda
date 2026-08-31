@@ -1,0 +1,33 @@
+name: Upload Hanafuda runtime assets temp
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/upload-hanafuda-runtime-assets-temp.yml'
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload fixed runtime assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/hanafuda-assets'
+          KEY='sb_publishable_POCxau9QCPFlF0J11o-ZFg_-QY4b8gF'
+          upload(){
+            local src="$1" dst="$2"
+            curl --fail-with-body --request POST "$BASE/$dst" \
+              --header "apikey: $KEY" \
+              --header "Authorization: Bearer $KEY" \
+              --header 'Content-Type: image/png' \
+              --header 'x-upsert: false' \
+              --data-binary "@$src"
+          }
+          upload assets/cards/sheet/card-sheet.png cards/card-sheet.png
+          upload assets/cards/back/card-back.png cards/card-back.png
+          upload assets/backgrounds/normal/game-normal.png backgrounds/game-normal.png
+          upload assets/backgrounds/corrupted/game-corrupted.png backgrounds/game-corrupted.png
+          mapfile -t cards < <(find assets/cards/generated -maxdepth 1 -type f -name 'm??-c?.png' | sort)
+          test "${#cards[@]}" -eq 48
+          for src in "${cards[@]}"; do upload "$src" "cards/generated/$(basename "$src")"; done
