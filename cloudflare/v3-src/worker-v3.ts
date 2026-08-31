@@ -9,9 +9,8 @@ import {HanafudaDirectory,routeOnlineV3} from "./directory.js";
 
 export {BaseModeSession as HanafudaModeSession,HanafudaCpuSessionDealer as HanafudaCpuSession,HanafudaOnlineRoom,HanafudaDirectory};
 
-// Developer test mode is deliberately activated server-side only.
-// The browser never receives DEVELOPER_MODE_KEY and the existing worker-v2
-// developer authentication + should_force_impossible logic remains authoritative.
+// Developer test mode is activated only inside the server boundary.
+// The browser never receives the developer secret; worker-v2 remains authoritative.
 async function developerModeStartRequest(req:Request,env:any){
   const secret=typeof env.DEVELOPER_MODE_KEY==="string"?env.DEVELOPER_MODE_KEY:"";
   if(!secret)throw new Error("DEVELOPER_MODE_KEY_MISSING");
