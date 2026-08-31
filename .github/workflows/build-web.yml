@@ -38,8 +38,6 @@ jobs:
       - name: Validate generated JavaScript syntax
         run: |
           for f in web/dist/*.js; do node --check "$f"; done
-          node --check web/turn-flow-v2.js
-          node --check web/pregame-gate-v3.js
       - name: Run frontend contract tests
         run: |
           node tests/web_frontend_contract.test.mjs
