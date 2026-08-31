@@ -1,0 +1,15 @@
+.initial-shuffle-lite .shuffle-card{filter:none!important;will-change:transform,opacity;}
+.initial-deal-lite .opponent-zone>.hand-row,
+.initial-deal-lite .field-wrap,
+.initial-deal-lite .player-zone>.hand-row{opacity:0;will-change:transform,opacity;filter:none!important;}
+.initial-deal-lite .opponent-zone>.hand-row{transform:translateY(-12px) scale(.985);}
+.initial-deal-lite .field-wrap{transform:scale(.97);}
+.initial-deal-lite .player-zone>.hand-row{transform:translateY(12px) scale(.985);}
+.initial-deal-lite.initial-deal-lite-run .opponent-zone>.hand-row,
+.initial-deal-lite.initial-deal-lite-run .field-wrap,
+.initial-deal-lite.initial-deal-lite-run .player-zone>.hand-row{opacity:1;transform:none;transition:transform .48s cubic-bezier(.2,.75,.2,1),opacity .42s ease;}
+.initial-deal-lite.initial-deal-lite-run .field-wrap{transition-delay:.08s;}
+.initial-deal-lite.initial-deal-lite-run .player-zone>.hand-row{transition-delay:.16s;}
+.initial-deal-lite .card{filter:none!important;}
+html.mobile-webapp.chrome-mobile .initial-deal-lite,
+html.mobile-webapp.chrome-mobile .initial-deal-lite *{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
