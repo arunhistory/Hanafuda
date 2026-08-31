@@ -68,9 +68,9 @@ async function startCpuSequencedV3(){
     roundHistory=[];
     currentRound=snapshot.roundIndex;
 
-    // CPU remains server-gated while the complete initial deal is shown.
-    renderMatch();
+    // Keep the lightweight preparation board visible while dealing. The real card DOM is created only after the deal finishes.
     await dealPreparedSnapshotV3();
+    renderMatch();
     await showReadyGate();
 
     // Release server-side CPU only after shuffle, deal and ready presentation are complete.
@@ -86,7 +86,6 @@ async function startCpuSequencedV3(){
       stack=["home","cpu-setup"];
       await render();
     }else{
-      // Never destroy a successfully created/dealt game because the ready handshake failed.
       renderMatch();
     }
     toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);
