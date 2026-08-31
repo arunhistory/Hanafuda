@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s web/index.html
-          for f in web/dist/core.js web/dist/views.js web/dist/cpu.js web/dist/online.js web/dist/experience.js; do
+          for f in web/dist/*.js; do
             test -s "$f"
             node --check "$f"
           done
@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir -p _site/web _site/assets
-          cp web/index.html web/styles.css web/experience.css _site/web/
+          find web -maxdepth 1 -type f \( -name '*.html' -o -name '*.css' \) -exec cp {} _site/web/ \;
           cp -R web/dist _site/web/dist
           for dir in cards backgrounds effects config reserve ui; do
             if [ -d "assets/$dir" ]; then cp -R "assets/$dir" _site/assets/; fi
@@ -58,10 +58,26 @@ jobs:
           <body><p><a href="./web/">花札を開く</a></p></body>
           </html>
           HTML
+
+          node <<'NODE'
+          const fs=require('fs');
+          const path=require('path');
+          const html=fs.readFileSync('_site/web/index.html','utf8');
+          const refs=[...html.matchAll(/(?:href|src)="\.\/([^"]+)"/g)].map(m=>m[1]);
+          for(const ref of refs){
+            if(/^https?:/.test(ref))continue;
+            const target=path.join('_site','web',ref);
+            if(!fs.existsSync(target))throw new Error(`PUBLIC_ASSET_MISSING:${ref}`);
+          }
+          NODE
+
           test ! -e _site/assets/source
           test ! -e _site/assets/wasm
           test ! -e _site/web/src
           test ! -e _site/web/tsconfig.json
+          test "$(find _site -type f -name '*.ts' | wc -l)" -eq 0
+          test "$(find _site -type f -name '*.cpp' | wc -l)" -eq 0
+          test "$(find _site -type f -name '*.mjs' | wc -l)" -eq 0
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
