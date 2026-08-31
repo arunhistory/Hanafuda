@@ -45,8 +45,9 @@
     koiChoiceCommitted=true;
     app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     try{
-      // The selection UI is gone before either outcome effect begins.
-      if(!settings.skipNormalAnimations)await showCallout(continueKoi?"effect.koikoi.text":"effect.agari.text");
+      // Koi needs an immediate acknowledgement because the round continues.
+      // Agari is rendered once from the authoritative settlement event after the UI is already gone.
+      if(continueKoi&&!settings.skipNormalAnimations)await showCallout("effect.koikoi.text");
       emitAudioHook(continueKoi?"koikoi":"agari");
       await sendAction("koi",{chooseKoi:continueKoi});
     }catch(e){
