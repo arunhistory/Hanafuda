@@ -1,4 +1,11 @@
 (()=>{
+  const runtimeWindow=window as Window & {
+    startCpu:typeof startCpu;
+    sendAction:typeof sendAction;
+    showCallout:typeof showCallout;
+    chooseKoi:typeof chooseKoi;
+    __hanafudaTurnFlowVersion?:string;
+  };
   let stagedHand:number|null=null;
   let committing=false;
   let koiDecisionPending=false;
@@ -57,10 +64,10 @@
     committing=true;
     stagedHand=null;
     try{
-      await sendAction("play",{handIndex});
+      await runtimeWindow.sendAction("play",{handIndex});
       if(fieldIndex!==null&&snapshot&&snapshot.turn===playerSeat()&&snapshot.phase===2){
         const pending=Array.isArray(snapshot.pendingMatches)?snapshot.pendingMatches:[];
-        if(pending.includes(fieldIndex))await sendAction("capture",{fieldIndex});
+        if(pending.includes(fieldIndex))await runtimeWindow.sendAction("capture",{fieldIndex});
       }
     }finally{
       committing=false;
@@ -92,7 +99,7 @@
     }
   },true);
 
-  startCpu=async function(){
+  runtimeWindow.startCpu=async function(){
     if(busy)return;busy=true;
     try{
       settings.mode=(app.querySelector<HTMLSelectElement>("#cpu-mode")?.value??settings.mode) as CpuMode;
@@ -148,7 +155,7 @@
   }
 
   const baseSendAction=sendAction;
-  sendAction=async function(action:string,payload:Record<string,unknown>={}){
+  runtimeWindow.sendAction=async function(action:string,payload:Record<string,unknown>={}){
     if(action!=="next_round"||session?.kind!=="cpu")return baseSendAction(action,payload);
     if(busy||roundTransitionPending||!session||!snapshot)return;
     roundTransitionPending=true;
@@ -188,7 +195,7 @@
     }
   };
 
-  showCallout=async function(assetId:string){
+  runtimeWindow.showCallout=async function(assetId:string){
     const isAgari=assetId==="effect.agari.text";
     const label=isAgari?"あがり":"こいこい";
     const layer=document.createElement("div");
@@ -204,7 +211,7 @@
   };
 
   const baseChooseKoi=chooseKoi;
-  chooseKoi=async function(continueKoi:boolean){
+  runtimeWindow.chooseKoi=async function(continueKoi:boolean){
     if(koiDecisionPending)return;
     koiDecisionPending=true;
     try{
@@ -221,5 +228,5 @@
     }
   };
 
-  (window as Window & {__hanafudaTurnFlowVersion?:string}).__hanafudaTurnFlowVersion="2";
+  runtimeWindow.__hanafudaTurnFlowVersion="2";
 })();
