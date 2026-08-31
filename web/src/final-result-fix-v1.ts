@@ -13,7 +13,7 @@
   let finalBgWarmImage:HTMLImageElement|null=null;
 
   function removeTransientMatchOverlays(){
-    app.querySelectorAll(".modal-layer,.settlement-layer,.agari-yaku-layer,.dramatic-callout-layer,.supabase-effect-layer,.fx-layer").forEach(el=>el.remove());
+    app.querySelectorAll(".modal-layer,.settlement-layer,.dramatic-callout-layer,.supabase-effect-layer,.fx-layer").forEach(el=>el.remove());
   }
 
   function warmFinalBackgroundWhenIdle(){
