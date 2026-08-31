@@ -22,7 +22,7 @@ for(const file of fs.readdirSync('.').filter(name=>name.toLowerCase().endsWith('
   assert.ok(config.includes(`- ${file}`),`root source image must be excluded from branch Pages: ${file}`);
 }
 
-assert.match(deploy,/find web -maxdepth 1 -type f \\( -name '\*\.html' -o -name '\*\.css' \\) -exec cp \{\} _site\/web\/ \\;/,'Actions Pages assembly must copy every web-root HTML/CSS file');
+assert.ok(deploy.includes("find web -maxdepth 1 -type f \\( -name '*.html' -o -name '*.css' \\) -exec cp {} _site/web/ \\;"),'Actions Pages assembly must copy every web-root HTML/CSS file');
 assert.match(deploy,/cp -R web\/dist _site\/web\/dist/,'Actions Pages assembly must publish generated JavaScript only from dist');
 assert.match(deploy,/test ! -e _site\/web\/src/,'Actions Pages assembly must reject web TypeScript source');
 assert.match(deploy,/test ! -e _site\/assets\/source/,'Actions Pages assembly must reject source artwork');
