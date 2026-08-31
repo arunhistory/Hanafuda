@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - '_config.yml'
       - 'tests/web_frontend_contract.test.mjs'
       - 'tests/online_animation_contract.test.mjs'
       - 'tests/deal_animation_contract.test.mjs'
@@ -13,7 +14,9 @@ on:
       - 'tests/turn_selection_contract.test.mjs'
       - 'tests/mobile_match_visibility_and_cpu_capture.test.mjs'
       - 'tests/pregame_gate_contract.test.mjs'
+      - 'tests/pages_publication_contract.test.mjs'
       - '.github/workflows/build-web.yml'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +51,7 @@ jobs:
           node tests/turn_selection_contract.test.mjs
           node tests/mobile_match_visibility_and_cpu_capture.test.mjs
           node tests/pregame_gate_contract.test.mjs
+          node tests/pages_publication_contract.test.mjs
       - name: Reject secrets and hidden trigger details
         run: |
           if grep -R -E 'DEVELOPER_MODE_KEY|x-hanafuda-developer|SUPABASE_SERVICE_ROLE_KEY|playerTotal|cpuTotal|should_force_impossible' web; then
