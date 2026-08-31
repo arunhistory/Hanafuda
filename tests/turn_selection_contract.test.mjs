@@ -1,14 +1,14 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const js=fs.readFileSync('web/turn-flow-v2.js','utf8');
+const js=fs.readFileSync('web/src/turn-flow-v2.ts','utf8');
 const cpuSrc=fs.readFileSync('web/src/cpu.ts','utf8');
 const supabaseFx=fs.readFileSync('web/supabase-effect-source-v1.js','utf8');
 const finalFix=fs.readFileSync('web/final-result-fix-v1.js','utf8');
 const finalCss=fs.readFileSync('web/final-result-fix-v1.css','utf8');
 const roundEnd=fs.readFileSync('web/round-end-boundary-v1.js','utf8');
 const pacingSrc=fs.readFileSync('web/src/match-pacing.ts','utf8');
-const pregame=fs.readFileSync('web/pregame-gate-v3.js','utf8');
+const pregame=fs.readFileSync('web/src/pregame-gate-v3.ts','utf8');
 const perfJs=fs.readFileSync('web/initial-animation-performance-v1.js','utf8');
 const perfCss=fs.readFileSync('web/initial-animation-performance-v1.css','utf8');
 const css=fs.readFileSync('web/turn-flow-v2.css','utf8');
@@ -17,7 +17,9 @@ const overlayCss=fs.readFileSync('web/mobile-overlay-fix-v1.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 
 assert.match(html,/turn-flow-v2\.css/);
-assert.match(html,/turn-flow-v2\.js/);
+assert.match(html,/\.\/dist\/turn-flow-v2\.js/);
+assert.doesNotMatch(html,/src="\.\/turn-flow-v2\.js"/);
+assert.ok(fs.existsSync('web/dist/turn-flow-v2.js'),'the generated turn-flow artifact must exist');
 assert.match(html,/supabase-effect-source-v1\.js/);
 assert.match(html,/final-result-fix-v1\.js/);
 assert.match(html,/final-result-fix-v1\.css/);
@@ -30,15 +32,19 @@ assert.match(js,/candidatesFor/);
 assert.match(js,/sameMonth/);
 assert.match(js,/field-empty-target/);
 assert.match(js,/stagedHand===index\?null:index/);
-assert.match(js,/await sendAction\("play",\{handIndex\}\)/);
+assert.match(js,/await runtimeWindow\.sendAction\("play",\{handIndex\}\)/);
 assert.match(js,/snapshot\.phase===2/);
 assert.doesNotMatch(js,/snapshot\.phase===2\|\|snapshot\.phase===3/);
 assert.match(js,/__hanafudaTurnFlowVersion="2"/);
+assert.match(js,/runtimeWindow\.startCpu=async function/,'turn-flow override must use the classic-script window binding instead of illegal TS function reassignment');
+assert.match(js,/runtimeWindow\.sendAction=async function/);
+assert.match(js,/runtimeWindow\.showCallout=async function/);
+assert.match(js,/runtimeWindow\.chooseKoi=async function/);
 assert.match(css,/\.hand-card-button\.selection-chosen/);
 assert.match(css,/\.field-card-button\.selection-target/);
 
 const nextRoundStart=js.indexOf('action!=="next_round"');
-const nextRoundEnd=js.indexOf('showCallout=async function',nextRoundStart);
+const nextRoundEnd=js.indexOf('runtimeWindow.showCallout=async function',nextRoundStart);
 assert.ok(nextRoundStart>=0&&nextRoundEnd>nextRoundStart);
 const nextRoundBlock=js.slice(nextRoundStart,nextRoundEnd);
 assert.ok(nextRoundBlock.indexOf('clearRoundSettlementOverlay()')>=0);
@@ -102,4 +108,4 @@ assert.match(roundEnd,/isFinalRoundSettlement/);
 assert.match(roundEnd,/roundIndex\+1>=totalRounds/);
 assert.doesNotMatch(roundEnd,/showShuffle|revealRoundDealSequentially|showReadyGate/);
 
-console.log('turn flow v2 contract: PASS');
+console.log('turn flow v2 generated TypeScript contract: PASS');
