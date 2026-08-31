@@ -18,7 +18,7 @@
       runtimeWindow.__hanafudaPurgeTransientMatchOverlays();
       return;
     }
-    app.querySelectorAll(".modal-layer,.settlement-layer,.settlement-card,.agari-yaku-layer,.agari-yaku-card,.supabase-effect-layer,.dramatic-callout-layer").forEach(el=>el.remove());
+    app.querySelectorAll(".modal-layer,.settlement-layer,.settlement-card,.supabase-effect-layer,.dramatic-callout-layer").forEach(el=>el.remove());
   }
 
   runtimeWindow.sendAction=async function(action:string,payload:Record<string,unknown>={}){
