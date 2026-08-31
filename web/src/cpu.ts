@@ -163,20 +163,11 @@ async function animateNewRoundIfNeeded(force:boolean){
     if(corruptedShift)app.classList.remove("corrupted-round-shift");
   }
 }
-function confirmedSettlementYaku(event:ActionEvent,state:Snapshot|null){
-  const winner=Number(event.settlement?.winner);
-  if(!state||(winner!==0&&winner!==1))return "";
-  const special=specialName(state.special[winner]);
-  if(special)return special;
-  const mask=event.yakuMasks?.[winner]??state.yakuMasks[winner];
-  return yakuNames(mask);
-}
 function matchEffectHost(){return document.documentElement.classList.contains("mobile-webapp")?app:document.body;}
 async function animateEvent(event:ActionEvent,nextState:Snapshot|null=snapshot){
   await playVisibleActionSteps(event,nextState);
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
-    const label=confirmedSettlementYaku(event,nextState);if(label&&label!=="なし")await showAgariYaku(label);
   }
   emitAudioHook("card-action",{event});await delay(120);
 }
@@ -185,9 +176,6 @@ async function showShuffle(initial=false){
 }
 async function showCallout(assetId:string){
   const layer=document.createElement("div");layer.className="fx-layer";const particles=Array.from({length:22},(_,i)=>`<i class="particle" style="left:${10+(i*37)%80}%;top:${15+(i*53)%70}%;--dx:${((i%7)-3)*31}px;--dy:${((i%5)-2)*34}px"></i>`).join("");layer.innerHTML=`<div class="callout">${particles}<img src="${assets.path(assetId)}" alt=""></div>`;matchEffectHost().append(layer);await delay(1850);layer.remove();
-}
-async function showAgariYaku(label:string){
-  const layer=document.createElement("div");layer.className="fx-layer agari-yaku-layer";layer.innerHTML=`<div class="agari-yaku-card"><span>成立役</span><strong>${escapeHtml(label)}</strong></div>`;matchEffectHost().append(layer);await delay(1250);layer.remove();
 }
 async function showCaptureTrail(cards:number[],toPlayer:boolean){
   const layer=document.createElement("div");layer.className=`capture-trail ${toPlayer?"to-player":"to-opponent"}`;
