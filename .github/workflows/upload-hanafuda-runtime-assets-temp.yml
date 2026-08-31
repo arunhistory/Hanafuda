@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Upload fixed runtime assets
+      - name: Upload generated runtime cards only
         shell: bash
         run: |
           set -euo pipefail
@@ -24,10 +24,6 @@ jobs:
               --header 'x-upsert: false' \
               --data-binary "@$src"
           }
-          upload assets/cards/sheet/card-sheet.png cards/card-sheet.png
-          upload assets/cards/back/card-back.png cards/card-back.png
-          upload assets/backgrounds/normal/game-normal.png backgrounds/game-normal.png
-          upload assets/backgrounds/corrupted/game-corrupted.png backgrounds/game-corrupted.png
           mapfile -t cards < <(find assets/cards/generated -maxdepth 1 -type f -name 'm??-c?.png' | sort)
           test "${#cards[@]}" -eq 48
           for src in "${cards[@]}"; do upload "$src" "cards/generated/$(basename "$src")"; done
