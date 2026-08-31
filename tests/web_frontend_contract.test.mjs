@@ -7,10 +7,10 @@ const html=fs.readFileSync(path.join(root,'web','index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'web','styles.css'),'utf8');
 const experienceCss=fs.readFileSync(path.join(root,'web','experience.css'),'utf8');
 const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(root,'web','src',x),'utf8')).join('\n');
-const perfJs=fs.readFileSync(path.join(root,'web','initial-animation-performance-v1.js'),'utf8');
-const finalFix=fs.readFileSync(path.join(root,'web','final-result-fix-v1.js'),'utf8');
+const perfSrc=fs.readFileSync(path.join(root,'web','src','initial-animation-performance-v1.ts'),'utf8');
+const finalFix=fs.readFileSync(path.join(root,'web','src','final-result-fix-v1.ts'),'utf8');
 const finalCss=fs.readFileSync(path.join(root,'web','final-result-fix-v1.css'),'utf8');
-const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js','audio-engine-v1.js'];
+const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js','match-pacing.js','audio-engine-v1.js','pregame-gate-v3.js','turn-flow-v2.js','supabase-runtime-assets-v1.js','supabase-effect-source-v1.js','final-result-fix-v1.js','round-end-boundary-v1.js','initial-animation-performance-v1.js'];
 const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=>fs.readFileSync(path.join(root,'web','dist',x),'utf8')).join('\n');
 
 const checks=[
@@ -38,12 +38,12 @@ const checks=[
   ['local unlock is written only from server grant path',ts.includes('if(ready.data.unlockGranted===true)grantUnlock()')&&ts.includes('if(result.data.unlockGranted===true)grantUnlock()')&&!ts.includes('grantUnlock();\n  await sendAction')],
   ['shuffle runs for every newly detected round',ts.includes('currentRound!==snapshot.roundIndex')&&(ts.includes('await showShuffle()')||ts.includes('await showShuffle(force)'))],
   ['online new epoch resets round presentation before rematch',ts.includes('const epochChanged=')&&ts.includes('if(epochChanged){roundHistory=[];currentRound=-1;}')&&ts.includes('animateNewRoundIfNeeded(!prior||epochChanged)')],
-  ['initial shuffle uses lightweight runtime path',perfJs.includes('initial-shuffle-lite')&&perfJs.includes('await delay(1080)')],
-  ['initial deal uses lightweight placeholder groups',perfJs.includes('initial-deal-stage')&&perfJs.includes('to-opponent')&&perfJs.includes('to-field')&&perfJs.includes('to-player')],
+  ['initial shuffle uses lightweight runtime path',perfSrc.includes('initial-shuffle-lite')&&perfSrc.includes('await delay(1080)')],
+  ['initial deal uses lightweight placeholder groups',perfSrc.includes('initial-deal-stage')&&perfSrc.includes('to-opponent')&&perfSrc.includes('to-field')&&perfSrc.includes('to-player')],
   ['capture animation exists',ts.includes('showCaptureTrail')&&css.includes('@keyframes captureFly')],
   ['koi and agari use registered text assets',ts.includes('effect.koikoi.text')&&ts.includes('effect.agari.text')],
   ['important callout text is held beyond one second',ts.includes('await delay(1850)')],
-  ['agari proceeds directly to settlement without yaku popup',ts.includes('await showCallout("effect.agari.text");')&&!ts.includes('showAgariYaku(')&&!ts.includes('agari-yaku-layer')],
+  ['agari proceeds directly to settlement without yaku popup',ts.includes('await showCallout("effect.agari.text");')&&!ts.includes('showAgariYaku(')&&!/(?:className|class)\s*=\s*["'`]agari-yaku-layer/.test(ts)],
   ['simultaneous deal specials display both sides',ts.includes('function decorateSimultaneousSpecials(breakdown:HTMLElement)')&&ts.includes('snapshot.lastRoundWinner!==2')&&ts.includes('`あなた: ${mine} / 相手: ${theirs}`')],
   ['settlement order includes yaku base multiplier round cumulative next dealer',['成立役','基礎点','こいこい倍率','局得点','累計点','次局親'].every(x=>ts.includes(x))],
   ['settlement controls wait for the next-dealer row',experienceCss.includes('settlementControlsReveal .42s ease 3.18s both')],
@@ -51,6 +51,7 @@ const checks=[
   ['final result text is high contrast on gold background',finalCss.includes('color:#160a05')&&finalCss.includes('color:#140905')],
   ['corrupted play stays low intensity and strengthens only on round change',experienceCss.includes('.screen.corrupted::after')&&experienceCss.includes('.app-shell.corrupted-round-shift::after')&&ts.includes('app.classList.add("corrupted-round-shift")')&&ts.includes('app.classList.remove("corrupted-round-shift")')],
   ['audio runtime is TypeScript-backed generated output',fs.existsSync(path.join(root,'web','src','audio-engine-v1.ts'))&&fs.existsSync(path.join(root,'web','dist','audio-engine-v1.js'))&&ts.includes('new Audio()')&&ts.includes('hanafuda-audio-hook')&&ts.includes('hanafuda-audio/')&&html.includes('./dist/audio-engine-v1.js')&&!html.includes('./audio-engine-v1.js')],
+  ['runtime patches are TypeScript-backed generated output',['pregame-gate-v3','turn-flow-v2','supabase-runtime-assets-v1','supabase-effect-source-v1','final-result-fix-v1','round-end-boundary-v1','initial-animation-performance-v1'].every(name=>fs.existsSync(path.join(root,'web','src',`${name}.ts`))&&fs.existsSync(path.join(root,'web','dist',`${name}.js`)))],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
   ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
   ['random matchmaking is websocket event-driven',ts.includes('/api/online/random/connect')&&ts.includes('new WebSocket(url)')&&ts.includes('msg?.type!=="matched"')&&!ts.includes('for(let i=0;i<24&&!r.data.matched')&&!ts.includes('/api/online/random",{ticket')],
