@@ -5,6 +5,7 @@ const js=fs.readFileSync('web/turn-flow-v2.js','utf8');
 const supabaseFx=fs.readFileSync('web/supabase-effect-source-v1.js','utf8');
 const finalFix=fs.readFileSync('web/final-result-fix-v1.js','utf8');
 const finalCss=fs.readFileSync('web/final-result-fix-v1.css','utf8');
+const roundEnd=fs.readFileSync('web/round-end-boundary-v1.js','utf8');
 const css=fs.readFileSync('web/turn-flow-v2.css','utf8');
 const pacingCss=fs.readFileSync('web/match-pacing.css','utf8');
 const overlayCss=fs.readFileSync('web/mobile-overlay-fix-v1.css','utf8');
@@ -15,6 +16,7 @@ assert.match(html,/turn-flow-v2\.js/,'turn flow v2 controller must be loaded');
 assert.match(html,/supabase-effect-source-v1\.js/,'Supabase effect source must load after turn flow');
 assert.match(html,/final-result-fix-v1\.js/,'dedicated final result controller must be loaded');
 assert.match(html,/final-result-fix-v1\.css/,'dedicated final result styles must be loaded');
+assert.match(html,/round-end-boundary-v1\.js/,'final-round boundary controller must be loaded last');
 assert.doesNotMatch(html,/selection-controller\.(?:css|js)/,'legacy selection controller must not be referenced');
 assert.match(js,/stagedHand/,'hand choice must be staged locally before committing');
 assert.match(js,/candidatesFor/,'field candidates must be derived from the selected hand card');
@@ -65,9 +67,19 @@ assert.match(pacingCss,/\.dramatic-callout-layer\{background:transparent!importa
 assert.match(pacingCss,/\.agari-yaku-layer\{background:transparent!important/,'agari yaku must not fall back to the old dark backdrop');
 
 assert.match(finalFix,/snapshot\?\.phase===6/,'phase 6 must switch to a dedicated final result renderer');
+assert.match(finalFix,/app\.classList\.add\("final-result-mode"\)/,'final result must switch the app shell into a dedicated background mode');
+assert.match(finalFix,/purgeTransientMatchOverlays/,'match overlays must have a shared cleanup path');
+assert.match(finalFix,/\.modal-layer,\.settlement-layer,\.settlement-card,\.agari-yaku-layer/,'koi and intermediate settlement overlays must be purged at state boundaries');
 assert.match(finalFix,/final-result-screen/,'final result must use a dedicated screen instead of a board overlay');
 assert.doesNotMatch(finalFix,/class="modal-layer"/,'dedicated final result must not recreate the match overlay');
-assert.match(finalFix,/chooser\?\.remove\(\)/,'koi/agari chooser must disappear immediately when a decision is made');
-assert.match(finalCss,/\.final-result-screen\{display:flex;align-items:center;justify-content:center/,'final result must occupy its own centered screen');
+assert.match(finalFix,/layer\.querySelector\("\.koi-choice"\)/,'koi chooser cleanup must target all stale koi layers');
+assert.match(finalCss,/\.app-shell\.final-result-mode\{background:/,'final result must replace the match shell background itself');
+assert.match(finalCss,/\.final-result-screen\{display:flex;align-items:center;justify-content:center;width:100%;height:100%/,'final result must occupy its own full screen');
+
+assert.match(roundEnd,/isFinalRoundSettlement/,'final-round settlement must be detected before next-round animation');
+assert.match(roundEnd,/roundIndex\+1>=totalRounds/,'final-round detection must use authoritative round count');
+assert.doesNotMatch(roundEnd,/showShuffle|revealRoundDealSequentially|showReadyGate/,'final-round completion must never enter shuffle, deal or ready animations');
+assert.match(roundEnd,/action!=="next_round"\|\|session\?\.kind!=="cpu"\|\|!isFinalRoundSettlement\(\)/,'only final CPU next-round completion may bypass the normal transition pipeline');
+assert.match(roundEnd,/snapshot=result\.data\.snapshot;[\s\S]*renderMatch\(\)/,'final-round API result must transition directly into the dedicated result screen');
 
 console.log('turn flow v2 contract: PASS');
