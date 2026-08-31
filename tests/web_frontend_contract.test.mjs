@@ -7,6 +7,9 @@ const html=fs.readFileSync(path.join(root,'web','index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'web','styles.css'),'utf8');
 const experienceCss=fs.readFileSync(path.join(root,'web','experience.css'),'utf8');
 const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(root,'web','src',x),'utf8')).join('\n');
+const perfJs=fs.readFileSync(path.join(root,'web','initial-animation-performance-v1.js'),'utf8');
+const finalFix=fs.readFileSync(path.join(root,'web','final-result-fix-v1.js'),'utf8');
+const finalCss=fs.readFileSync(path.join(root,'web','final-result-fix-v1.css'),'utf8');
 const jsFiles=['core.js','views.js','cpu.js','online.js','experience.js'];
 const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=>fs.readFileSync(path.join(root,'web','dist',x),'utf8')).join('\n');
 
@@ -35,16 +38,17 @@ const checks=[
   ['local unlock is written only from server grant path',ts.includes('if(ready.data.unlockGranted===true)grantUnlock()')&&ts.includes('if(result.data.unlockGranted===true)grantUnlock()')&&!ts.includes('grantUnlock();\n  await sendAction')],
   ['shuffle runs for every newly detected round',ts.includes('currentRound!==snapshot.roundIndex')&&(ts.includes('await showShuffle()')||ts.includes('await showShuffle(force)'))],
   ['online new epoch resets round presentation before rematch',ts.includes('const epochChanged=')&&ts.includes('if(epochChanged){roundHistory=[];currentRound=-1;}')&&ts.includes('animateNewRoundIfNeeded(!prior||epochChanged)')],
-  ['initial shuffle uses blueprint 2.0-2.5 second window',ts.includes('initial?2250:1250')&&experienceCss.includes('.shuffle-layer.long-shuffle')],
-  ['deal is one-card staggered',css.includes('--deal-index')&&ts.includes('style="--deal-index:${i}"')],
+  ['initial shuffle uses lightweight runtime path',perfJs.includes('initial-shuffle-lite')&&perfJs.includes('await delay(1080)')],
+  ['initial deal uses lightweight placeholder groups',perfJs.includes('initial-deal-stage')&&perfJs.includes('to-opponent')&&perfJs.includes('to-field')&&perfJs.includes('to-player')],
   ['capture animation exists',ts.includes('showCaptureTrail')&&css.includes('@keyframes captureFly')],
   ['koi and agari use registered text assets',ts.includes('effect.koikoi.text')&&ts.includes('effect.agari.text')],
   ['important callout text is held beyond one second',ts.includes('await delay(1850)')],
-  ['agari reveals authoritative yaku before settlement',ts.includes('function confirmedSettlementYaku(event:ActionEvent,state:Snapshot|null)')&&ts.includes('await showCallout("effect.agari.text");')&&ts.includes('confirmedSettlementYaku(event,nextState)')&&ts.includes('await showAgariYaku(label)')&&ts.includes('await delay(1250)')&&experienceCss.includes('.agari-yaku-card')],
+  ['agari proceeds directly to settlement without yaku popup',ts.includes('await showCallout("effect.agari.text");')&&!ts.includes('showAgariYaku(')&&!ts.includes('agari-yaku-layer')],
   ['simultaneous deal specials display both sides',ts.includes('function decorateSimultaneousSpecials(breakdown:HTMLElement)')&&ts.includes('snapshot.lastRoundWinner!==2')&&ts.includes('`あなた: ${mine} / 相手: ${theirs}`')],
   ['settlement order includes yaku base multiplier round cumulative next dealer',['成立役','基礎点','こいこい倍率','局得点','累計点','次局親'].every(x=>ts.includes(x))],
   ['settlement controls wait for the next-dealer row',experienceCss.includes('settlementControlsReveal .42s ease 3.18s both')],
-  ['final settlement explicitly marks all rounds complete',ts.includes('kicker.textContent="全局終了"')&&ts.includes('最終同点スコアへ先に到達した側を勝者として判定しました')],
+  ['final result uses Supabase background warmed after play starts',finalFix.includes('hanafuda-effects/settlement-bg.png')&&finalFix.includes('requestIdleCallback')&&finalCss.includes('hanafuda-effects/settlement-bg.png')],
+  ['final result text is high contrast on gold background',finalCss.includes('color:#160a05')&&finalCss.includes('color:#140905')],
   ['corrupted play stays low intensity and strengthens only on round change',experienceCss.includes('.screen.corrupted::after')&&experienceCss.includes('.app-shell.corrupted-round-shift::after')&&ts.includes('app.classList.add("corrupted-round-shift")')&&ts.includes('app.classList.remove("corrupted-round-shift")')],
   ['audio is hooks only',ts.includes('hanafuda-audio-hook')&&!html.includes('<audio')&&!ts.includes('new Audio(')],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
