@@ -33,13 +33,13 @@ assert.match(gate,/if\(!authoritativeGameCreated\)[\s\S]*stack=\["home","cpu-set
 assert.doesNotMatch(views,/function renderCpuSetup\(\)[\s\S]{0,2000}<select id="cpu-mode"/,'CPU setup must not use a native popup select for difficulty');
 assert.match(views,/data-cpu-mode=/,'CPU setup must expose in-canvas difficulty choices');
 assert.match(views,/data-cpu-rounds=/,'CPU setup must expose in-canvas round choices');
-assert.match(views,/\[\[-1,"ランダム"\],\[0,"あなたが親"\],\[1,"相手が親"\]\]/,'dealer choice must offer random, player and opponent in-canvas');
-assert.match(views,/data-cpu-dealer=/,'dealer choice must use in-canvas buttons instead of a native popup');
-assert.match(views,/value!==-1&&value!==0&&value!==1/,'dealer choice must reject values outside -1, 0 or 1');
-assert.match(core,/type FirstDealer = -1 \| 0 \| 1;/,'dealer setting must be strongly limited to -1, 0 or 1');
-assert.match(core,/firstDealer:-1/,'old settings must default safely to random dealer');
+assert.match(views,/function dealerChoices\(\)\{return '<span class="setup-choice selected" aria-current="true">ランダム<\/span>';\}/,'dealer UI must expose only the fixed standard random choice until additional choices are specified');
+assert.doesNotMatch(views,/data-cpu-dealer=/,'unspecified dealer choices must not be interactive');
+assert.match(core,/type FirstDealer = -1 \| 0 \| 1;/,'dealer transport remains structurally extensible without exposing unspecified choices');
+assert.match(core,/firstDealer:-1/,'dealer setting must default safely to random');
+assert.doesNotMatch(core,/value\?\.firstDealer/,'legacy persisted non-random dealer choices must not override the fixed standard');
 assert.match(gate,/const firstDealer=settings\.firstDealer;/,'pregame must use the canonical settings value');
-assert.ok((gate.match(/firstDealer/g)||[]).length>=5,'firstDealer must be passed through both normal and impossible CPU start payloads and session state');
+assert.ok((gate.match(/firstDealer/g)||[]).length>=5,'canonical firstDealer must still flow through both normal and impossible CPU start payloads and session state');
 assert.doesNotMatch(gate,/hanafuda\.cpu\.firstDealer/,'dealer selection must not create a second localStorage source of truth');
 
 console.log('pregame engine-start ordering, landscape setup and canonical dealer contract v3: PASS');
