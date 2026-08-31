@@ -2,9 +2,7 @@
 let matchRecapBlocking = false;
 let hiddenFieldDuringAction = [];
 let hiddenHandDuringAction = [];
-function actionActorLabel(event) {
-    return Number(event.actor) === playerSeat() ? "あなた" : "相手";
-}
+function actionActorLabel(event) { return Number(event.actor) === playerSeat() ? "あなた" : "相手"; }
 function actionMonth(card) { return Math.floor(card / 4); }
 function isTurnProgressEvent(event) { return event.type === "play" || event.type === "cpu_step"; }
 function hasHandPlay(event) { return isTurnProgressEvent(event) && Number.isInteger(event.playedCard); }
@@ -31,22 +29,15 @@ function captureGroups(event) {
     return { hand, draw };
 }
 function boardForAction() { return app.querySelector(".board"); }
-function boardMotion(board) {
-    return { width: Math.max(1, board.clientWidth), height: Math.max(1, board.clientHeight) };
-}
+function boardMotion(board) { return { width: Math.max(1, board.clientWidth), height: Math.max(1, board.clientHeight) }; }
 function visualBoardOffset(horizontal, vertical) {
     const viewport = document.querySelector(".webapp-viewport");
     const transform = viewport ? getComputedStyle(viewport).transform : "none";
     if (transform && transform !== "none") {
         try {
-            const matrix = new DOMMatrixReadOnly(transform);
-            const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
-            if (Math.abs(determinant) > 0.000001) {
-                return {
-                    x: (matrix.d * horizontal - matrix.c * vertical) / determinant,
-                    y: (-matrix.b * horizontal + matrix.a * vertical) / determinant,
-                };
-            }
+            const matrix = new DOMMatrixReadOnly(transform), determinant = matrix.a * matrix.d - matrix.b * matrix.c;
+            if (Math.abs(determinant) > .000001)
+                return { x: (matrix.d * horizontal - matrix.c * vertical) / determinant, y: (-matrix.b * horizontal + matrix.a * vertical) / determinant };
         }
         catch { }
     }
@@ -60,8 +51,7 @@ function hideCapturedFieldCards(cards) {
     for (const card of cards)
         remaining.set(card, (remaining.get(card) ?? 0) + 1);
     app.querySelectorAll(".field-card-button[data-field-index]").forEach(button => {
-        const index = Number(button.dataset.fieldIndex);
-        const card = Number.isInteger(index) ? snapshot?.field[index] : undefined;
+        const index = Number(button.dataset.fieldIndex), card = Number.isInteger(index) ? snapshot?.field[index] : undefined;
         if (!Number.isInteger(card))
             return;
         const left = remaining.get(card) ?? 0;
@@ -86,22 +76,16 @@ function hidePlayedHandSource(event, card) {
         return;
     }
     if (actorSeat === opponentSeat()) {
-        const backs = app.querySelectorAll(".opponent-zone>.hand-row .card-back:not(.capture-source-hidden)");
-        const back = backs.item(backs.length - 1);
+        const backs = app.querySelectorAll(".opponent-zone>.hand-row .card-back:not(.capture-source-hidden)"), back = backs.item(backs.length - 1);
         if (!back)
             return;
         back.classList.add("capture-source-hidden");
         hiddenHandDuringAction.push(back);
     }
 }
-function restoreHiddenSources() {
-    for (const card of hiddenFieldDuringAction)
-        card.classList.remove("capture-source-hidden");
-    for (const card of hiddenHandDuringAction)
-        card.classList.remove("capture-source-hidden");
-    hiddenFieldDuringAction = [];
-    hiddenHandDuringAction = [];
-}
+function restoreHiddenSources() { for (const card of hiddenFieldDuringAction)
+    card.classList.remove("capture-source-hidden"); for (const card of hiddenHandDuringAction)
+    card.classList.remove("capture-source-hidden"); hiddenFieldDuringAction = []; hiddenHandDuringAction = []; }
 function reflectCapturedRail(event, nextState) {
     if (!nextState)
         return;
@@ -115,12 +99,7 @@ function reflectCapturedRail(event, nextState) {
     row.innerHTML = capturedHtml(nextState.captured[actorSeat] ?? []);
     row.classList.add("capture-rail-committed");
 }
-function actionLabel(event, label) {
-    const el = document.createElement("div");
-    el.className = `table-action-label ${Number(event.actor) === playerSeat() ? "player-action" : "opponent-action"}`;
-    el.textContent = `${actionActorLabel(event)}・${label}`;
-    return el;
-}
+function actionLabel(event, label) { const el = document.createElement("div"); el.className = `table-action-label ${Number(event.actor) === playerSeat() ? "player-action" : "opponent-action"}`; el.textContent = `${actionActorLabel(event)}・${label}`; return el; }
 async function showCardToField(event, card, label, from) {
     const board = boardForAction();
     if (!board)
@@ -131,9 +110,7 @@ async function showCardToField(event, card, label, from) {
     const layer = document.createElement("div");
     layer.className = "table-action-layer";
     const origin = from === "deck" ? "from-deck" : Number(event.actor) === playerSeat() ? "from-player" : "from-opponent";
-    const visualHorizontal = from === "deck" ? Math.round(width * .36) : 0;
-    const visualVertical = from === "deck" ? 0 : Math.round(height * (Number(event.actor) === playerSeat() ? .43 : -.43));
-    const offset = visualBoardOffset(visualHorizontal, visualVertical);
+    const visualHorizontal = from === "deck" ? Math.round(width * .36) : 0, visualVertical = from === "deck" ? 0 : Math.round(height * (Number(event.actor) === playerSeat() ? .43 : -.43)), offset = visualBoardOffset(visualHorizontal, visualVertical);
     layer.style.setProperty("--from-x", `${offset.x}px`);
     layer.style.setProperty("--from-y", `${offset.y}px`);
     layer.innerHTML = `<div class="table-action-card ${origin}">${cardImg(card)}</div>`;
@@ -147,9 +124,7 @@ async function showDeckReveal(event, card) {
     const board = boardForAction();
     if (!board)
         return;
-    const { width } = boardMotion(board);
-    const deckDistance = Math.round(width * .36), midDistance = Math.round(deckDistance * .52);
-    const start = visualBoardOffset(deckDistance, 0), mid = visualBoardOffset(midDistance, 0);
+    const { width } = boardMotion(board), deckDistance = Math.round(width * .36), midDistance = Math.round(deckDistance * .52), start = visualBoardOffset(deckDistance, 0), mid = visualBoardOffset(midDistance, 0);
     const layer = document.createElement("div");
     layer.className = "table-action-layer table-deck-layer";
     layer.style.setProperty("--deck-x", `${start.x}px`);
@@ -170,9 +145,7 @@ async function showCaptureMove(event, cards, nextState) {
     if (!board)
         return;
     hideCapturedFieldCards(cards);
-    const { width } = boardMotion(board);
-    const toPlayer = Number(event.actor) === playerSeat();
-    const target = visualBoardOffset(Math.round(width * (toPlayer ? -.42 : .42)), 0);
+    const { width } = boardMotion(board), toPlayer = Number(event.actor) === playerSeat(), target = visualBoardOffset(Math.round(width * (toPlayer ? -.42 : .42)), 0);
     const layer = document.createElement("div");
     layer.className = "table-action-layer";
     layer.style.setProperty("--capture-x", `${target.x}px`);
@@ -184,29 +157,8 @@ async function showCaptureMove(event, cards, nextState) {
     reflectCapturedRail(event, nextState);
     layer.remove();
 }
-async function showDecision(event) {
-    const board = boardForAction();
-    if (!board)
-        return;
-    const label = document.createElement("div");
-    label.className = "table-decision-label";
-    label.textContent = event.chooseKoi ? "こいこい" : "あがり";
-    board.append(label);
-    await delay(1500);
-    label.remove();
-    await delay(220);
-}
-async function showReadyGate() {
-    const board = boardForAction();
-    if (!board)
-        return;
-    const label = document.createElement("div");
-    label.className = "table-ready-label";
-    label.textContent = "用意完了";
-    board.append(label);
-    await delay(settings.skipNormalAnimations ? 220 : 720);
-    label.remove();
-}
+async function showReadyGate() { const board = boardForAction(); if (!board)
+    return; const label = document.createElement("div"); label.className = "table-ready-label"; label.textContent = "用意完了"; board.append(label); await delay(settings.skipNormalAnimations ? 220 : 720); label.remove(); }
 async function playVisibleActionSteps(event, nextState = snapshot) {
     if (settings.skipNormalAnimations)
         return;
@@ -226,11 +178,10 @@ async function playVisibleActionSteps(event, nextState = snapshot) {
             if (captures.draw.length)
                 await showCaptureMove(event, captures.draw, nextState);
         }
-        if (!hasHandPlay(event) && !hasDeckReveal(event) && event.capturedCards?.length) {
+        if (!hasHandPlay(event) && !hasDeckReveal(event) && event.capturedCards?.length)
             await showCaptureMove(event, event.capturedCards, nextState);
-        }
-        if (event.type === "koi")
-            await showDecision(event);
+        // A koi decision never gets a second intermediate UI here. The selection screen is removed first,
+        // then the chosen koi/agari effect is the only visual acknowledgement.
         await delay(160);
         completed = true;
     }
@@ -240,12 +191,6 @@ async function playVisibleActionSteps(event, nextState = snapshot) {
         matchRecapBlocking = false;
     }
 }
-document.addEventListener("click", event => {
-    if (!matchRecapBlocking)
-        return;
-    const target = event.target?.closest("#app button,#app [data-hand-index],#app [data-field-index]");
-    if (!target)
-        return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-}, true);
+document.addEventListener("click", event => { if (!matchRecapBlocking)
+    return; const target = event.target?.closest("#app button,#app [data-hand-index],#app [data-field-index]"); if (!target)
+    return; event.preventDefault(); event.stopImmediatePropagation(); }, true);
