@@ -7,11 +7,37 @@ import { HanafudaCpuSessionDealer, routeCpuDealer } from "./cpu-session-dealer.j
 import { HanafudaOnlineRoom } from "./online-room.js";
 import { HanafudaDirectory, routeOnlineV3 } from "./directory.js";
 export { BaseModeSession as HanafudaModeSession, HanafudaCpuSessionDealer as HanafudaCpuSession, HanafudaOnlineRoom, HanafudaDirectory };
+// Developer test mode is activated only inside the server boundary.
+// The browser never receives the developer secret; worker-v2 remains authoritative.
+async function developerModeStartRequest(req, env) {
+    const secret = typeof env.DEVELOPER_MODE_KEY === "string" ? env.DEVELOPER_MODE_KEY : "";
+    if (!secret)
+        throw new Error("DEVELOPER_MODE_KEY_MISSING");
+    let body;
+    try {
+        body = await req.json();
+    }
+    catch {
+        body = {};
+    }
+    const headers = new Headers(req.headers);
+    headers.set("content-type", "application/json");
+    headers.set("x-hanafuda-developer", secret);
+    return new Request(req.url, { method: "POST", headers, body: JSON.stringify({ ...body, developer: true }) });
+}
 export default {
     async fetch(req, env, ctx) {
         const url = new URL(req.url);
         if (req.method === "OPTIONS")
             return baseWorker.fetch(req, env, ctx);
+        if (url.pathname === "/api/mode/start" && req.method === "POST") {
+            try {
+                return baseWorker.fetch(await developerModeStartRequest(req, env), env, ctx);
+            }
+            catch {
+                return new Response(JSON.stringify({ ok: false, code: "DEVELOPER_MODE_UNAVAILABLE" }), { status: 503, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+            }
+        }
         if (url.pathname.startsWith("/api/cpu/"))
             return cors(await routeCpuDealer(req, env, url), req, env);
         if (url.pathname.startsWith("/api/online/")) {
