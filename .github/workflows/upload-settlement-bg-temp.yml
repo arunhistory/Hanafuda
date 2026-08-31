@@ -1,0 +1,21 @@
+name: Upload settlement background temp
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/upload-settlement-bg-temp.yml'
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload fixed settlement background
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --request POST \
+            'https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/hanafuda-effects/settlement-bg.png' \
+            --header 'apikey: sb_publishable_POCxau9QCPFlF0J11o-ZFg_-QY4b8gF' \
+            --header 'Authorization: Bearer sb_publishable_POCxau9QCPFlF0J11o-ZFg_-QY4b8gF' \
+            --header 'Content-Type: image/png' \
+            --header 'x-upsert: false' \
+            --data-binary '@assets/backgrounds/settlement/settlement.png'
