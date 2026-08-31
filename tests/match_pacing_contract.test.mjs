@@ -58,12 +58,11 @@ assert.match(cpu,/function matchEffectHost\(\)\{return document\.documentElement
 assert.match(cpu,/matchEffectHost\(\)\.append\(layer\)/,'koi/agari/shuffle effects must use the landscape-aware effect host');
 assert.match(mobileCss,/\.match-screen>\.modal-layer\{position:absolute;inset:0/,'koi/agari and other match modals must use the landscape screen as their coordinate system');
 assert.match(mobileCss,/#app>\.fx-layer\{position:absolute/,'dynamic koi/agari effects must be anchored inside the virtual landscape app');
-assert.match(mobileCss,/html\.mobile-webapp\.phone-landscape \.agari-yaku-card/,'agari yaku presentation must have phone landscape sizing');
 assert.match(mobileCss,/\.callout \.particle\{display:none!important\}/,'phone koi/agari callouts must avoid particle-heavy rendering');
 assert.match(mobileCss,/chrome-mobile \.card[^\n]*filter:none!important/,'Chrome mobile must not run expensive card filters during match animation');
 assert.match(css,/phone-landscape \.table-action-card[\s\S]*filter:none!important/,'phone action animations must remove expensive drop-shadow filters');
 assert.match(ts,/async function showReadyGate\(\)/,'CPU start must expose a visible ready gate after dealing');
-assert.match(cpu,/await animateNewRoundIfNeeded\(true\);\s*await showReadyGate\(\);\s*matchInteractionReady=true;\s*renderMatch\(\);\s*await releaseCpuAfterReady\(\);/,'initial CPU release must occur only after shuffle, deal, ready presentation and explicit frontend interaction unlock');
+assert.match(cpu,/await animateNewRoundIfNeeded\(true\);\s*await showReadyGate\(\);\s*matchInteractionReady=true;\s*renderMatch\(\);\s*await releaseCpuAfterReady\(\);/,'legacy CPU release path must still preserve shuffle, deal, ready and unlock ordering');
 
 const acceptStart=cpu.indexOf('async function acceptSnapshot');
 const acceptEnd=cpu.indexOf('function recordHistory',acceptStart);
@@ -76,6 +75,7 @@ assert.ok(animateIndex>=0&&commitIndex>animateIndex,'the visible action must fin
 assert.ok(renderIndex>commitIndex,'the post-action board and settlement UI must render only after animation completion');
 assert.doesNotMatch(cpu,/event\.capturedCards\?\.length\)await showCaptureTrail/,'legacy capture trail must not add a second delayed capture after the board-first capture motion');
 assert.match(cpu,/async function animateEvent\(event:ActionEvent,nextState:Snapshot\|null=snapshot\)/,'event animation must receive the upcoming authoritative state without displaying it early');
-assert.match(cpu,/await showCallout\("effect\.agari\.text"\);[\s\S]*confirmedSettlementYaku\(event,nextState\)/,'agari and confirmed yaku must be presented from the upcoming settlement state before settlement UI is committed');
+assert.match(cpu,/await showCallout\("effect\.agari\.text"\);/,'agari animation must still appear before settlement');
+assert.doesNotMatch(cpu,/confirmedSettlementYaku|showAgariYaku|agari-yaku-layer/,'agari must proceed directly to settlement without a separate yaku popup');
 
 console.log('board-first DS-style match animation contract: PASS');
