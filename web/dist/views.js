@@ -34,10 +34,7 @@ function cpuModeChoices() {
     return modes.map(m => `<button type="button" class="setup-choice ${settings.mode === m ? "selected" : ""}" data-cpu-mode="${m}" aria-pressed="${settings.mode === m}">${modeLabel(m)}</button>`).join("");
 }
 function roundChoices() { return Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<button type="button" class="setup-choice round-choice ${settings.rounds === n ? "selected" : ""}" data-cpu-rounds="${n}" aria-pressed="${settings.rounds === n}">${n}</button>`).join(""); }
-function dealerChoices() {
-    const choices = [[-1, "ランダム"], [0, "あなたが親"], [1, "相手が親"]];
-    return choices.map(([value, label]) => `<button type="button" class="setup-choice ${settings.firstDealer === value ? "selected" : ""}" data-cpu-dealer="${value}" aria-pressed="${settings.firstDealer === value}">${label}</button>`).join("");
-}
+function dealerChoices() { return '<span class="setup-choice selected" aria-current="true">ランダム</span>'; }
 function renderCpuSetup() {
     app.innerHTML = `<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row dealer-choice-row">${dealerChoices()}</div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled ? "selected" : ""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled ? "selected" : ""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
 }
@@ -45,7 +42,7 @@ function renderOnline() {
     app.innerHTML = `<main class="${screenClass()}">${topbar("オンライン対戦")}<section class="panel"><h2>部屋を作る</h2><div class="settings-grid"><label for="online-rounds">局数</label><select id="online-rounds">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${settings.rounds === i + 1 ? "selected" : ""}>${i + 1}局</option>`).join("")}</select><label for="online-koi">こいこい</label><div class="check-row"><input id="online-koi" type="checkbox" ${settings.koiEnabled ? "checked" : ""}><span>使用する</span></div></div><div class="screen-actions"><button class="primary" data-action="online-create">部屋作成</button><button class="secondary" data-action="online-random">ランダム対戦</button></div></section><section class="panel"><h2>ルームコードで参加</h2><div class="settings-grid"><label for="room-code">ルームコード</label><input id="room-code" maxlength="6" autocomplete="off" inputmode="text" style="text-transform:uppercase" placeholder="6文字"></div><div id="room-inspect" class="notice" style="margin-top:10px">コードを入力すると参加前にルールを確認できます。</div><div class="screen-actions"><button class="primary" data-action="online-inspect">ルール確認</button><button class="secondary" data-action="online-join" disabled>参加</button></div></section></main>`;
 }
 function renderSettingsScreen() {
-    app.innerHTML = `<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は追加用フックのみ。音源は未設定です。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
+    app.innerHTML = `<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
 }
 function renderRules() {
     app.innerHTML = `<main class="${screenClass()}">${topbar("詳細ルール")}<section class="panel rules-copy"><h3>基本</h3><p>2人対戦。手札8枚ずつ、場8枚、山札24枚で開始します。親が先攻し、手札を1枚出した後に山札の先頭1枚を引きます。同月札が場にあれば通常のこいこいの取り札規則に従って取得します。</p><h3>こいこい</h3><p>1局につき1回まで。両者の手札がそれぞれ3枚未満になった時点では選択できません。こいこい後の得点倍率は2倍のみです。</p><h3>流局</h3><p>双方0点で1局を消化し、親は継続します。配札時に双方が同時に手四・くっつきを成立させた場合も流局です。</p><div class="screen-actions"><button class="secondary" data-nav="yaku">得点・役確認</button></div><p class="notice">任天堂株式会社が公開する花札「こいこい」の遊び方を参考にしています。本ゲームは任天堂株式会社の公式・公認・提携サービスではありません。</p></section></main>`;
@@ -118,7 +115,7 @@ function renderPauseModal() {
     if (modal === "rules")
         return `<div class="modal-layer"><section class="modal subview"><h2>現在のルール</h2><p>局数：${snapshot?.totalRounds ?? settings.rounds}局</p><p>こいこい：${snapshot?.koiEnabled ? "使用可" : "使用不可"}</p><p>得点表：固定</p><div class="screen-actions">${backButton}</div></section></div>`;
     if (modal === "settings")
-        return `<div class="modal-layer"><section class="modal subview"><h2>表示設定</h2><label class="check-row"><input id="match-skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}>通常演出をスキップ</label><p class="notice">BGM / SE は追加用フックのみです。</p><div class="screen-actions">${backButton}</div></section></div>`;
+        return `<div class="modal-layer"><section class="modal subview"><h2>表示設定</h2><label class="check-row"><input id="match-skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}>通常演出をスキップ</label><p class="notice">BGM / SE は現在の対局・メニュー・人知不能演出に連動します。</p><div class="screen-actions">${backButton}</div></section></div>`;
     return `<div class="modal-layer"><section class="modal"><h2>対局を諦めますか？</h2><p>現在の対局を終了します。途中状態は復元しません。</p><div class="screen-actions"><button class="danger" data-action="confirm-giveup">諦める</button>${backButton}</div></section></div>`;
 }
 function stateTable() {
@@ -149,8 +146,6 @@ function bindGlobalActions() {
     app.querySelectorAll("[data-action='home']").forEach(el => el.onclick = () => goHome());
     app.querySelectorAll("[data-cpu-mode]").forEach(el => el.onclick = () => { settings.mode = el.dataset.cpuMode; saveSettings(); renderCpuSetup(); bindGlobalActions(); });
     app.querySelectorAll("[data-cpu-rounds]").forEach(el => el.onclick = () => { settings.rounds = Number(el.dataset.cpuRounds); saveSettings(); renderCpuSetup(); bindGlobalActions(); });
-    app.querySelectorAll("[data-cpu-dealer]").forEach(el => el.onclick = () => { const value = Number(el.dataset.cpuDealer); if (value !== -1 && value !== 0 && value !== 1)
-        return; settings.firstDealer = value; saveSettings(); renderCpuSetup(); bindGlobalActions(); });
     app.querySelectorAll("[data-cpu-koi]").forEach(el => el.onclick = () => { settings.koiEnabled = el.dataset.cpuKoi === "true"; saveSettings(); renderCpuSetup(); bindGlobalActions(); });
     const mode = app.querySelector("#cpu-mode");
     if (mode)
