@@ -1,9 +1,29 @@
 (()=>{
   const baseRenderMatch=renderMatch;
+  const FINAL_BG_URL="https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/settlement-bg.png";
   let koiChoiceCommitted=false;
+  let finalBgWarmScheduled=false;
+  let finalBgWarmImage=null;
 
   function removeTransientMatchOverlays(){
     app.querySelectorAll(".modal-layer,.settlement-layer,.agari-yaku-layer,.dramatic-callout-layer,.supabase-effect-layer,.fx-layer").forEach(el=>el.remove());
+  }
+
+  function warmFinalBackgroundWhenIdle(){
+    if(finalBgWarmScheduled)return;
+    finalBgWarmScheduled=true;
+    const warm=()=>{
+      const img=new Image();
+      finalBgWarmImage=img;
+      img.decoding="async";
+      img.src=FINAL_BG_URL;
+      if(typeof img.decode==="function")void img.decode().catch(()=>{});
+    };
+    if("requestIdleCallback" in window){
+      window.requestIdleCallback(warm,{timeout:5000});
+    }else{
+      window.setTimeout(warm,1200);
+    }
   }
 
   function finalResultTitle(s){
@@ -33,6 +53,7 @@
     if(snapshot?.phase===6)return renderDedicatedFinalResult();
     app.classList.remove("final-result-mode");
     const out=baseRenderMatch();
+    if(snapshot&&matchInteractionReady)warmFinalBackgroundWhenIdle();
     if(koiChoiceCommitted){
       app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     }
@@ -45,8 +66,6 @@
     koiChoiceCommitted=true;
     app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     try{
-      // Koi needs an immediate acknowledgement because the round continues.
-      // Agari is rendered once from the authoritative settlement event after the UI is already gone.
       if(continueKoi&&!settings.skipNormalAnimations)await showCallout("effect.koikoi.text");
       emitAudioHook(continueKoi?"koikoi":"agari");
       await sendAction("koi",{chooseKoi:continueKoi});
@@ -63,5 +82,5 @@
   const baseGoHome=goHome;
   goHome=function(){app.classList.remove("final-result-mode");return baseGoHome();};
 
-  window.__hanafudaFinalResultFixVersion="3";
+  window.__hanafudaFinalResultFixVersion="4";
 })();
