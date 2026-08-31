@@ -147,9 +147,7 @@ function loadSettings():Settings{
     const mode:[CpuMode,...CpuMode[]]=["beginner","amateur","pro","impossible"];
     const chosen=mode.includes(value?.mode)?value.mode:fallback.mode;
     const rounds=Number(value?.rounds);
-    const dealer=Number(value?.firstDealer);
-    const firstDealer:FirstDealer=dealer===0||dealer===1||dealer===-1?dealer:-1;
-    return {mode:chosen,rounds:Number.isInteger(rounds)&&rounds>=1&&rounds<=12?rounds:12,koiEnabled:value?.koiEnabled!==false,firstDealer,skipNormalAnimations:value?.skipNormalAnimations===true};
+    return {mode:chosen,rounds:Number.isInteger(rounds)&&rounds>=1&&rounds<=12?rounds:12,koiEnabled:value?.koiEnabled!==false,firstDealer:-1,skipNormalAnimations:value?.skipNormalAnimations===true};
   }catch{return fallback;}
 }
 function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}
