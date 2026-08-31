@@ -1,15 +1,14 @@
 .initial-shuffle-lite .shuffle-card{filter:none!important;will-change:transform,opacity;}
-.initial-deal-lite .opponent-zone>.hand-row,
-.initial-deal-lite .field-wrap,
-.initial-deal-lite .player-zone>.hand-row{opacity:0;will-change:transform,opacity;filter:none!important;}
-.initial-deal-lite .opponent-zone>.hand-row{transform:translateY(-12px) scale(.985);}
-.initial-deal-lite .field-wrap{transform:scale(.97);}
-.initial-deal-lite .player-zone>.hand-row{transform:translateY(12px) scale(.985);}
-.initial-deal-lite.initial-deal-lite-run .opponent-zone>.hand-row,
-.initial-deal-lite.initial-deal-lite-run .field-wrap,
-.initial-deal-lite.initial-deal-lite-run .player-zone>.hand-row{opacity:1;transform:none;transition:transform .48s cubic-bezier(.2,.75,.2,1),opacity .42s ease;}
-.initial-deal-lite.initial-deal-lite-run .field-wrap{transition-delay:.08s;}
-.initial-deal-lite.initial-deal-lite-run .player-zone>.hand-row{transition-delay:.16s;}
-.initial-deal-lite .card{filter:none!important;}
-html.mobile-webapp.chrome-mobile .initial-deal-lite,
-html.mobile-webapp.chrome-mobile .initial-deal-lite *{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.initial-deal-stage{position:absolute;inset:0;z-index:24;pointer-events:none;overflow:hidden;contain:layout paint style;}
+.initial-deal-flight{position:absolute;left:50%;top:50%;display:flex;gap:3px;transform:translate3d(-50%,-50%,0) scale(.9);opacity:0;will-change:transform,opacity;}
+.initial-deal-flight img{width:34px;height:auto;filter:none!important;box-shadow:none!important;}
+.initial-deal-flight.to-opponent{--tx:0px;--ty:-110px;}
+.initial-deal-flight.to-field{--tx:0px;--ty:0px;}
+.initial-deal-flight.to-player{--tx:0px;--ty:110px;}
+.initial-deal-stage.run .initial-deal-flight{opacity:1;transform:translate3d(calc(-50% + var(--tx)),calc(-50% + var(--ty)),0) scale(1);transition:transform .42s cubic-bezier(.2,.75,.2,1),opacity .24s ease;}
+.initial-deal-stage.run .initial-deal-flight.to-field{transition-delay:.07s;}
+.initial-deal-stage.run .initial-deal-flight.to-player{transition-delay:.14s;}
+html.mobile-webapp .initial-deal-flight.to-opponent{--ty:-92px;}
+html.mobile-webapp .initial-deal-flight.to-player{--ty:92px;}
+html.mobile-webapp.chrome-mobile .initial-deal-stage,
+html.mobile-webapp.chrome-mobile .initial-deal-stage *{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
