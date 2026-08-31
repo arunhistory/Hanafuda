@@ -26,10 +26,7 @@ function cpuModeChoices(){
   return modes.map(m=>`<button type="button" class="setup-choice ${settings.mode===m?"selected":""}" data-cpu-mode="${m}" aria-pressed="${settings.mode===m}">${modeLabel(m)}</button>`).join("");
 }
 function roundChoices(){return Array.from({length:12},(_,i)=>i+1).map(n=>`<button type="button" class="setup-choice round-choice ${settings.rounds===n?"selected":""}" data-cpu-rounds="${n}" aria-pressed="${settings.rounds===n}">${n}</button>`).join("");}
-function dealerChoices(){
-  const choices:Array<[FirstDealer,string]>=[[-1,"ランダム"],[0,"あなたが親"],[1,"相手が親"]];
-  return choices.map(([value,label])=>`<button type="button" class="setup-choice ${settings.firstDealer===value?"selected":""}" data-cpu-dealer="${value}" aria-pressed="${settings.firstDealer===value}">${label}</button>`).join("");
-}
+function dealerChoices(){return '<span class="setup-choice selected" aria-current="true">ランダム</span>';}
 function renderCpuSetup(){
   app.innerHTML=`<main class="${screenClass("cpu-setup-screen")}">${topbar("CPU対戦設定")}<section class="panel cpu-setup-panel"><div class="setup-row"><strong>CPU難易度</strong><div class="setup-choice-row mode-choice-row">${cpuModeChoices()}</div></div><div class="setup-row"><strong>局数</strong><div class="setup-choice-row round-choice-row">${roundChoices()}</div></div><div class="setup-row"><strong>親決め</strong><div class="setup-choice-row dealer-choice-row">${dealerChoices()}</div></div><div class="setup-row"><strong>こいこい</strong><div class="setup-choice-row"><button type="button" class="setup-choice ${settings.koiEnabled?"selected":""}" data-cpu-koi="true" aria-pressed="${settings.koiEnabled}">使用する</button><button type="button" class="setup-choice ${!settings.koiEnabled?"selected":""}" data-cpu-koi="false" aria-pressed="${!settings.koiEnabled}">使用しない</button></div></div><div class="screen-actions"><button class="primary" data-action="start-cpu">対局開始</button></div></section></main>`;
 }
@@ -39,7 +36,7 @@ function renderOnline(){
 }
 
 function renderSettingsScreen(){
-  app.innerHTML=`<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は追加用フックのみ。音源は未設定です。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
+  app.innerHTML=`<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
 }
 
 function renderRules(){
@@ -98,7 +95,7 @@ function renderPauseModal(){
   if(modal==="state")return `<div class="modal-layer"><section class="modal subview"><h2>現状</h2>${stateTable()}<div class="screen-actions">${backButton}</div></section></div>`;
   if(modal==="history")return `<div class="modal-layer"><section class="modal subview"><h2>現在局の履歴</h2>${roundHistory.length?`<ol class="history-list">${roundHistory.map(h=>`<li>${escapeHtml(h)}</li>`).join("")}</ol>`:"<p>まだ手順履歴はありません。</p>"}<div class="screen-actions">${backButton}</div></section></div>`;
   if(modal==="rules")return `<div class="modal-layer"><section class="modal subview"><h2>現在のルール</h2><p>局数：${snapshot?.totalRounds??settings.rounds}局</p><p>こいこい：${snapshot?.koiEnabled?"使用可":"使用不可"}</p><p>得点表：固定</p><div class="screen-actions">${backButton}</div></section></div>`;
-  if(modal==="settings")return `<div class="modal-layer"><section class="modal subview"><h2>表示設定</h2><label class="check-row"><input id="match-skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}>通常演出をスキップ</label><p class="notice">BGM / SE は追加用フックのみです。</p><div class="screen-actions">${backButton}</div></section></div>`;
+  if(modal==="settings")return `<div class="modal-layer"><section class="modal subview"><h2>表示設定</h2><label class="check-row"><input id="match-skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}>通常演出をスキップ</label><p class="notice">BGM / SE は現在の対局・メニュー・人知不能演出に連動します。</p><div class="screen-actions">${backButton}</div></section></div>`;
   return `<div class="modal-layer"><section class="modal"><h2>対局を諦めますか？</h2><p>現在の対局を終了します。途中状態は復元しません。</p><div class="screen-actions"><button class="danger" data-action="confirm-giveup">諦める</button>${backButton}</div></section></div>`;
 }
 
@@ -124,7 +121,6 @@ function bindGlobalActions(){
   app.querySelectorAll<HTMLElement>("[data-action='home']").forEach(el=>el.onclick=()=>goHome());
   app.querySelectorAll<HTMLElement>("[data-cpu-mode]").forEach(el=>el.onclick=()=>{settings.mode=el.dataset.cpuMode as CpuMode;saveSettings();renderCpuSetup();bindGlobalActions();});
   app.querySelectorAll<HTMLElement>("[data-cpu-rounds]").forEach(el=>el.onclick=()=>{settings.rounds=Number(el.dataset.cpuRounds);saveSettings();renderCpuSetup();bindGlobalActions();});
-  app.querySelectorAll<HTMLElement>("[data-cpu-dealer]").forEach(el=>el.onclick=()=>{const value=Number(el.dataset.cpuDealer);if(value!==-1&&value!==0&&value!==1)return;settings.firstDealer=value as FirstDealer;saveSettings();renderCpuSetup();bindGlobalActions();});
   app.querySelectorAll<HTMLElement>("[data-cpu-koi]").forEach(el=>el.onclick=()=>{settings.koiEnabled=el.dataset.cpuKoi==="true";saveSettings();renderCpuSetup();bindGlobalActions();});
   const mode=app.querySelector<HTMLSelectElement>("#cpu-mode");if(mode)mode.onchange=()=>{settings.mode=mode.value as CpuMode;saveSettings();};
   const rounds=app.querySelector<HTMLSelectElement>("#rounds");if(rounds)rounds.onchange=()=>{settings.rounds=Number(rounds.value);saveSettings();};
