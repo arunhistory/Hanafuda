@@ -25,7 +25,7 @@
     const actions=session.kind==="online"
       ?'<button class="primary" data-postmatch="reconfigure">再戦する</button><button class="secondary" data-postmatch="same">同じ条件でもう一度</button><button class="secondary" data-postmatch="home">ホームに戻る</button>'
       :'<button class="primary" data-action="cpu-reconfigure">再戦する</button><button class="secondary" data-action="cpu-same">同じ条件でもう一度</button><button class="secondary" data-action="finish-home">ホームに戻る</button>';
-    app.innerHTML=`<main class="final-result-screen"><section class="final-result-panel"><div class="final-result-kicker">全局終了</div><h1>${finalResultTitle(s)}</h1><div class="final-result-score"><strong>${myScore}</strong><span>−</span><strong>${oppScore}</strong></div><p>${summary}</p><div class="screen-actions">${actions}</div></section></main>`;
+    app.innerHTML=`<main class="final-result-screen"><div class="final-result-content"><div class="final-result-kicker">全局終了</div><h1>${finalResultTitle(s)}</h1><div class="final-result-score"><strong>${myScore}</strong><span>−</span><strong>${oppScore}</strong></div><p>${summary}</p><div class="screen-actions">${actions}</div></div></main>`;
     bindMatchActions();
   }
 
@@ -34,7 +34,7 @@
     app.classList.remove("final-result-mode");
     const out=baseRenderMatch();
     if(koiChoiceCommitted){
-      app.querySelector(".modal-layer .koi-choice")?.closest(".modal-layer")?.remove();
+      app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     }
     return out;
   };
@@ -43,10 +43,10 @@
     if(koiChoiceCommitted||busy)return;
     if(!snapshot||snapshot.phase!==4||snapshot.turn!==playerSeat())return;
     koiChoiceCommitted=true;
-    app.querySelector(".modal-layer .koi-choice")?.closest(".modal-layer")?.remove();
+    app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     try{
-      // The decision UI always comes first. Only after the player commits do we show the chosen outcome animation.
-      if(continueKoi&&!settings.skipNormalAnimations)await showCallout("effect.koikoi.text");
+      // The selection UI is gone before either outcome effect begins.
+      if(!settings.skipNormalAnimations)await showCallout(continueKoi?"effect.koikoi.text":"effect.agari.text");
       emitAudioHook(continueKoi?"koikoi":"agari");
       await sendAction("koi",{chooseKoi:continueKoi});
     }catch(e){
@@ -62,5 +62,5 @@
   const baseGoHome=goHome;
   goHome=function(){app.classList.remove("final-result-mode");return baseGoHome();};
 
-  window.__hanafudaFinalResultFixVersion="2";
+  window.__hanafudaFinalResultFixVersion="3";
 })();
