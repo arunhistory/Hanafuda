@@ -37,6 +37,7 @@ function baseState({dealer=0,turn=0,koiEnabled=1,totalRounds=2,roundIndex=0}={})
 }
 function setHand(p,cards){mem.fill(255,S+O.hand+p*8,S+O.hand+p*8+8);cards.forEach((c,i)=>u8(O.hand+p*8+i,c));u8(O.handN+p,cards.length);}
 function setField(cards){mem.fill(255,S+O.field,S+O.field+16);cards.forEach((c,i)=>u8(O.field+i,c));u8(O.fieldN,cards.length);}
+function setCaptured(p,cards){mem.fill(255,S+O.captured+p*48,S+O.captured+p*48+48);cards.forEach((c,i)=>u8(O.captured+p*48+i,c));u8(O.capturedN+p,cards.length);}
 function captured(p){return readCards(e.game_captured_n,e.game_captured_card,p);}
 function field(){return Array.from({length:e.game_field_n()},(_,i)=>e.game_field_card(i));}
 
@@ -73,6 +74,13 @@ check('koi unavailable when both hands are below three',e.game_koi_decision(0,1)
 // Koi disabled by RuleSet.
 baseState({koiEnabled:0});setHand(0,[0,4,8]);setHand(1,[12,16,20]);u8(O.phase,PHASE.koi);i16(O.offeredScore,30);
 check('disabled koi cannot be chosen',e.game_koi_decision(0,1)===ERR_CHOICE);
+
+// Regression from an observed pro match: 60 points, opponent no yaku, five cards each, and a 10-vs-4 capture lead must continue with Koi.
+baseState({turn:1});
+setHand(0,[26,27,28,29,30]);setHand(1,[31,32,33,34,35]);
+setCaptured(0,[0,4,8,12]);setCaptured(1,[16,17,18,19,20,21,22,23,24,25]);
+u8(O.phase,PHASE.koi);i16(O.offeredScore,60);
+check('pro cpu kois from strong 60-point lead',e.game_cpu_step(1,2,123456)===OK&&e.game_koi_used()===1&&e.game_phase()===PHASE.play&&e.game_turn()===0);
 
 // After a Koi, settlement multiplier is exactly x2.
 baseState();setHand(0,[0,4,8]);setHand(1,[12,16,20]);u8(O.phase,PHASE.koi);u8(O.koiUsed,1);i16(O.offeredScore,30);
