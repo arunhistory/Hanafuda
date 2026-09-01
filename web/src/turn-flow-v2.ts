@@ -105,6 +105,7 @@
       settings.mode=(app.querySelector<HTMLSelectElement>("#cpu-mode")?.value??settings.mode) as CpuMode;
       settings.rounds=Number(app.querySelector<HTMLSelectElement>("#rounds")?.value??settings.rounds);
       settings.koiEnabled=app.querySelector<HTMLInputElement>("#koi-enabled")?.checked??settings.koiEnabled;saveSettings();
+      emitAudioHook("match-start",{mode:settings.mode});
       let modeSessionId:string|undefined,modeSessionToken:string|undefined;
       if(settings.mode!=="impossible"){
         const mode=await api("/api/mode/start",{mode:settings.mode,rounds:settings.rounds,developer:false});
@@ -121,7 +122,7 @@
       await acceptApiEvents((started.data.events??[]) as ApiEvent[]);
       if(started.data.unlockGranted===true)grantUnlock();
       renderMatch();
-    }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;if(snapshot&&currentScreen()==="match")renderMatch();}
+    }catch(e){emitAudioHook("match-stop");toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;if(snapshot&&currentScreen()==="match")renderMatch();}
   };
 
   async function revealRoundDealSequentially(){
