@@ -60,6 +60,7 @@ let pendingModeTransition = false;
 let hiddenFirstEncounter = false;
 let onlineReconfigureState = "none";
 let queuedToasts = [];
+let audioDriverReady = false;
 function loadSettings() {
     const fallback = { mode: "beginner", rounds: 12, koiEnabled: true, firstDealer: -1, skipNormalAnimations: false };
     try {
@@ -80,10 +81,12 @@ function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(sett
 function isUnlocked() { return localStorage.getItem(UNLOCK_KEY) === "1"; }
 function grantUnlock() { localStorage.setItem(UNLOCK_KEY, "1"); }
 function currentScreen() { return stack[stack.length - 1]; }
-function push(screen) { stack.push(screen); render(); }
+function signalTitleAudio() { if (audioDriverReady && currentScreen() === "home")
+    emitAudioHook("match-start", { mode: "normal" }); }
+function push(screen) { stack.push(screen); render(); signalTitleAudio(); }
 function back() { if (stack.length > 1)
-    stack.pop(); render(); }
-function goHome() { stack = ["home"]; modal = null; render(); }
+    stack.pop(); render(); signalTitleAudio(); }
+function goHome() { stack = ["home"]; modal = null; render(); signalTitleAudio(); }
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function modeLabel(mode) { return mode === "beginner" ? "初心者" : mode === "amateur" ? "アマチュア" : mode === "pro" ? "プロ" : "人知不能"; }
 function phaseLabel(s) {
@@ -106,6 +109,7 @@ function opponentSeat() { return (1 - playerSeat()); }
 function perspectiveScores(s) { const p = playerSeat(); return [s.scores[p], s.scores[1 - p]]; }
 function perspectiveCaptured(s) { const p = playerSeat(); return [s.captured[p], s.captured[1 - p]]; }
 function emitAudioHook(name, detail = {}) { window.dispatchEvent(new CustomEvent("hanafuda-audio-hook", { detail: { name, ...detail } })); }
+window.addEventListener("hanafuda-audio-driver-ready", () => { audioDriverReady = true; signalTitleAudio(); });
 function toast(message) { queuedToasts.push(message); renderToasts(); setTimeout(() => { queuedToasts.shift(); renderToasts(); }, 2450); }
 function renderToasts() { let el = document.querySelector("#toast-stack"); if (!el) {
     el = document.createElement("div");
