@@ -196,7 +196,7 @@ function channelCode(channel:unknown){
   return channel==='bgm'?AUDIO_CHANNEL.bgm:channel==='se'?AUDIO_CHANNEL.se:-1;
 }
 
-function runDetached(task:Promise<void>,requestId:string|undefined,seq:number){
+function runDetached(task:Promise<unknown>,requestId:string|undefined,seq:number){
   void task.catch(error=>window.dispatchEvent(new CustomEvent(FAULT_EVENT,{detail:{
     ok:false,
     sequence:seq,
