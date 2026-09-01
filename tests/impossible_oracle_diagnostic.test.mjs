@@ -20,11 +20,8 @@ function solveRound(hiddenSeat,seed,startSteps,roundBaseHidden,roundBasePro){
   const memo=new Map();
   let nodes=0;
   const terminal=()=>{
-    const winner=e.game_last_round_winner();
     const hg=e.game_score(hiddenSeat)-roundBaseHidden,pg=e.game_score(1-hiddenSeat)-roundBasePro;
-    if(winner===hiddenSeat)return {u:1_000_000_000+hg*1000-pg,hg,pg};
-    if(winner===1-hiddenSeat)return {u:-1_000_000_000-pg*1000+hg,hg,pg};
-    return {u:-500_000_000+hg*1000-pg,hg,pg};
+    return {u:hg*1000-pg*100,hg,pg};
   };
   const rec=(steps)=>{
     if(++nodes>NODE_CAP)throw new Error(`oracle node cap seed=${seed} round=${e.game_round_index()}`);
