@@ -7,6 +7,7 @@ on:
       - 'src/core/**'
       - 'tools/build_engine_wasm.sh'
       - 'tests/impossible_strength.test.mjs'
+      - 'tests/impossible_oracle_diagnostic.test.mjs'
       - '.github/workflows/test-impossible-planner.yml'
   workflow_dispatch:
 
@@ -32,6 +33,8 @@ jobs:
         run: |
           node tests/game_rules_contract.test.mjs
           node tests/game_simulation.test.mjs
+      - name: Measure exact legal oracle ceiling
+        run: node tests/impossible_oracle_diagnostic.test.mjs
       - name: Run impossible acceptance benchmark
         run: node tests/impossible_strength.test.mjs
       - name: Record engine artifact
