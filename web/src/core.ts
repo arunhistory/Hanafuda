@@ -138,6 +138,7 @@ let pendingModeTransition=false;
 let hiddenFirstEncounter=false;
 let onlineReconfigureState:"none"|"host"|"guest"="none";
 let queuedToasts:string[]=[];
+let audioDriverReady=false;
 
 function loadSettings():Settings{
   const fallback:Settings={mode:"beginner",rounds:12,koiEnabled:true,firstDealer:-1,skipNormalAnimations:false};
@@ -154,9 +155,10 @@ function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(setting
 function isUnlocked(){return localStorage.getItem(UNLOCK_KEY)==="1";}
 function grantUnlock(){localStorage.setItem(UNLOCK_KEY,"1");}
 function currentScreen(){return stack[stack.length-1];}
-function push(screen:UiScreen){stack.push(screen);render();}
-function back(){if(stack.length>1)stack.pop();render();}
-function goHome(){stack=["home"];modal=null;render();}
+function signalTitleAudio(){if(audioDriverReady&&currentScreen()==="home")emitAudioHook("match-start",{mode:"normal"});}
+function push(screen:UiScreen){stack.push(screen);render();signalTitleAudio();}
+function back(){if(stack.length>1)stack.pop();render();signalTitleAudio();}
+function goHome(){stack=["home"];modal=null;render();signalTitleAudio();}
 function escapeHtml(value:unknown){return String(value).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]!));}
 function modeLabel(mode:CpuMode){return mode==="beginner"?"初心者":mode==="amateur"?"アマチュア":mode==="pro"?"プロ":"人知不能";}
 function phaseLabel(s:Snapshot){
@@ -173,6 +175,7 @@ function opponentSeat():Seat{return (1-playerSeat()) as Seat;}
 function perspectiveScores(s:Snapshot):[number,number]{const p=playerSeat();return [s.scores[p],s.scores[1-p] as number];}
 function perspectiveCaptured(s:Snapshot):[number[],number[]]{const p=playerSeat();return [s.captured[p],s.captured[1-p]];}
 function emitAudioHook(name:string,detail:unknown={}){window.dispatchEvent(new CustomEvent("hanafuda-audio-hook",{detail:{name,...(detail as object)}}));}
+window.addEventListener("hanafuda-audio-driver-ready",()=>{audioDriverReady=true;signalTitleAudio();});
 function toast(message:string){queuedToasts.push(message);renderToasts();setTimeout(()=>{queuedToasts.shift();renderToasts();},2450);}
 function renderToasts(){let el=document.querySelector<HTMLElement>("#toast-stack");if(!el){el=document.createElement("div");el.id="toast-stack";el.className="toast-stack";document.body.append(el);}el.innerHTML=queuedToasts.map(x=>`<div class="toast">${escapeHtml(x)}</div>`).join("");}
 
