@@ -74,8 +74,8 @@ static uint32_t mix(uint32_t h,uint32_t v){
   return h?h:0x6d2b79f5u;
 }
 
-static uint32_t state_seed(){
-  uint32_t h=0x811c9dc5u^rollout_salt;
+static uint32_t state_seed(int scenario_active){
+  uint32_t h=0x811c9dc5u^(scenario_active?rollout_salt:0u);
   h=mix(h,(uint32_t)game_phase());
   h=mix(h,(uint32_t)game_turn());
   h=mix(h,(uint32_t)game_deck_remaining());
@@ -170,7 +170,7 @@ static int terminal_utility(){
   return -500000000+ownGain*1000-oppGain;
 }
 
-static int hidden_search(int depth);
+static int hidden_search(int depth,int scenario_active);
 
 static void sort_actions(int* actions,int* priorities,int n){
   for(int i=0;i<n;i++)for(int j=i+1;j<n;j++)if(priorities[j]>priorities[i]){
@@ -179,7 +179,7 @@ static void sort_actions(int* actions,int* priorities,int n){
   }
 }
 
-static int search_hidden_choice(int depth){
+static int search_hidden_choice(int depth,int scenario_active){
   const int phase=game_phase();
   int actions[8],priorities[8],n=0;
   if(!copy_state_out(search_states[depth]))return position_heuristic();
@@ -212,23 +212,28 @@ static int search_hidden_choice(int depth){
     if(phase==H_PLAY)rc=game_play_hand(hidden_actor,actions[i]);
     else if(phase==H_CAPTURE_HAND||phase==H_CAPTURE_DRAW)rc=game_choose_capture(hidden_actor,actions[i]);
     else rc=game_koi_decision(hidden_actor,actions[i]);
-    if(rc==0){const int v=hidden_search(depth+1);if(v>best)best=v;}
+    if(rc==0){const int v=hidden_search(depth+1,scenario_active);if(v>best)best=v;}
   }
   restore_state(search_states[depth]);
   return best==-2000000000?position_heuristic():best;
 }
 
-static int hidden_search(int depth){
+static int hidden_search(int depth,int scenario_active){
   search_nodes++;
   if(search_nodes>MAX_NODES||depth>=MAX_DEPTH-1){last_exact=0;return position_heuristic();}
   const int phase=game_phase();
   if(phase==H_SETTLEMENT||phase==H_COMPLETE)return terminal_utility();
   const int turn=game_turn();
-  if(turn==hidden_actor)return search_hidden_choice(depth);
+  if(turn==hidden_actor)return search_hidden_choice(depth,scenario_active);
   if(!copy_state_out(search_states[depth]))return position_heuristic();
-  const int rc=game_cpu_step(turn,2,state_seed());
+  const int rc=game_cpu_step(turn,2,state_seed(scenario_active));
   int v=position_heuristic()-1000000;
-  if(rc==0)v=hidden_search(depth+1);
+  if(rc==0){
+    int next_scenario=scenario_active;
+    const int next_phase=game_phase();
+    if(scenario_active&&(next_phase==H_SETTLEMENT||next_phase==H_COMPLETE||game_turn()==hidden_actor))next_scenario=0;
+    v=hidden_search(depth+1,next_scenario);
+  }
   restore_state(search_states[depth]);
   return v;
 }
@@ -242,7 +247,7 @@ static void score_candidate(int* worst,int* sum){
     rollout_salt=SCENARIO_SALTS[scenario];
     search_nodes=0;
     last_exact=1;
-    const int v=hidden_search(1);
+    const int v=hidden_search(1,1);
     last_nodes+=search_nodes;
     if(!last_exact)allExact=0;
     if(v<*worst)*worst=v;
@@ -266,7 +271,7 @@ static int better(int worst,int sum,int bestWorst,int bestSum,int found){
 }
 
 extern "C" {
-__attribute__((visibility("default"))) int game_hidden_version(){return 5;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 6;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
