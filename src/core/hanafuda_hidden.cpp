@@ -246,13 +246,20 @@ static void score_candidate(int* worst,int* sum){
 
 static int better(int worst,int sum,int bestWorst,int bestSum,int found){
   if(!found)return 1;
+  const int safe=worst>0;
+  const int bestSafe=bestWorst>0;
+  if(safe!=bestSafe)return safe>bestSafe;
+  if(safe){
+    if(sum!=bestSum)return sum>bestSum;
+    return worst>bestWorst;
+  }
   if(worst!=bestWorst)return worst>bestWorst;
   return sum>bestSum;
 }
 
 extern "C" {
 
-__attribute__((visibility("default"))) int game_hidden_version(){return 1;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 2;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
