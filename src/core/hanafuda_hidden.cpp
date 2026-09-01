@@ -156,25 +156,16 @@ static Eval terminal_eval(){
   const int opp=1-hidden_actor;
   const int ownGain=game_score(hidden_actor)-root_score_hidden;
   const int oppGain=game_score(opp)-root_score_opp;
-  const int winner=game_last_round_winner();
-  int v;
-  if(winner==hidden_actor)v=1000000000+ownGain*1000-oppGain;
-  else if(winner==opp)v=-1000000000-oppGain*1000+ownGain;
-  else v=-500000000+ownGain*1000-oppGain;
+  const int v=ownGain*1000-oppGain*100;
   return {v,v};
 }
 
 static int better_eval(Eval a,Eval b,int found){
   if(!found)return 1;
-  const int safe=a.worst>0,bSafe=b.worst>0;
-  if(safe!=bSafe)return safe>bSafe;
-  if(safe){if(a.avg!=b.avg)return a.avg>b.avg;return a.worst>b.worst;}
-  if(a.worst!=b.worst)return a.worst>b.worst;
-  return a.avg>b.avg;
+  if(a.avg!=b.avg)return a.avg>b.avg;
+  return a.worst>b.worst;
 }
 
-// Exact public Pro base-score model. Humanly Impossible never uses these values to value its own cards;
-// they are used only to enumerate which Pro actions the real 0..3 / 0..1 tie-break noise can select.
 static int intrinsic_value(int id){
   const uint32_t f=card_flags(id);int v=0;
   if(f&H_LIGHT)v+=42;if(f&H_TANE)v+=18;if(f&H_RIBBON)v+=12;
@@ -356,7 +347,7 @@ static Eval score_candidate(){
 }
 
 extern "C" {
-__attribute__((visibility("default"))) int game_hidden_version(){return 8;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 9;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
