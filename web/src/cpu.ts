@@ -75,7 +75,8 @@ function recordHistory(event:ActionEvent,actor?:string){
   if(event.type==="capture")bits.push("取得する場札を選択した");
   if(event.capturedCards?.length)bits.push(`${event.capturedCards.map(cardName).join("・")}を取得`);
   if(event.newYakuMask)bits.push(`役成立: ${yakuNames(event.newYakuMask)}`);
-  if(event.type==="koi")bits.push(event.chooseKoi?"こいこい":"あがり");
+  const decidedKoi=event.type==="koi"||(event.type==="cpu_step"&&typeof event.chooseKoi==="boolean");
+  if(decidedKoi)bits.push(event.chooseKoi?"こいこい":"あがり");
   if(event.settlement)bits.push(event.settlement.winner===2?"流局":`局終了 ${event.settlement.points}点`);
   if(bits.length)roundHistory.push(`${who}: ${bits.join(" / ")}`);
 }
@@ -169,8 +170,14 @@ async function animateNewRoundIfNeeded(force:boolean){
 function matchEffectHost(){return document.documentElement.classList.contains("mobile-webapp")?app:document.body;}
 async function animateEvent(event:ActionEvent,nextState:Snapshot|null=snapshot){
   await playVisibleActionSteps(event,nextState);
+  const opponentDecision=Number(event.actor)===opponentSeat()&&(event.type==="cpu_step"||event.type==="koi")&&typeof event.chooseKoi==="boolean";
+  if(opponentDecision&&event.chooseKoi===true){
+    await showCallout("effect.koikoi.text");
+    emitAudioHook("koikoi");
+  }
   if(event.settlement&&event.settlement.winner!==2){
     await showCallout("effect.agari.text");
+    if(Number(event.actor)===opponentSeat())emitAudioHook("agari");
   }
   emitAudioHook("card-action",{event});await delay(120);
 }
