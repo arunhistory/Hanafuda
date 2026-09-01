@@ -105,9 +105,6 @@ static int captured_score(int p){
   return score_cards(cards,n);
 }
 
-// Exact full-yaku ceiling from cards that are not already permanently owned by the opponent.
-// score_captured is the authoritative rules function, so every yaku and every legal overlap
-// (Goko/Shiko/Sanko, Hanami/Tsukimi, Inoshikacho, Akatan/Aotan, Tan/Tane/Kasu) is included here.
 static int attainable_yaku_ceiling(int p){
   const int opp=1-p;
   uint8_t unavailable[48]={0};
@@ -120,9 +117,6 @@ static int attainable_yaku_ceiling(int p){
   return score_cards(cards,n);
 }
 
-// Role projection using only cards whose future ownership is currently visible to the planner:
-// already captured cards, own hand, field, and the known ordered deck. This is only a cutoff
-// heuristic; completed branches are always compared by the actual settled score.
 static int visible_future_yaku_score(int p){
   uint8_t seen[48]={0};
   uint8_t cards[48];int n=0;
@@ -141,8 +135,6 @@ static int visible_future_yaku_score(int p){
   const int rem=game_deck_remaining();
   for(int i=0;i<rem;i++){
     const int c=game_deck_card_relative(i);
-    // Draws occur for the active actor after a hand play. Koi can alter the alternation,
-    // therefore include the whole known deck as a role-possibility set rather than guessing ownership.
     if(c>=0&&c<48&&!seen[c]){seen[c]=1;cards[n++]=(uint8_t)c;}
   }
   return score_cards(cards,n);
@@ -164,12 +156,7 @@ static int position_heuristic(){
   value-=oppFuture*14000;
   value+=ownCeiling*8000;
   value-=oppCeiling*3000;
-
-  if(game_phase()==H_KOI&&game_turn()==hidden_actor){
-    // Offered score is not the target. It is the checkpoint from which the search decides
-    // whether one Koi can lead to a larger final full-yaku total.
-    value+=game_offered_score()*180000;
-  }
+  if(game_phase()==H_KOI&&game_turn()==hidden_actor)value+=game_offered_score()*180000;
   if(game_koi_used())value+=ownFuture*12000;
   return value;
 }
@@ -179,9 +166,6 @@ static int terminal_utility(){
   const int ownGain=game_score(hidden_actor)-root_score_hidden;
   const int oppGain=game_score(opp)-root_score_opp;
   const int winner=game_last_round_winner();
-
-  // Primary objective: actual points taken in this round. No yaku priority is hard-coded here.
-  // The route producing the largest final score wins, regardless of which combination of yaku made it.
   if(winner==hidden_actor)return ownGain*1000000-oppGain*100000+100000;
   if(winner==opp)return -oppGain*450000;
   return -oppGain*150000;
@@ -255,8 +239,8 @@ static int hidden_search(int depth){
   return v;
 }
 
-static void score_candidate(int* worst,int* sum){
-  *worst=2000000000;*sum=0;
+static void score_candidate(int* worst,int* sum,int* peak){
+  *worst=2000000000;*sum=0;*peak=-2000000000;
   if(!copy_state_out(candidate_state)){*worst=-2000000000;return;}
   int allExact=1;
   for(int scenario=0;scenario<SCENARIOS;scenario++){
@@ -268,22 +252,25 @@ static void score_candidate(int* worst,int* sum){
     last_nodes+=search_nodes;
     if(!last_exact)allExact=0;
     if(v<*worst)*worst=v;
+    if(v>*peak)*peak=v;
     *sum+=v/SCENARIOS;
   }
   last_exact=allExact;
   restore_state(candidate_state);
 }
 
-static int better(int worst,int sum,int bestWorst,int bestSum,int found){
+static int better(int peak,int sum,int worst,int bestPeak,int bestSum,int bestWorst,int found){
   if(!found)return 1;
-  // Point extraction is primary; robustness across Pro tie-breaks is the tiebreaker.
+  // Humanly Impossible chooses the highest visible scoring route first.
+  // Average and worst-case Pro tie-break outcomes only break ties between equal peak routes.
+  if(peak!=bestPeak)return peak>bestPeak;
   if(sum!=bestSum)return sum>bestSum;
   return worst>bestWorst;
 }
 
 extern "C" {
 
-__attribute__((visibility("default"))) int game_hidden_version(){return 3;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 4;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
@@ -299,15 +286,15 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
   if(!copy_state_out(root_state))return -5;
 
   const int phase=game_phase();
-  int bestAction=-1,bestWorst=-2000000000,bestSum=-2000000000,found=0;
+  int bestAction=-1,bestWorst=-2000000000,bestSum=-2000000000,bestPeak=-2000000000,found=0;
 
   if(phase==H_PLAY){
     const int n=game_hand_n(actor);
     for(int i=0;i<n;i++){
       restore_state(root_state);
       if(game_play_hand(actor,i)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=i;bestWorst=worst;bestSum=sum;found=1;}
+      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
+      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=i;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_play_hand(actor,bestAction):-1;
@@ -319,8 +306,8 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
       restore_state(root_state);
       const int fieldIndex=game_pending_match_index(i);
       if(game_choose_capture(actor,fieldIndex)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=fieldIndex;bestWorst=worst;bestSum=sum;found=1;}
+      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
+      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=fieldIndex;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_choose_capture(actor,bestAction):-1;
@@ -330,8 +317,8 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
     for(int choice=0;choice<=1;choice++){
       restore_state(root_state);
       if(game_koi_decision(actor,choice)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=choice;bestWorst=worst;bestSum=sum;found=1;}
+      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
+      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=choice;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_koi_decision(actor,bestAction):-1;
