@@ -48,7 +48,7 @@ function randomOnline(){
 async function startOnlineSession(code:string,token:string,seat:Seat,rules:{rounds:number;koiEnabled:boolean},initial:any){
   stopOnlineWarning();
   const provisional:OnlineSession={kind:"online",roomCode:code,token,seat,version:Number(initial?.version??-1),epoch:String(initial?.epoch??""),rules,socket:null};session=provisional;snapshot=initial?.snapshot??null;roundHistory=[];currentRound=-1;stack=["home","online","match"];
-  connectOnlineSocket(provisional);if(snapshot){renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=`<main class="${screenClass()}"><section class="hero"><h1>待機中</h1><p>ルームコード ${escapeHtml(code)}</p><p>相手の参加と接続を待っています。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
+  connectOnlineSocket(provisional);if(snapshot){emitAudioHook("match-start",{mode:"normal"});renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=`<main class="${screenClass()}"><section class="hero"><h1>待機中</h1><p>ルームコード ${escapeHtml(code)}</p><p>相手の参加と接続を待っています。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
 }
 function connectOnlineSocket(s:OnlineSession){
   const url=new URL(API_BASE.replace(/^http/,"ws")+"/api/online/connect");url.searchParams.set("room",s.roomCode);url.searchParams.set("token",s.token);const ws=new WebSocket(url);s.socket=ws;
@@ -65,6 +65,7 @@ async function handleOnlineMessage(msg:any){
     if(epochChanged){roundHistory=[];currentRound=-1;}
     if(msg.snapshot){
       onlineReconfigureState="none";
+      if(!prior)emitAudioHook("match-start",{mode:"normal"});
       if(isNewAction)await acceptSnapshot(msg.snapshot,msg.actionEvent,msg.actionEvent?.actor===playerSeat()?"player":"opponent");
       else{snapshot=msg.snapshot;renderMatch();}
       await animateNewRoundIfNeeded(!prior||epochChanged);
