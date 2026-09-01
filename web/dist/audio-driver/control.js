@@ -5,6 +5,7 @@ const STORAGE_ORIGIN = 'https://mpuhgfbdkxmhynytwhzu.supabase.co';
 const PUBLIC_STORAGE_PREFIX = '/storage/v1/object/public/';
 const PROFILE_URL = 'https://hanafuda-system.garigarimegane625.workers.dev/api/audio/profile';
 const MAX_AUDIO_BYTES = 20_000_000;
+const MAX_COMMAND_DURATION_MS = 30_000;
 const COMMAND_EVENT = 'hanafuda-audio-driver-command';
 const RESULT_EVENT = 'hanafuda-audio-driver-result';
 const FAULT_EVENT = 'hanafuda-audio-driver-fault';
@@ -13,7 +14,7 @@ let context = null;
 let bgmSource = null;
 let bgmGain = null;
 let seGain = null;
-const seSources = new Set();
+const seSources = new Map();
 const bufferCache = new Map();
 const activationWaiters = new Set();
 let readyState = false;
@@ -131,7 +132,7 @@ function stopBgmNode() {
     }
 }
 function stopSeNodes() {
-    for (const node of seSources) {
+    for (const [node, gain] of seSources) {
         node.onended = null;
         try {
             node.stop();
@@ -141,12 +142,24 @@ function stopSeNodes() {
             node.disconnect();
         }
         catch { }
+        try {
+            gain.disconnect();
+        }
+        catch { }
     }
     seSources.clear();
 }
 function normalizeVolume(value, clamp) {
     const n = typeof value === 'number' && Number.isFinite(value) ? value : 1;
     return clamp(Math.round(n * 1000)) / 1000;
+}
+function normalizeDurationMs(value) {
+    if (value === undefined)
+        return undefined;
+    if (typeof value !== 'number' || !Number.isFinite(value))
+        return null;
+    const n = Math.round(value);
+    return n >= 1 && n <= MAX_COMMAND_DURATION_MS ? n : null;
 }
 async function playBgm(src, loop, volume) {
     const [, common, local] = await modules;
@@ -179,7 +192,7 @@ async function playBgm(src, loop, volume) {
     };
     node.start(0);
 }
-async function playSe(src, volume) {
+async function playSe(src, volume, maxDurationMs) {
     const [, , local] = await modules;
     const globalToken = local.local_global_token();
     const seToken = local.local_se_token();
@@ -189,19 +202,30 @@ async function playSe(src, volume) {
         return;
     const ctx = audioContext();
     const node = ctx.createBufferSource();
+    const sourceGain = ctx.createGain();
     node.buffer = buffer;
-    if (seGain)
-        seGain.gain.setValueAtTime(volume, ctx.currentTime);
-    node.connect(seGain);
-    seSources.add(node);
+    sourceGain.gain.setValueAtTime(volume, ctx.currentTime);
+    node.connect(sourceGain);
+    sourceGain.connect(seGain);
+    seSources.set(node, sourceGain);
     node.onended = () => {
         seSources.delete(node);
         try {
             node.disconnect();
         }
         catch { }
+        try {
+            sourceGain.disconnect();
+        }
+        catch { }
     };
     node.start(0);
+    if (maxDurationMs !== undefined) {
+        try {
+            node.stop(ctx.currentTime + maxDurationMs / 1000);
+        }
+        catch { }
+    }
 }
 function commandOpcode(type) {
     return type === 'prepare' ? AUDIO_COMMAND.prepare :
@@ -245,10 +269,13 @@ async function execute(command) {
             if (!src)
                 return fail('INVALID_SOURCE');
             const volume = normalizeVolume(command.volume, common.common_clamp_milli);
+            const maxDurationMs = normalizeDurationMs(command.maxDurationMs);
+            if (maxDurationMs === null)
+                return fail('INVALID_DURATION');
             if (command.channel === 'bgm')
                 runDetached(playBgm(src, command.loop === true, volume), requestId, sequence);
             else
-                runDetached(playSe(src, volume), requestId, sequence);
+                runDetached(playSe(src, volume, maxDurationMs), requestId, sequence);
         }
         else if (command.type === 'stop') {
             if (driver.driver_validate_channel(channelCode(command.channel)) !== 1)
@@ -296,7 +323,10 @@ function sanitizeCommand(value) {
         if (!src || !channel)
             return null;
         const volume = typeof v.volume === 'number' && Number.isFinite(v.volume) ? v.volume : 1;
-        return { type: 'play', channel, src, loop: v.loop === true, volume };
+        const maxDurationMs = normalizeDurationMs(v.maxDurationMs);
+        if (maxDurationMs === null)
+            return null;
+        return { type: 'play', channel, src, loop: v.loop === true, volume, ...(maxDurationMs === undefined ? {} : { maxDurationMs }) };
     }
     if (type === 'stop' && (v.channel === 'bgm' || v.channel === 'se'))
         return { type: 'stop', channel: v.channel };
@@ -370,6 +400,7 @@ function status() {
 }
 const ready = Promise.all([modules, profileReady]).then(() => {
     readyState = true;
+    void activate();
     window.dispatchEvent(new CustomEvent('hanafuda-audio-driver-ready'));
 }).then(() => undefined);
 const api = Object.freeze({ ready, execute, activate, status });
@@ -385,8 +416,8 @@ window.addEventListener('hanafuda-audio-hook', event => {
         void runProfileHook(name, detail);
 });
 document.addEventListener('click', event => {
-    const el = event.target instanceof Element ? event.target.closest('[data-action],[data-modal]') : null;
-    if (!el)
+    const el = event.target instanceof Element ? event.target.closest('button,[role="button"]') : null;
+    if (!el || !el.closest('#app') || el.matches('.hand-card-button,.field-card-button,.field-empty-target'))
         return;
     const action = el.dataset.action, modal = el.dataset.modal;
     if (action === 'pause') {
@@ -397,8 +428,13 @@ document.addEventListener('click', event => {
         void runGestureProfileHook('pause-close');
         return;
     }
-    if (modal)
-        void runGestureProfileHook('menu-select');
+    void runGestureProfileHook('menu-select');
+}, true);
+document.addEventListener('change', event => {
+    const el = event.target instanceof Element ? event.target.closest('select,input[type="checkbox"]') : null;
+    if (!el || !el.closest('#app'))
+        return;
+    void runGestureProfileHook('menu-select');
 }, true);
 const activateFromGesture = () => {
     void activate().then(ok => {
