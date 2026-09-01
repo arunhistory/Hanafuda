@@ -161,6 +161,7 @@ async function startOnlineSession(code, token, seat, rules, initial) {
     stack = ["home", "online", "match"];
     connectOnlineSocket(provisional);
     if (snapshot) {
+        emitAudioHook("match-start", { mode: "normal" });
         renderMatch();
         await animateNewRoundIfNeeded(true);
     }
@@ -202,6 +203,8 @@ async function handleOnlineMessage(msg) {
         }
         if (msg.snapshot) {
             onlineReconfigureState = "none";
+            if (!prior)
+                emitAudioHook("match-start", { mode: "normal" });
             if (isNewAction)
                 await acceptSnapshot(msg.snapshot, msg.actionEvent, msg.actionEvent?.actor === playerSeat() ? "player" : "opponent");
             else {

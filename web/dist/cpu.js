@@ -29,6 +29,7 @@ async function startCpu() {
         settings.rounds = Number(app.querySelector("#rounds")?.value ?? settings.rounds);
         settings.koiEnabled = app.querySelector("#koi-enabled")?.checked ?? settings.koiEnabled;
         saveSettings();
+        emitAudioHook("match-start", { mode: settings.mode });
         let modeSessionId, modeSessionToken;
         if (settings.mode !== "impossible") {
             const mode = await api("/api/mode/start", { mode: settings.mode, rounds: settings.rounds, developer: false });
@@ -56,6 +57,7 @@ async function startCpu() {
         await releaseCpuAfterReady();
     }
     catch (e) {
+        emitAudioHook("match-stop");
         toast(`開始できません: ${e instanceof Error ? e.message : "ERROR"}`);
     }
     finally {
@@ -95,6 +97,8 @@ async function acceptSnapshot(next, event, actor) {
         recordHistory(visibleEvent, actor);
     if (visibleEvent && !settings.skipNormalAnimations)
         await animateEvent(visibleEvent, next);
+    if ((!old || old.phase !== 6) && next.phase === 6)
+        emitAudioHook("final-settlement");
     snapshot = next;
     if (old && old.roundIndex !== next.roundIndex) {
         roundHistory = [];
@@ -221,6 +225,7 @@ async function beginImpossibleTransition() {
         const result = await api("/api/cpu/transition", { sessionId: session.sessionId, token: session.token });
         if (!result.ok || !result.data?.ok)
             throw new Error(result.data?.code || "TRANSITION_FAILED");
+        emitAudioHook("impossible-enter");
         matchInteractionReady = false;
         session.version = Number(result.data.version);
         session.mode = "impossible";
@@ -318,6 +323,7 @@ async function showCollapse() {
 }
 function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 async function closeMatch(homeAfter = false) {
+    emitAudioHook("match-stop");
     const closing = session;
     session = null;
     snapshot = null;
