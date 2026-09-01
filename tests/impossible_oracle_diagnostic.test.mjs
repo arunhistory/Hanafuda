@@ -6,7 +6,7 @@ const e=instance.exports;
 const stateSize=e.game_state_size();
 const statePtr=e.game_state_ptr();
 const ioPtr=e.game_io_buffer();
-const FAILING=[2,4,6,9,13,17,18];
+const SEEDS=Array.from({length:20},(_,i)=>i+1);
 const ROUNDS=6;
 const NODE_CAP=1_500_000;
 
@@ -85,7 +85,9 @@ function chooseOracleAction(hiddenSeat,seed,steps,roundBaseHidden,roundBasePro){
   return {action:bestAction,predicted:best,nodes:totalNodes};
 }
 
-for(const seed of FAILING){
+const scores=[];
+let oracleWins=0;
+for(const seed of SEEDS){
   const hiddenSeat=seed&1,firstDealer=(seed>>>1)&1;
   if(e.game_new(seed*7919+17,ROUNDS,firstDealer,1)!==0)throw new Error(`new failed ${seed}`);
   let steps=0,maxNodes=0;
@@ -110,6 +112,10 @@ for(const seed of FAILING){
       if(rc!==0)throw new Error(`pro apply failed ${rc}`);
     }
   }
-  console.log('ORACLE_MATCH',JSON.stringify({seed,hiddenSeat,hiddenScore:e.game_score(hiddenSeat),proScore:e.game_score(1-hiddenSeat),winner:e.game_match_winner(),maxNodes,rounds}));
+  const hiddenScore=e.game_score(hiddenSeat),proScore=e.game_score(1-hiddenSeat),winner=e.game_match_winner();
+  scores.push(hiddenScore);if(winner===hiddenSeat)oracleWins++;
+  console.log('ORACLE_MATCH',JSON.stringify({seed,hiddenSeat,hiddenScore,proScore,winner,maxNodes,rounds}));
 }
+const min=Math.min(...scores),max=Math.max(...scores),avg=scores.reduce((a,b)=>a+b,0)/scores.length;
+console.log(`ORACLE_SUMMARY matches=${scores.length} wins=${oracleWins}/${scores.length} min=${min} avg=${avg.toFixed(1)} max=${max} atLeast500=${scores.filter(x=>x>=500).length}/${scores.length} atLeast800=${scores.filter(x=>x>=800).length}/${scores.length} atLeast1200=${scores.filter(x=>x>=1200).length}/${scores.length}`);
 console.log('PASS oracle ceiling diagnostic completed');
