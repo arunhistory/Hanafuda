@@ -148,7 +148,6 @@ static int position_heuristic(){
   const int oppFuture=visible_future_yaku_score(opp);
   const int ownCeiling=attainable_yaku_ceiling(hidden_actor);
   const int oppCeiling=attainable_yaku_ceiling(opp);
-
   int value=0;
   value+=ownNow*900000;
   value-=oppNow*450000;
@@ -166,9 +165,9 @@ static int terminal_utility(){
   const int ownGain=game_score(hidden_actor)-root_score_hidden;
   const int oppGain=game_score(opp)-root_score_opp;
   const int winner=game_last_round_winner();
-  if(winner==hidden_actor)return ownGain*1000000-oppGain*100000+100000;
-  if(winner==opp)return -oppGain*450000;
-  return -oppGain*150000;
+  if(winner==hidden_actor)return 1000000000+ownGain*1000-oppGain;
+  if(winner==opp)return -1000000000-oppGain*1000+ownGain;
+  return -500000000+ownGain*1000-oppGain;
 }
 
 static int hidden_search(int depth);
@@ -184,7 +183,6 @@ static int search_hidden_choice(int depth){
   const int phase=game_phase();
   int actions[8],priorities[8],n=0;
   if(!copy_state_out(search_states[depth]))return position_heuristic();
-
   if(phase==H_PLAY){
     const int count=game_hand_n(hidden_actor);
     for(int i=0;i<count;i++){
@@ -207,7 +205,6 @@ static int search_hidden_choice(int depth){
   restore_state(search_states[depth]);
   if(n==0)return position_heuristic();
   sort_actions(actions,priorities,n);
-
   int best=-2000000000;
   for(int i=0;i<n;i++){
     restore_state(search_states[depth]);
@@ -215,10 +212,7 @@ static int search_hidden_choice(int depth){
     if(phase==H_PLAY)rc=game_play_hand(hidden_actor,actions[i]);
     else if(phase==H_CAPTURE_HAND||phase==H_CAPTURE_DRAW)rc=game_choose_capture(hidden_actor,actions[i]);
     else rc=game_koi_decision(hidden_actor,actions[i]);
-    if(rc==0){
-      const int v=hidden_search(depth+1);
-      if(v>best)best=v;
-    }
+    if(rc==0){const int v=hidden_search(depth+1);if(v>best)best=v;}
   }
   restore_state(search_states[depth]);
   return best==-2000000000?position_heuristic():best;
@@ -239,8 +233,8 @@ static int hidden_search(int depth){
   return v;
 }
 
-static void score_candidate(int* worst,int* sum,int* peak){
-  *worst=2000000000;*sum=0;*peak=-2000000000;
+static void score_candidate(int* worst,int* sum){
+  *worst=2000000000;*sum=0;
   if(!copy_state_out(candidate_state)){*worst=-2000000000;return;}
   int allExact=1;
   for(int scenario=0;scenario<SCENARIOS;scenario++){
@@ -252,25 +246,27 @@ static void score_candidate(int* worst,int* sum,int* peak){
     last_nodes+=search_nodes;
     if(!last_exact)allExact=0;
     if(v<*worst)*worst=v;
-    if(v>*peak)*peak=v;
     *sum+=v/SCENARIOS;
   }
   last_exact=allExact;
   restore_state(candidate_state);
 }
 
-static int better(int peak,int sum,int worst,int bestPeak,int bestSum,int bestWorst,int found){
+static int better(int worst,int sum,int bestWorst,int bestSum,int found){
   if(!found)return 1;
-  // Humanly Impossible chooses the highest visible scoring route first.
-  // Average and worst-case Pro tie-break outcomes only break ties between equal peak routes.
-  if(peak!=bestPeak)return peak>bestPeak;
-  if(sum!=bestSum)return sum>bestSum;
-  return worst>bestWorst;
+  const int allWin=worst>0;
+  const int bestAllWin=bestWorst>0;
+  if(allWin!=bestAllWin)return allWin>bestAllWin;
+  if(allWin){
+    if(sum!=bestSum)return sum>bestSum;
+    return worst>bestWorst;
+  }
+  if(worst!=bestWorst)return worst>bestWorst;
+  return sum>bestSum;
 }
 
 extern "C" {
-
-__attribute__((visibility("default"))) int game_hidden_version(){return 4;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 5;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
@@ -284,46 +280,41 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
   last_nodes=0;
   last_exact=1;
   if(!copy_state_out(root_state))return -5;
-
   const int phase=game_phase();
-  int bestAction=-1,bestWorst=-2000000000,bestSum=-2000000000,bestPeak=-2000000000,found=0;
-
+  int bestAction=-1,bestWorst=-2000000000,bestSum=-2000000000,found=0;
   if(phase==H_PLAY){
     const int n=game_hand_n(actor);
     for(int i=0;i<n;i++){
       restore_state(root_state);
       if(game_play_hand(actor,i)!=0)continue;
-      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
-      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=i;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
+      int worst,sum;score_candidate(&worst,&sum);
+      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=i;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_play_hand(actor,bestAction):-1;
   }
-
   if(phase==H_CAPTURE_HAND||phase==H_CAPTURE_DRAW){
     const int n=game_pending_match_n();
     for(int i=0;i<n;i++){
       restore_state(root_state);
       const int fieldIndex=game_pending_match_index(i);
       if(game_choose_capture(actor,fieldIndex)!=0)continue;
-      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
-      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=fieldIndex;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
+      int worst,sum;score_candidate(&worst,&sum);
+      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=fieldIndex;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_choose_capture(actor,bestAction):-1;
   }
-
   if(phase==H_KOI){
     for(int choice=0;choice<=1;choice++){
       restore_state(root_state);
       if(game_koi_decision(actor,choice)!=0)continue;
-      int worst,sum,peak;score_candidate(&worst,&sum,&peak);
-      if(better(peak,sum,worst,bestPeak,bestSum,bestWorst,found)){bestAction=choice;bestPeak=peak;bestSum=sum;bestWorst=worst;found=1;}
+      int worst,sum;score_candidate(&worst,&sum);
+      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=choice;bestSum=sum;bestWorst=worst;found=1;}
     }
     restore_state(root_state);
     return found?game_koi_decision(actor,bestAction):-1;
   }
-
   restore_state(root_state);
   return -1;
 }
