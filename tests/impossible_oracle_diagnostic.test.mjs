@@ -15,14 +15,13 @@ function load(state){new Uint8Array(e.memory.buffer,ioPtr,stateSize).set(state);
 function key(state,steps){return `${steps}:`+Buffer.from(state).toString('base64');}
 function proSeed(seed,step){return (Math.imul(seed,0x9e3779b1)+Math.imul(step,0x85ebca6b))>>>0;}
 
-function solveRound(hiddenSeat,seed,startSteps){
+function solveRound(hiddenSeat,seed,startSteps,roundBaseHidden,roundBasePro){
   const root=save();
-  const baseHidden=e.game_score(hiddenSeat),basePro=e.game_score(1-hiddenSeat);
   const memo=new Map();
   let nodes=0;
   const terminal=()=>{
     const winner=e.game_last_round_winner();
-    const hg=e.game_score(hiddenSeat)-baseHidden,pg=e.game_score(1-hiddenSeat)-basePro;
+    const hg=e.game_score(hiddenSeat)-roundBaseHidden,pg=e.game_score(1-hiddenSeat)-roundBasePro;
     if(winner===hiddenSeat)return {u:1_000_000_000+hg*1000-pg,hg,pg};
     if(winner===1-hiddenSeat)return {u:-1_000_000_000-pg*1000+hg,hg,pg};
     return {u:-500_000_000+hg*1000-pg,hg,pg};
@@ -35,11 +34,10 @@ function solveRound(hiddenSeat,seed,startSteps){
     const actor=e.game_turn();
     let best=null;
     if(actor===hiddenSeat){
-      const phase=e.game_phase();
-      const candidates=[];
+      const phase=e.game_phase(),candidates=[];
       if(phase===1){for(let i=0;i<e.game_hand_n(actor);i++)candidates.push(['play',i]);}
       else if(phase===2||phase===3){for(let i=0;i<e.game_pending_match_n();i++)candidates.push(['capture',e.game_pending_match_index(i)]);}
-      else if(phase===4){candidates.push(['koi',0],['koi',1]);}
+      else if(phase===4)candidates.push(['koi',0],['koi',1]);
       else throw new Error(`hidden bad phase ${phase}`);
       for(const [type,arg] of candidates){
         load(before);
@@ -64,13 +62,13 @@ function solveRound(hiddenSeat,seed,startSteps){
   return {...answer,nodes};
 }
 
-function chooseOracleAction(hiddenSeat,seed,steps){
+function chooseOracleAction(hiddenSeat,seed,steps,roundBaseHidden,roundBasePro){
   const before=save(),phase=e.game_phase(),actor=e.game_turn();
   if(actor!==hiddenSeat)throw new Error('oracle called on Pro turn');
   const candidates=[];
   if(phase===1){for(let i=0;i<e.game_hand_n(actor);i++)candidates.push(['play',i]);}
   else if(phase===2||phase===3){for(let i=0;i<e.game_pending_match_n();i++)candidates.push(['capture',e.game_pending_match_index(i)]);}
-  else if(phase===4){candidates.push(['koi',0],['koi',1]);}
+  else if(phase===4)candidates.push(['koi',0],['koi',1]);
   else throw new Error(`oracle action bad phase ${phase}`);
   let best=null,bestAction=null,totalNodes=0;
   for(const action of candidates){
@@ -78,7 +76,7 @@ function chooseOracleAction(hiddenSeat,seed,steps){
     const [type,arg]=action;
     const rc=type==='play'?e.game_play_hand(actor,arg):type==='capture'?e.game_choose_capture(actor,arg):e.game_koi_decision(actor,arg);
     if(rc!==0)continue;
-    const result=solveRound(hiddenSeat,seed,steps+1);
+    const result=solveRound(hiddenSeat,seed,steps+1,roundBaseHidden,roundBasePro);
     totalNodes+=result.nodes;
     if(!best||result.u>best.u){best=result;bestAction=action;}
   }
@@ -91,17 +89,19 @@ for(const seed of FAILING){
   const hiddenSeat=seed&1,firstDealer=(seed>>>1)&1;
   if(e.game_new(seed*7919+17,ROUNDS,firstDealer,1)!==0)throw new Error(`new failed ${seed}`);
   let steps=0,maxNodes=0;
+  let roundBaseHidden=e.game_score(hiddenSeat),roundBasePro=e.game_score(1-hiddenSeat);
   const rounds=[];
   while(e.game_phase()!==6){
     if(++steps>2000)throw new Error(`loop seed=${seed}`);
     if(e.game_phase()===5){
       rounds.push({round:e.game_round_index(),winner:e.game_last_round_winner(),points:e.game_last_round_points(),hidden:e.game_score(hiddenSeat),pro:e.game_score(1-hiddenSeat)});
       if(e.game_next_round()!==0)throw new Error('next round failed');
+      roundBaseHidden=e.game_score(hiddenSeat);roundBasePro=e.game_score(1-hiddenSeat);
       continue;
     }
     const actor=e.game_turn();
     if(actor===hiddenSeat){
-      const {action,nodes}=chooseOracleAction(hiddenSeat,seed,steps-1);maxNodes=Math.max(maxNodes,nodes);
+      const {action,nodes}=chooseOracleAction(hiddenSeat,seed,steps-1,roundBaseHidden,roundBasePro);maxNodes=Math.max(maxNodes,nodes);
       const [type,arg]=action;
       const rc=type==='play'?e.game_play_hand(actor,arg):type==='capture'?e.game_choose_capture(actor,arg):e.game_koi_decision(actor,arg);
       if(rc!==0)throw new Error(`oracle apply failed ${rc}`);
