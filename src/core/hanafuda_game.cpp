@@ -49,10 +49,10 @@ static int public_cpu_koi(int actor,int difficulty,uint32_t seed){
   const int offered=S.offered_score,opp=score_captured(S.captured[1-actor],S.captured_n[1-actor]);
   if(difficulty<=0)return offered<=20&&((xr()^seed)&3u)==0u;
   if(difficulty==1)return offered<=20&&S.hand_n[actor]>=4&&opp<40;
-  if(offered>=60||opp>=50||S.hand_n[actor]<=3)return 0;
+  if(offered>60||opp>=50||S.hand_n[actor]<=3)return 0;
   const int momentum=(int)S.captured_n[actor]-(int)S.captured_n[1-actor];
   if(offered<=20)return 1;
-  return offered<=40&&momentum>=0;
+  return offered<=60&&momentum>=0;
 }
 
 extern "C" {
