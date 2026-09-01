@@ -9,6 +9,8 @@ type AudioCommand=
   |{type:'stop';channel:Channel;requestId?:string}
   |{type:'stop-all';requestId?:string}
   |{type:'set-volume';channel:Channel;volume:number;requestId?:string};
+type AudioProfile={version:number;preload:string[];hooks:Record<string,AudioCommand[]>};
+type AudioHookDetail={name?:unknown;mode?:unknown};
 
 type DriverResult={ok:boolean;sequence:number;requestId?:string;code?:string};
 type DriverStatus={ready:boolean;contextState:AudioContextState|'unavailable';bgmActive:boolean;seActive:number};
@@ -23,6 +25,7 @@ declare global{interface Window{hanafudaAudioDriver?:DriverApi;webkitAudioContex
 
 const STORAGE_ORIGIN='https://mpuhgfbdkxmhynytwhzu.supabase.co';
 const PUBLIC_STORAGE_PREFIX='/storage/v1/object/public/';
+const PROFILE_URL='https://hanafuda-system.garigarimegane625.workers.dev/api/audio/profile';
 const MAX_AUDIO_BYTES=20_000_000;
 const COMMAND_EVENT='hanafuda-audio-driver-command';
 const RESULT_EVENT='hanafuda-audio-driver-result';
@@ -249,6 +252,69 @@ async function execute(command:AudioCommand):Promise<DriverResult>{
   }
 }
 
+function sanitizeCommand(value:unknown):AudioCommand|null{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const v=value as Record<string,unknown>;
+  const type=String(v.type??'');
+  if(type==='prepare'){
+    const src=sourceUrl(v.src);return src?{type:'prepare',src}:null;
+  }
+  if(type==='play'){
+    const src=sourceUrl(v.src),channel=v.channel==='bgm'||v.channel==='se'?v.channel:null;
+    if(!src||!channel)return null;
+    const volume=typeof v.volume==='number'&&Number.isFinite(v.volume)?v.volume:1;
+    return {type:'play',channel,src,loop:v.loop===true,volume};
+  }
+  if(type==='stop'&&(v.channel==='bgm'||v.channel==='se'))return {type:'stop',channel:v.channel};
+  if(type==='stop-all')return {type:'stop-all'};
+  if(type==='set-volume'&&(v.channel==='bgm'||v.channel==='se')&&typeof v.volume==='number'&&Number.isFinite(v.volume))return {type:'set-volume',channel:v.channel,volume:v.volume};
+  return null;
+}
+
+async function loadProfile():Promise<AudioProfile>{
+  const response=await fetch(PROFILE_URL,{method:'GET',headers:{accept:'application/json'},cache:'no-store',credentials:'omit',mode:'cors'});
+  if(!response.ok)throw new Error(`AUDIO_PROFILE_${response.status}`);
+  const raw=await response.json().catch(()=>null);
+  if(!raw||raw.ok!==true||!raw.profile||typeof raw.profile!=='object')throw new Error('AUDIO_PROFILE_INVALID');
+  const profile=raw.profile as Record<string,unknown>;
+  const version=Number(profile.version);
+  if(!Number.isSafeInteger(version)||version<1)throw new Error('AUDIO_PROFILE_VERSION_INVALID');
+  const preload=Array.isArray(profile.preload)?profile.preload.map(sourceUrl).filter((x):x is string=>!!x):[];
+  const hooks:Record<string,AudioCommand[]>={};
+  if(!profile.hooks||typeof profile.hooks!=='object'||Array.isArray(profile.hooks))throw new Error('AUDIO_PROFILE_HOOKS_INVALID');
+  for(const [name,list] of Object.entries(profile.hooks as Record<string,unknown>)){
+    if(!/^[a-z0-9-]{1,64}$/.test(name)||!Array.isArray(list)||list.length>8)throw new Error('AUDIO_PROFILE_HOOK_INVALID');
+    const commands=list.map(sanitizeCommand);
+    if(commands.some(x=>x===null))throw new Error('AUDIO_PROFILE_COMMAND_INVALID');
+    hooks[name]=commands as AudioCommand[];
+  }
+  return {version,preload:[...new Set(preload)],hooks};
+}
+
+function profileHookName(name:string,detail:AudioHookDetail){
+  if(name==='match-start')return detail.mode==='impossible'?'match-start-impossible':'match-start-normal';
+  return name;
+}
+
+function emitFault(code:string){
+  window.dispatchEvent(new CustomEvent(FAULT_EVENT,{detail:{ok:false,sequence,code}}));
+}
+
+const profileReady=loadProfile();
+void profileReady.then(profile=>{
+  for(const src of profile.preload)runDetached(loadBuffer(src),undefined,sequence);
+}).catch(error=>emitFault(error instanceof Error?error.message:'AUDIO_PROFILE_ERROR'));
+
+async function runProfileHook(name:string,detail:AudioHookDetail={}){
+  try{
+    const profile=await profileReady;
+    const commands=profile.hooks[profileHookName(name,detail)]??[];
+    for(const command of commands)await execute(command);
+  }catch(error){
+    emitFault(error instanceof Error?error.message:'AUDIO_PROFILE_ERROR');
+  }
+}
+
 function status():DriverStatus{
   const supported=!!(window.AudioContext||window.webkitAudioContext);
   return {
@@ -259,10 +325,10 @@ function status():DriverStatus{
   };
 }
 
-const ready=modules.then(()=>{
+const ready=Promise.all([modules,profileReady]).then(()=>{
   readyState=true;
   window.dispatchEvent(new CustomEvent('hanafuda-audio-driver-ready'));
-});
+}).then(()=>undefined);
 const api:DriverApi=Object.freeze({ready,execute,activate,status});
 window.hanafudaAudioDriver=api;
 
@@ -270,6 +336,21 @@ window.addEventListener(COMMAND_EVENT,event=>{
   const detail=(event as CustomEvent<AudioCommand>).detail;
   void execute(detail).then(result=>window.dispatchEvent(new CustomEvent(RESULT_EVENT,{detail:result})));
 });
+
+window.addEventListener('hanafuda-audio-hook',event=>{
+  const detail=(event as CustomEvent<AudioHookDetail>).detail??{};
+  const name=typeof detail.name==='string'?detail.name:'';
+  if(name)void runProfileHook(name,detail);
+});
+
+document.addEventListener('click',event=>{
+  const el=event.target instanceof Element?event.target.closest<HTMLElement>('[data-action],[data-modal]'):null;
+  if(!el)return;
+  const action=el.dataset.action,modal=el.dataset.modal;
+  if(action==='pause'){void runProfileHook('pause-open');return;}
+  if(modal==='close'){void runProfileHook('pause-close');return;}
+  if(modal)void runProfileHook('menu-select');
+},true);
 
 const activateFromGesture=()=>{
   void activate().then(ok=>{
