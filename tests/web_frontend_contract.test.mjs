@@ -7,6 +7,8 @@ const html=fs.readFileSync(path.join(root,'web','index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'web','styles.css'),'utf8');
 const experienceCss=fs.readFileSync(path.join(root,'web','experience.css'),'utf8');
 const ts=fs.readdirSync(path.join(root,'web','src')).filter(x=>x.endsWith('.ts')).sort().map(x=>fs.readFileSync(path.join(root,'web','src',x),'utf8')).join('\n');
+const cpuSrc=fs.readFileSync(path.join(root,'web','src','cpu.ts'),'utf8');
+const turnFlowSrc=fs.readFileSync(path.join(root,'web','src','turn-flow-v2.ts'),'utf8');
 const perfSrc=fs.readFileSync(path.join(root,'web','src','initial-animation-performance-v1.ts'),'utf8');
 const finalFix=fs.readFileSync(path.join(root,'web','src','final-result-fix-v1.ts'),'utf8');
 const finalCss=fs.readFileSync(path.join(root,'web','final-result-fix-v1.css'),'utf8');
@@ -30,6 +32,8 @@ const checks=[
   ['current state shows both public captured cards and yaku',ts.includes('function decorateStateModal()')&&ts.includes('公開済み取得札')&&ts.includes('あなた：${escapeHtml(myYaku)}')&&ts.includes('相手：${escapeHtml(theirYaku)}')&&experienceCss.includes('.state-cards')&&experienceCss.includes('overflow-x:auto')],
   ['history is current-round memory only',ts.includes('let roundHistory:string[]=[]')&&ts.includes('roundHistory=[];currentRound=-1')&&!ts.includes('localStorage.setItem("history')],
   ['history records played drawn captured yaku koi',ts.includes('を出した')&&ts.includes('山札から')&&ts.includes('を取得')&&ts.includes('役成立:')&&ts.includes('こいこい')],
+  ['CPU koi decision is recorded from authoritative cpu_step event',cpuSrc.includes('event.type==="cpu_step"&&typeof event.chooseKoi==="boolean"')&&cpuSrc.includes('if(decidedKoi)bits.push(event.chooseKoi?"こいこい":"あがり")')],
+  ['opponent koi is visibly presented before later settlement',cpuSrc.includes('const opponentDecision=Number(event.actor)===opponentSeat()')&&cpuSrc.includes('opponentDecision&&event.chooseKoi===true')&&cpuSrc.includes('await showCallout("effect.koikoi.text")')],
   ['asset runtime uses registry purpose ids',ts.includes('asset-registry.json')&&ts.includes('background.match.normal')&&ts.includes('cards.generated')&&!css.includes('../assets/')],
   ['normal CPU list excludes hidden mode until local unlock',ts.includes('isUnlocked()?["beginner","amateur","pro","impossible"]:["beginner","amateur","pro"]')],
   ['hidden trigger internals are absent from public frontend',!ts.includes('playerTotal')&&!ts.includes('cpuTotal')&&!ts.includes('should_force_impossible')],
@@ -54,6 +58,8 @@ const checks=[
   ['final result text is high contrast on gold background',finalCss.includes('color:#160a05')&&finalCss.includes('color:#140905')],
   ['corrupted play stays low intensity and strengthens only on round change',experienceCss.includes('.screen.corrupted::after')&&experienceCss.includes('.app-shell.corrupted-round-shift::after')&&ts.includes('app.classList.add("corrupted-round-shift")')&&ts.includes('app.classList.remove("corrupted-round-shift")')],
   ['audio driver is isolated TypeScript plus three WASM units',fs.existsSync(path.join(audioRoot,'control.ts'))&&audioUnits.every(name=>fs.existsSync(path.join(audioRoot,name,`${name}.ts`))&&fs.existsSync(path.join(audioRoot,name,`${name}.wasm`))&&WebAssembly.validate(fs.readFileSync(path.join(audioRoot,name,`${name}.wasm`)))&&fs.existsSync(path.join(root,'web','dist','audio-driver',name,`${name}.js`))&&fs.existsSync(path.join(root,'web','dist','audio-driver',name,`${name}.wasm`)))&&fs.existsSync(path.join(root,'web','dist','audio-driver','control.js'))&&audioControl.includes('hanafuda-audio-driver-command')&&audioControl.includes('AudioContext')&&!audioControl.includes('MutationObserver')&&!audioControl.includes('match-screen')&&!audioControl.includes('normal-bgm')&&!audioControl.includes('impossible-bgm')&&html.includes('type="module" src="./dist/audio-driver/control.js"')&&!html.includes('audio-engine-v1.js')],
+  ['turn-flow override preserves CPU match-start audio command',turnFlowSrc.includes('emitAudioHook("match-start",{mode:settings.mode})')&&turnFlowSrc.includes('catch(e){emitAudioHook("match-stop")')],
+  ['audio driver unlocks Web Audio inside a trusted gesture',audioControl.includes('function primeAudioContext(ctx:AudioContext)')&&audioControl.includes('ctx.createBuffer(1,1,ctx.sampleRate)')&&audioControl.includes("document.addEventListener('touchstart',activateFromGesture")&&audioControl.includes('runGestureProfileHook')],
   ['runtime patches are TypeScript-backed generated output',['pregame-gate-v3','turn-flow-v2','supabase-runtime-assets-v1','supabase-effect-source-v1','final-result-fix-v1','round-end-boundary-v1','initial-animation-performance-v1'].every(name=>fs.existsSync(path.join(root,'web','src',`${name}.ts`))&&fs.existsSync(path.join(root,'web','dist',`${name}.js`)))],
   ['CPU requests go through Cloudflare gateway',ts.includes('/api/mode/start')&&ts.includes('/api/cpu/start')&&!ts.includes('supabase.co/functions/v1/hanafuda-engine')],
   ['online room inspect happens before join UI enables',ts.includes('/api/online/inspect?room=')&&ts.includes('join.disabled=false')],
