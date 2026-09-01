@@ -23,6 +23,7 @@ async function startCpu(){
     settings.mode=(app.querySelector<HTMLSelectElement>("#cpu-mode")?.value??settings.mode) as CpuMode;
     settings.rounds=Number(app.querySelector<HTMLSelectElement>("#rounds")?.value??settings.rounds);
     settings.koiEnabled=app.querySelector<HTMLInputElement>("#koi-enabled")?.checked??settings.koiEnabled;saveSettings();
+    emitAudioHook("match-start",{mode:settings.mode});
     let modeSessionId:string|undefined,modeSessionToken:string|undefined;
     if(settings.mode!=="impossible"){
       const mode=await api("/api/mode/start",{mode:settings.mode,rounds:settings.rounds,developer:false});
@@ -41,7 +42,7 @@ async function startCpu(){
     matchInteractionReady=true;
     renderMatch();
     await releaseCpuAfterReady();
-  }catch(e){toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
+  }catch(e){emitAudioHook("match-stop");toast(`開始できません: ${e instanceof Error?e.message:"ERROR"}`);}finally{busy=false;renderMatch();}
 }
 
 async function acceptApiEvents(events:ApiEvent[]){for(const event of events){if(event?.snapshot)await acceptSnapshot(event.snapshot,event.actionEvent??null,event.actor);if(session?.kind==="cpu")session.version=Number(event.version);}}
@@ -62,6 +63,7 @@ async function acceptSnapshot(next:Snapshot,event:ActionEvent|null,actor?:string
   const visibleEvent=event?presentationEvent(old,next,event,actor):null;
   if(visibleEvent)recordHistory(visibleEvent,actor);
   if(visibleEvent&&!settings.skipNormalAnimations)await animateEvent(visibleEvent,next);
+  if((!old||old.phase!==6)&&next.phase===6)emitAudioHook("final-settlement");
   snapshot=next;
   if(old&&old.roundIndex!==next.roundIndex){roundHistory=[];currentRound=-1;}
   renderMatch();
@@ -140,6 +142,7 @@ async function beginImpossibleTransition(){
     await showCollapse();
     const result=await api("/api/cpu/transition",{sessionId:session.sessionId,token:session.token});
     if(!result.ok||!result.data?.ok)throw new Error(result.data?.code||"TRANSITION_FAILED");
+    emitAudioHook("impossible-enter");
     matchInteractionReady=false;
     session.version=Number(result.data.version);session.mode="impossible";session.rounds=Number(result.data.rounds);snapshot=result.data.snapshot;pendingModeTransition=false;hiddenFirstEncounter=true;roundHistory=[];currentRound=-1;
     renderMatch();
@@ -188,6 +191,7 @@ async function showCollapse(){
 function delay(ms:number){return new Promise<void>(resolve=>setTimeout(resolve,ms));}
 
 async function closeMatch(homeAfter=false){
+  emitAudioHook("match-stop");
   const closing=session;session=null;snapshot=null;matchInteractionReady=true;modal=null;pendingModeTransition=false;hiddenFirstEncounter=false;onlineReconfigureState="none";roundHistory=[];app.classList.remove("corrupted-round-shift");
   try{
     if(closing?.kind==="cpu")await api("/api/cpu/close",{sessionId:closing.sessionId,token:closing.token});
