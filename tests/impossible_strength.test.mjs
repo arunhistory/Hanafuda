@@ -23,9 +23,11 @@ for(let seed=1;seed<=MATCHES;seed++){
   const firstDealer=(seed>>>1)&1;
   if(e.game_new(seed*7919+17,ROUNDS,firstDealer,1)!==0)throw new Error(`new failed seed=${seed}`);
   let steps=0;
+  const rounds=[];
   while(e.game_phase()!==6){
     if(++steps>1600)throw new Error(`loop seed=${seed} phase=${e.game_phase()}`);
     if(e.game_phase()===5){
+      rounds.push({round:e.game_round_index(),winner:e.game_last_round_winner(),points:e.game_last_round_points(),hiddenTotal:e.game_score(hiddenSeat),proTotal:e.game_score(1-hiddenSeat)});
       if(e.game_next_round()!==0)throw new Error(`next round failed seed=${seed}`);
       continue;
     }
@@ -45,7 +47,7 @@ for(let seed=1;seed<=MATCHES;seed++){
   maxScore=Math.max(maxScore,hiddenScore);
   sumScore+=hiddenScore;
   minMargin=Math.min(minMargin,margin);
-  if(!won||hiddenScore<PASS_SCORE)failures.push({seed,hiddenSeat,hiddenScore,proScore,winner:e.game_match_winner()});
+  if(!won||hiddenScore<PASS_SCORE)failures.push({seed,hiddenSeat,hiddenScore,proScore,winner:e.game_match_winner(),rounds});
 }
 
 const avg=(sumScore/MATCHES).toFixed(1);
