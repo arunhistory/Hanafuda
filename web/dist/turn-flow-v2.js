@@ -119,6 +119,7 @@
             settings.rounds = Number(app.querySelector("#rounds")?.value ?? settings.rounds);
             settings.koiEnabled = app.querySelector("#koi-enabled")?.checked ?? settings.koiEnabled;
             saveSettings();
+            emitAudioHook("match-start", { mode: settings.mode });
             let modeSessionId, modeSessionToken;
             if (settings.mode !== "impossible") {
                 const mode = await api("/api/mode/start", { mode: settings.mode, rounds: settings.rounds, developer: false });
@@ -145,6 +146,7 @@
             renderMatch();
         }
         catch (e) {
+            emitAudioHook("match-stop");
             toast(`開始できません: ${e instanceof Error ? e.message : "ERROR"}`);
         }
         finally {

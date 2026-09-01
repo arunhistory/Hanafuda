@@ -17,6 +17,7 @@ const seSources = new Set();
 const bufferCache = new Map();
 const activationWaiters = new Set();
 let readyState = false;
+let audioUnlocked = false;
 let sequence = 0;
 function audioContext() {
     if (context)
@@ -36,12 +37,27 @@ function releaseActivationWaiters() {
         resolve();
     activationWaiters.clear();
 }
+function primeAudioContext(ctx) {
+    if (audioUnlocked)
+        return;
+    const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.onended = () => { try {
+        source.disconnect();
+    }
+    catch { } };
+    source.start(0);
+    audioUnlocked = true;
+}
 async function activate() {
     try {
         const ctx = audioContext();
         if (ctx.state !== 'running')
             await ctx.resume();
         if (ctx.state === 'running') {
+            primeAudioContext(ctx);
             releaseActivationWaiters();
             return true;
         }
@@ -51,7 +67,7 @@ async function activate() {
 }
 function waitForActivation() {
     const ctx = audioContext();
-    if (ctx.state === 'running')
+    if (ctx.state === 'running' && audioUnlocked)
         return Promise.resolve();
     return new Promise(resolve => activationWaiters.add(resolve));
 }
@@ -339,6 +355,10 @@ async function runProfileHook(name, detail = {}) {
         emitFault(error instanceof Error ? error.message : 'AUDIO_PROFILE_ERROR');
     }
 }
+async function runGestureProfileHook(name) {
+    await activate();
+    await runProfileHook(name);
+}
 function status() {
     const supported = !!(window.AudioContext || window.webkitAudioContext);
     return {
@@ -370,26 +390,26 @@ document.addEventListener('click', event => {
         return;
     const action = el.dataset.action, modal = el.dataset.modal;
     if (action === 'pause') {
-        void runProfileHook('pause-open');
+        void runGestureProfileHook('pause-open');
         return;
     }
     if (modal === 'close') {
-        void runProfileHook('pause-close');
+        void runGestureProfileHook('pause-close');
         return;
     }
     if (modal)
-        void runProfileHook('menu-select');
+        void runGestureProfileHook('menu-select');
 }, true);
 const activateFromGesture = () => {
     void activate().then(ok => {
         if (!ok)
             return;
         document.removeEventListener('pointerdown', activateFromGesture, true);
+        document.removeEventListener('touchstart', activateFromGesture, true);
         document.removeEventListener('keydown', activateFromGesture, true);
-        document.removeEventListener('touchend', activateFromGesture, true);
     });
 };
 document.addEventListener('pointerdown', activateFromGesture, { capture: true, passive: true });
+document.addEventListener('touchstart', activateFromGesture, { capture: true, passive: true });
 document.addEventListener('keydown', activateFromGesture, { capture: true });
-document.addEventListener('touchend', activateFromGesture, { capture: true, passive: true });
 window.addEventListener('pagehide', () => { void execute({ type: 'stop-all' }); });
