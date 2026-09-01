@@ -40,11 +40,8 @@ enum HiddenPhase : int {
 
 static const int STATE_CAP=512;
 static const int MAX_DEPTH=72;
-static const int MAX_NODES=1200000;
-static const int SCENARIOS=4;
-static const uint32_t SCENARIO_SALTS[SCENARIOS]={0x243f6a88u,0x85a308d3u,0x13198a2eu,0x9e3779b9u};
+static const int MAX_NODES=1500000;
 static uint8_t root_state[STATE_CAP];
-static uint8_t candidate_state[STATE_CAP];
 static uint8_t search_states[MAX_DEPTH][STATE_CAP];
 static int hidden_actor=0;
 static int root_score_hidden=0;
@@ -52,7 +49,6 @@ static int root_score_opp=0;
 static int search_nodes=0;
 static int last_nodes=0;
 static int last_exact=1;
-static uint32_t rollout_salt=0;
 
 static int copy_state_out(uint8_t* dst){
   const int n=game_state_size();
@@ -74,8 +70,8 @@ static uint32_t mix(uint32_t h,uint32_t v){
   return h?h:0x6d2b79f5u;
 }
 
-static uint32_t state_seed(int scenario_active){
-  uint32_t h=0x811c9dc5u^(scenario_active?rollout_salt:0u);
+static uint32_t state_seed(){
+  uint32_t h=0x811c9dc5u;
   h=mix(h,(uint32_t)game_phase());
   h=mix(h,(uint32_t)game_turn());
   h=mix(h,(uint32_t)game_deck_remaining());
@@ -170,7 +166,7 @@ static int terminal_utility(){
   return -500000000+ownGain*1000-oppGain;
 }
 
-static int hidden_search(int depth,int scenario_active);
+static int hidden_search(int depth);
 
 static void sort_actions(int* actions,int* priorities,int n){
   for(int i=0;i<n;i++)for(int j=i+1;j<n;j++)if(priorities[j]>priorities[i]){
@@ -179,7 +175,7 @@ static void sort_actions(int* actions,int* priorities,int n){
   }
 }
 
-static int search_hidden_choice(int depth,int scenario_active){
+static int search_hidden_choice(int depth){
   const int phase=game_phase();
   int actions[8],priorities[8],n=0;
   if(!copy_state_out(search_states[depth]))return position_heuristic();
@@ -212,66 +208,37 @@ static int search_hidden_choice(int depth,int scenario_active){
     if(phase==H_PLAY)rc=game_play_hand(hidden_actor,actions[i]);
     else if(phase==H_CAPTURE_HAND||phase==H_CAPTURE_DRAW)rc=game_choose_capture(hidden_actor,actions[i]);
     else rc=game_koi_decision(hidden_actor,actions[i]);
-    if(rc==0){const int v=hidden_search(depth+1,scenario_active);if(v>best)best=v;}
+    if(rc==0){const int v=hidden_search(depth+1);if(v>best)best=v;}
   }
   restore_state(search_states[depth]);
   return best==-2000000000?position_heuristic():best;
 }
 
-static int hidden_search(int depth,int scenario_active){
+static int hidden_search(int depth){
   search_nodes++;
   if(search_nodes>MAX_NODES||depth>=MAX_DEPTH-1){last_exact=0;return position_heuristic();}
   const int phase=game_phase();
   if(phase==H_SETTLEMENT||phase==H_COMPLETE)return terminal_utility();
   const int turn=game_turn();
-  if(turn==hidden_actor)return search_hidden_choice(depth,scenario_active);
+  if(turn==hidden_actor)return search_hidden_choice(depth);
   if(!copy_state_out(search_states[depth]))return position_heuristic();
-  const int rc=game_cpu_step(turn,2,state_seed(scenario_active));
+  const int rc=game_cpu_step(turn,2,state_seed());
   int v=position_heuristic()-1000000;
-  if(rc==0){
-    int next_scenario=scenario_active;
-    const int next_phase=game_phase();
-    if(scenario_active&&(next_phase==H_SETTLEMENT||next_phase==H_COMPLETE||game_turn()==hidden_actor))next_scenario=0;
-    v=hidden_search(depth+1,next_scenario);
-  }
+  if(rc==0)v=hidden_search(depth+1);
   restore_state(search_states[depth]);
   return v;
 }
 
-static void score_candidate(int* worst,int* sum){
-  *worst=2000000000;*sum=0;
-  if(!copy_state_out(candidate_state)){*worst=-2000000000;return;}
-  int allExact=1;
-  for(int scenario=0;scenario<SCENARIOS;scenario++){
-    restore_state(candidate_state);
-    rollout_salt=SCENARIO_SALTS[scenario];
-    search_nodes=0;
-    last_exact=1;
-    const int v=hidden_search(1,1);
-    last_nodes+=search_nodes;
-    if(!last_exact)allExact=0;
-    if(v<*worst)*worst=v;
-    *sum+=v/SCENARIOS;
-  }
-  last_exact=allExact;
-  restore_state(candidate_state);
-}
-
-static int better(int worst,int sum,int bestWorst,int bestSum,int found){
-  if(!found)return 1;
-  const int allWin=worst>0;
-  const int bestAllWin=bestWorst>0;
-  if(allWin!=bestAllWin)return allWin>bestAllWin;
-  if(allWin){
-    if(sum!=bestSum)return sum>bestSum;
-    return worst>bestWorst;
-  }
-  if(worst!=bestWorst)return worst>bestWorst;
-  return sum>bestSum;
+static int score_candidate(){
+  search_nodes=0;
+  last_exact=1;
+  const int v=hidden_search(1);
+  last_nodes+=search_nodes;
+  return v;
 }
 
 extern "C" {
-__attribute__((visibility("default"))) int game_hidden_version(){return 6;}
+__attribute__((visibility("default"))) int game_hidden_version(){return 7;}
 __attribute__((visibility("default"))) int game_hidden_last_nodes(){return last_nodes;}
 __attribute__((visibility("default"))) int game_hidden_last_exact(){return last_exact;}
 
@@ -286,14 +253,14 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
   last_exact=1;
   if(!copy_state_out(root_state))return -5;
   const int phase=game_phase();
-  int bestAction=-1,bestWorst=-2000000000,bestSum=-2000000000,found=0;
+  int bestAction=-1,bestValue=-2000000000,found=0;
   if(phase==H_PLAY){
     const int n=game_hand_n(actor);
     for(int i=0;i<n;i++){
       restore_state(root_state);
       if(game_play_hand(actor,i)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=i;bestSum=sum;bestWorst=worst;found=1;}
+      const int v=score_candidate();
+      if(!found||v>bestValue){bestAction=i;bestValue=v;found=1;}
     }
     restore_state(root_state);
     return found?game_play_hand(actor,bestAction):-1;
@@ -304,8 +271,8 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
       restore_state(root_state);
       const int fieldIndex=game_pending_match_index(i);
       if(game_choose_capture(actor,fieldIndex)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=fieldIndex;bestSum=sum;bestWorst=worst;found=1;}
+      const int v=score_candidate();
+      if(!found||v>bestValue){bestAction=fieldIndex;bestValue=v;found=1;}
     }
     restore_state(root_state);
     return found?game_choose_capture(actor,bestAction):-1;
@@ -314,8 +281,8 @@ __attribute__((visibility("default"))) int game_hidden_step(int actor){
     for(int choice=0;choice<=1;choice++){
       restore_state(root_state);
       if(game_koi_decision(actor,choice)!=0)continue;
-      int worst,sum;score_candidate(&worst,&sum);
-      if(better(worst,sum,bestWorst,bestSum,found)){bestAction=choice;bestSum=sum;bestWorst=worst;found=1;}
+      const int v=score_candidate();
+      if(!found||v>bestValue){bestAction=choice;bestValue=v;found=1;}
     }
     restore_state(root_state);
     return found?game_koi_decision(actor,bestAction):-1;
