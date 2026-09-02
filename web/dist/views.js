@@ -10,6 +10,12 @@ async function render() {
         renderOnline();
     else if (screen === "settings")
         renderSettingsScreen();
+    else if (screen === "terms")
+        await renderCloudDocumentScreen("terms", "利用規約");
+    else if (screen === "credits")
+        await renderCloudDocumentScreen("credits", "クレジット");
+    else if (screen === "licenses")
+        await renderCloudDocumentScreen("licenses", "ライセンス");
     else if (screen === "rules")
         renderRules();
     else if (screen === "yaku")
@@ -42,7 +48,43 @@ function renderOnline() {
     app.innerHTML = `<main class="${screenClass()}">${topbar("オンライン対戦")}<section class="panel"><h2>部屋を作る</h2><div class="settings-grid"><label for="online-rounds">局数</label><select id="online-rounds">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${settings.rounds === i + 1 ? "selected" : ""}>${i + 1}局</option>`).join("")}</select><label for="online-koi">こいこい</label><div class="check-row"><input id="online-koi" type="checkbox" ${settings.koiEnabled ? "checked" : ""}><span>使用する</span></div></div><div class="screen-actions"><button class="primary" data-action="online-create">部屋作成</button><button class="secondary" data-action="online-random">ランダム対戦</button></div></section><section class="panel"><h2>ルームコードで参加</h2><div class="settings-grid"><label for="room-code">ルームコード</label><input id="room-code" maxlength="6" autocomplete="off" inputmode="text" style="text-transform:uppercase" placeholder="6文字"></div><div id="room-inspect" class="notice" style="margin-top:10px">コードを入力すると参加前にルールを確認できます。</div><div class="screen-actions"><button class="primary" data-action="online-inspect">ルール確認</button><button class="secondary" data-action="online-join" disabled>参加</button></div></section></main>`;
 }
 function renderSettingsScreen() {
-    app.innerHTML = `<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
+    app.innerHTML = `<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations ? "checked" : ""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button><button class="secondary" data-nav="terms">利用規約</button><button class="secondary" data-nav="credits">クレジット</button><button class="secondary" data-nav="licenses">ライセンス</button></div></section></main>`;
+}
+async function renderCloudDocumentScreen(key, title) {
+    const expected = key;
+    app.innerHTML = `<main class="${screenClass()}">${topbar(title)}<section class="panel rules-copy"><div id="cloud-content-state" class="notice">読み込み中…</div></section></main>`;
+    try {
+        const documentValue = await fetchCloudContent(key);
+        if (currentScreen() !== expected)
+            return;
+        const state = app.querySelector("#cloud-content-state");
+        if (!state)
+            return;
+        if (!documentValue.available) {
+            state.textContent = "現在、本文は未登録です。";
+            return;
+        }
+        if (typeof documentValue.body !== "string") {
+            state.textContent = "本文を取得できませんでした。";
+            return;
+        }
+        const container = document.createElement("div");
+        container.className = "cloud-document-body";
+        const paragraphBreak = String.fromCharCode(10) + String.fromCharCode(10);
+        for (const block of documentValue.body.split(paragraphBreak)) {
+            const p = document.createElement("p");
+            p.textContent = block;
+            container.append(p);
+        }
+        state.replaceWith(container);
+    }
+    catch {
+        if (currentScreen() !== expected)
+            return;
+        const state = app.querySelector("#cloud-content-state");
+        if (state)
+            state.textContent = "本文を取得できませんでした。";
+    }
 }
 function renderRules() {
     app.innerHTML = `<main class="${screenClass()}">${topbar("詳細ルール")}<section class="panel rules-copy"><h3>基本</h3><p>2人対戦。手札8枚ずつ、場8枚、山札24枚で開始します。親が先攻し、手札を1枚出した後に山札の先頭1枚を引きます。同月札が場にあれば通常のこいこいの取り札規則に従って取得します。</p><h3>こいこい</h3><p>1局につき1回まで。両者の手札がそれぞれ3枚未満になった時点では選択できません。こいこい後の得点倍率は2倍のみです。</p><h3>流局</h3><p>双方0点で1局を消化し、親は継続します。配札時に双方が同時に手四・くっつきを成立させた場合も流局です。</p><div class="screen-actions"><button class="secondary" data-nav="yaku">得点・役確認</button></div><p class="notice">任天堂株式会社が公開する花札「こいこい」の遊び方を参考にしています。本ゲームは任天堂株式会社の公式・公認・提携サービスではありません。</p></section></main>`;

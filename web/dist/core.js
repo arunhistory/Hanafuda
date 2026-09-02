@@ -88,6 +88,20 @@ function back() { if (stack.length > 1)
     stack.pop(); render(); signalTitleAudio(); }
 function goHome() { stack = ["home"]; modal = null; render(); signalTitleAudio(); }
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+async function fetchCloudContent(key) {
+    const response = await fetch(`${API_BASE}/v1/content/${key}`, { method: "GET", headers: { accept: "application/json" }, cache: "no-store", credentials: "omit", redirect: "error" });
+    if (!response.ok)
+        throw new Error(`CONTENT_HTTP_${response.status}`);
+    if (!(response.headers.get("content-type") ?? "").toLowerCase().includes("application/json"))
+        throw new Error("CONTENT_INVALID_CONTENT_TYPE");
+    const value = await response.json();
+    if (value.key !== key || typeof value.available !== "boolean")
+        throw new Error("CONTENT_INVALID_RESPONSE");
+    const revision = Number(value.revision);
+    if (!Number.isSafeInteger(revision) || revision < 0)
+        throw new Error("CONTENT_INVALID_REVISION");
+    return { key, available: value.available, revision, body: value.body };
+}
 function modeLabel(mode) { return mode === "beginner" ? "初心者" : mode === "amateur" ? "アマチュア" : mode === "pro" ? "プロ" : "人知不能"; }
 function phaseLabel(s) {
     if (session?.kind === "cpu" && !matchInteractionReady)
