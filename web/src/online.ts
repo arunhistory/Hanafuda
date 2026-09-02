@@ -12,6 +12,25 @@ function cancelRandomMatch(renderAfter=true){
   if(renderAfter&&currentScreen()==="online")void render();
 }
 
+function inviteUrlForRoom(code:string){
+  const url=new URL(location.href);url.search="";url.hash="";url.searchParams.set("room",code);return url.toString();
+}
+function invitedRoomFromUrl(){
+  try{const code=(new URL(location.href).searchParams.get("room")??"").trim().toUpperCase();return /^[A-Z2-9]{6}$/.test(code)?code:null;}catch{return null;}
+}
+function clearInvitedRoomFromUrl(){
+  const url=new URL(location.href);if(!url.searchParams.has("room"))return;url.searchParams.delete("room");history.replaceState(null,"",`${url.pathname}${url.search}${url.hash}`);
+}
+async function copyInviteUrl(code:string){
+  const value=inviteUrlForRoom(code);
+  try{
+    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);toast("招待リンクをコピーしました");return;}
+  }catch{}
+  const input=app.querySelector<HTMLInputElement>("#invite-url");
+  if(input){input.focus();input.select();input.setSelectionRange(0,input.value.length);try{if(document.execCommand("copy")){toast("招待リンクをコピーしました");return;}}catch{}}
+  toast("コピーできませんでした。招待リンク欄からコピーしてください。");
+}
+
 async function createOnlineRoom(){
   if(busy)return;busy=true;try{const rules=onlineRulesFromUi(),r=await api("/api/online/create",{rules});if(!r.ok||!r.data?.ok)throw new Error(r.data?.code||"ROOM_CREATE_FAILED");await startOnlineSession(r.data.roomCode,r.data.hostToken,0,rules,null);}catch(e){toast(e instanceof Error?e.message:"部屋作成に失敗しました");}finally{busy=false;}
 }
@@ -21,6 +40,17 @@ async function inspectOnlineRoom(){
 }
 async function joinOnlineRoom(){
   if(!inspectedRoom||busy||matchmakingSocket)return;busy=true;try{const r=await api("/api/online/join",{roomCode:inspectedRoom.code});if(!r.ok||!r.data?.ok)throw new Error(r.data?.code||"ROOM_JOIN_FAILED");await startOnlineSession(inspectedRoom.code,r.data.guestToken,1,r.data.rules,r.data);}catch(e){toast(e instanceof Error?e.message:"参加できません");}finally{busy=false;}
+}
+async function joinInvitedOnlineRoom(code:string){
+  stack=["home","online"];
+  app.innerHTML=`<main class="${screenClass("online-wait-screen")}"><section class="hero online-wait-hero"><h1>オンライン対戦</h1><p>招待された部屋を確認しています…</p></section></main>`;
+  const inspect=await fetch(`${API_BASE}/api/online/inspect?room=${encodeURIComponent(code)}`,{cache:"no-store"}),info=await inspect.json().catch(()=>null);
+  if(!inspect.ok||!info?.ok)throw new Error(info?.code||"ROOM_INSPECT_FAILED");
+  const joined=await api("/api/online/join",{roomCode:code});
+  if(!joined.ok||!joined.data?.ok)throw new Error(joined.data?.code||"ROOM_JOIN_FAILED");
+  settings.rounds=Number(joined.data.rules?.rounds??info.rules.rounds);settings.koiEnabled=Boolean(joined.data.rules?.koiEnabled??info.rules.koiEnabled);saveSettings();
+  clearInvitedRoomFromUrl();
+  await startOnlineSession(code,joined.data.guestToken,1,joined.data.rules,joined.data);
 }
 function randomOnline(){
   if(matchmakingSocket){cancelRandomMatch();return;}
@@ -46,12 +76,13 @@ function randomOnline(){
   ws.onclose=()=>{if(matchmakingSocket!==ws)return;matchmakingSocket=null;busy=false;if(!matched)toast("マッチングを終了しました。");if(currentScreen()==="online")void render();};
 }
 function waitingRoomHtml(code:string,rules:{rounds:number;koiEnabled:boolean}){
-  return `<main class="${screenClass("online-wait-screen")}"><section class="hero online-wait-hero"><h1>対戦相手を待っています</h1><div class="room-code-panel" aria-label="作成したルームコード"><span class="room-code-label">ルームコード</span><strong class="room-code-value">${escapeHtml(code)}</strong><span class="room-code-help">このコードを相手に伝えてください</span></div><p class="online-wait-rules">${rules.rounds}局 / こいこい ${rules.koiEnabled?"あり":"なし"}</p><p>相手が参加するまで、この画面にルームコードを表示し続けます。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;
+  const invite=inviteUrlForRoom(code);
+  return `<main class="${screenClass("online-wait-screen")}"><section class="hero online-wait-hero"><h1>対戦相手を待っています</h1><div class="room-code-panel" aria-label="作成したルームコード"><span class="room-code-label">ルームコード</span><strong class="room-code-value">${escapeHtml(code)}</strong><span class="room-code-help">このコードを相手に伝えてください</span></div><div class="invite-link-panel"><label for="invite-url">招待リンク</label><div class="invite-link-controls"><input id="invite-url" readonly value="${escapeHtml(invite)}" aria-label="招待リンク"><button type="button" class="secondary" data-action="copy-invite">招待リンクをコピー</button></div></div><p class="online-wait-rules">${rules.rounds}局 / こいこい ${rules.koiEnabled?"あり":"なし"}</p><p>相手が参加するまで、この画面にルームコードと招待リンクを表示し続けます。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;
 }
 async function startOnlineSession(code:string,token:string,seat:Seat,rules:{rounds:number;koiEnabled:boolean},initial:any){
   stopOnlineWarning();
   const provisional:OnlineSession={kind:"online",roomCode:code,token,seat,version:Number(initial?.version??-1),epoch:String(initial?.epoch??""),rules,socket:null};session=provisional;snapshot=initial?.snapshot??null;roundHistory=[];currentRound=-1;stack=["home","online","match"];
-  connectOnlineSocket(provisional);if(snapshot){emitAudioHook("match-start",{mode:"normal"});renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=waitingRoomHtml(code,rules);app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
+  connectOnlineSocket(provisional);if(snapshot){emitAudioHook("match-start",{mode:"normal"});renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=waitingRoomHtml(code,rules);app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);app.querySelector<HTMLElement>("[data-action='copy-invite']")!.onclick=()=>void copyInviteUrl(code);}
 }
 function connectOnlineSocket(s:OnlineSession){
   const url=new URL(API_BASE.replace(/^http/,"ws")+"/api/online/connect");url.searchParams.set("room",s.roomCode);url.searchParams.set("token",s.token);const ws=new WebSocket(url);s.socket=ws;
@@ -114,4 +145,9 @@ window.addEventListener("pagehide",()=>{
   else navigator.sendBeacon?.(`${API_BASE}/api/online/close`,new Blob([JSON.stringify({roomCode:s.roomCode,token:s.token,reason:"pagehide"})],{type:"text/plain;charset=UTF-8"}));
 });
 
-void render();
+async function startOnlineUi(){
+  await render();
+  const invited=invitedRoomFromUrl();if(!invited)return;
+  try{await joinInvitedOnlineRoom(invited);}catch(e){stack=["home","online"];await render();const input=app.querySelector<HTMLInputElement>("#room-code");if(input)input.value=invited;toast(e instanceof Error?e.message:"招待リンクから接続できませんでした");}
+}
+void startOnlineUi();
