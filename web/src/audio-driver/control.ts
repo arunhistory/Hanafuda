@@ -35,6 +35,7 @@ const FAULT_EVENT='hanafuda-audio-driver-fault';
 const modules=Promise.all([loadDriverWasm(),loadCommonWasm(),loadLocalWasm()]);
 let context:AudioContext|null=null;
 let bgmSource:AudioBufferSourceNode|null=null;
+let bgmSourceGain:GainNode|null=null;
 let bgmGain:GainNode|null=null;
 let seGain:GainNode|null=null;
 const seSources=new Map<AudioBufferSourceNode,GainNode>();
@@ -129,11 +130,16 @@ async function loadBuffer(src:string){
 
 function stopBgmNode(){
   const current=bgmSource;
+  const currentGain=bgmSourceGain;
   bgmSource=null;
+  bgmSourceGain=null;
   if(current){
     current.onended=null;
     try{current.stop();}catch{}
     try{current.disconnect();}catch{}
+  }
+  if(currentGain){
+    try{currentGain.disconnect();}catch{}
   }
 }
 
@@ -170,18 +176,23 @@ async function playBgm(src:string,loop:boolean,volume:number){
   stopBgmNode();
   const ctx=audioContext();
   const node=ctx.createBufferSource();
+  const sourceGain=ctx.createGain();
   node.buffer=buffer;
   node.loop=common.common_bool(loop?1:0)===1;
-  if(bgmGain)bgmGain.gain.setValueAtTime(volume,ctx.currentTime);
-  node.connect(bgmGain!);
+  sourceGain.gain.setValueAtTime(volume,ctx.currentTime);
+  node.connect(sourceGain);
+  sourceGain.connect(bgmGain!);
   bgmSource=node;
+  bgmSourceGain=sourceGain;
   local.local_set_bgm(id);
   node.onended=()=>{
     if(bgmSource===node){
       bgmSource=null;
+      if(bgmSourceGain===sourceGain)bgmSourceGain=null;
       local.local_clear_bgm();
     }
     try{node.disconnect();}catch{}
+    try{sourceGain.disconnect();}catch{}
   };
   node.start(0);
 }
