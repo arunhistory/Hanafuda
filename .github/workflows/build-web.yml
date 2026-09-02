@@ -16,6 +16,7 @@ on:
       - 'tests/pregame_gate_contract.test.mjs'
       - 'tests/pages_publication_contract.test.mjs'
       - 'tests/impossible_clear_screen_contract.test.mjs'
+      - 'tests/usability_regression_contract.test.mjs'
       - '.github/workflows/build-web.yml'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
@@ -61,6 +62,7 @@ jobs:
           node tests/pregame_gate_contract.test.mjs
           node tests/pages_publication_contract.test.mjs
           node tests/impossible_clear_screen_contract.test.mjs
+          node tests/usability_regression_contract.test.mjs
       - name: Reject secrets and hidden trigger details
         run: |
           if grep -R -E 'DEVELOPER_MODE_KEY|x-hanafuda-developer|SUPABASE_SERVICE_ROLE_KEY|playerTotal|cpuTotal|should_force_impossible' web; then
