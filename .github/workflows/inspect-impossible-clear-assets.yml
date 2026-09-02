@@ -35,22 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --quiet pillow
-          python3 - <<'PY'
-from PIL import Image
-files=['471D08C1-C52A-4CEB-9D26-858A671E3441.png','ADA663A4-FE66-4A57-9975-A8FC1ED17BDF.png','C5DF80CE-2E35-4AC7-899D-004CE0740BF8.png']
-def ahash(path,size=16):
-    im=Image.open(path).convert('L').resize((size,size))
-    vals=list(im.getdata()); avg=sum(vals)/len(vals); z=0
-    for v in vals:z=(z<<1)|(1 if v>=avg else 0)
-    return z
-def dhash(path,size=16):
-    im=Image.open(path).convert('L').resize((size+1,size)); pix=list(im.getdata()); z=0
-    for y in range(size):
-        row=pix[y*(size+1):(y+1)*(size+1)]
-        for x in range(size):z=(z<<1)|(1 if row[x]>row[x+1] else 0)
-    return z
-for f in files:
-    print(f'PHASH_FILE={f}')
-    print(f'AHASH={ahash(f):064x}')
-    print(f'DHASH={dhash(f):064x}')
-PY
+          for f in 471D08C1-C52A-4CEB-9D26-858A671E3441.png ADA663A4-FE66-4A57-9975-A8FC1ED17BDF.png C5DF80CE-2E35-4AC7-899D-004CE0740BF8.png; do
+            echo "=== PHASH $f ==="
+            python3 -c 'from PIL import Image; from functools import reduce; import sys; p=sys.argv[1]; im=Image.open(p).convert("L").resize((16,16)); v=list(im.getdata()); a=sum(v)/len(v); ah=reduce(lambda z,x:(z<<1)|(1 if x>=a else 0),v,0); im2=Image.open(p).convert("L").resize((17,16)); q=list(im2.getdata()); bits=[q[y*17+x]>q[y*17+x+1] for y in range(16) for x in range(16)]; dh=reduce(lambda z,x:(z<<1)|(1 if x else 0),bits,0); print(f"AHASH={ah:064x}"); print(f"DHASH={dh:064x}")' "$f"
+          done
