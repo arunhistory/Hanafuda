@@ -20,6 +20,11 @@ const checks=[
   ['reveal completes left to right',css.includes('clip-path:inset(0 0 0 0)')],
   ['second line is staggered after the title',css.includes('.impossible-clear-thanks{')&&css.includes('animation-delay:.72s')],
   ['special screen has dedicated rainbow background variable',css.includes('var(--impossible-clear-bg) center/cover no-repeat')],
+  ['clear screen emits Supabase-managed audio hook',ts.includes('emitAudioHook("impossible-clear")')&&!ts.includes('congratulation-bgm.ogg')],
+  ['return guidance waits exactly ten seconds',ts.includes('},10000);')&&ts.includes('revealImpossibleClearReturnHint()')],
+  ['return guidance text is exact',ts.includes('画面を押せばゲームホーム画面に戻ります')],
+  ['any clear-screen click returns home only after gate opens',ts.includes('!impossibleClearActive||!impossibleClearReturnEnabled')&&ts.includes('target.closest(".impossible-clear-screen")')&&ts.includes('runtimeWindow.goHome();')],
+  ['return popup is hidden before activation and visibly animated after activation',css.includes('.impossible-clear-return-hint{')&&css.includes('.impossible-clear-return-hint.is-visible')&&css.includes('@keyframes impossible-clear-hint-in')],
   ['ordinary final result styles remain present',css.includes('.app-shell.final-result-mode')&&css.includes('.final-result-score')],
 ];
 for(const [name,ok] of checks)console.log(ok?'PASS':'FAIL',name);
