@@ -1,0 +1,45 @@
+name: Upload impossible clear assets
+
+on:
+  push:
+    branches: [impossible-clear-screen-v1]
+    paths:
+      - '.github/workflows/upload-impossible-clear-assets.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: impossible-clear-screen-v1
+      - name: Upload exact GitHub PNGs to Supabase and verify SHA256
+        env:
+          SUPABASE_URL: https://mpuhgfbdkxmhynytwhzu.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_POCxau9QCPFlF0J11o-ZFg_-QY4b8gF
+        run: |
+          set -euo pipefail
+          upload_one(){
+            src="$1"; target="$2"; expected="$3"
+            actual="$(sha256sum "$src" | awk '{print $1}')"
+            test "$actual" = "$expected"
+            curl --fail-with-body --silent --show-error \
+              -X POST "$SUPABASE_URL/storage/v1/object/hanafuda-assets/$target" \
+              -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+              -H 'Content-Type: image/png' \
+              -H 'x-upsert: false' \
+              --data-binary "@$src" >/tmp/upload.json
+            curl --fail-with-body --silent --show-error \
+              "$SUPABASE_URL/storage/v1/object/public/hanafuda-assets/$target" \
+              -o /tmp/download.png
+            downloaded="$(sha256sum /tmp/download.png | awk '{print $1}')"
+            test "$downloaded" = "$expected"
+            echo "VERIFIED $target $downloaded"
+          }
+          upload_one 'ADA663A4-FE66-4A57-9975-A8FC1ED17BDF.png' 'impossible-clear/rainbow-clear-bg.png' '146fc72c9f0e73086e7a8fedf9e56e80a714444a73f4642c8119e78946a58064'
+          upload_one 'C5DF80CE-2E35-4AC7-899D-004CE0740BF8.png' 'impossible-clear/congratulation.png' 'e2fe7c98251b86c0e397aea79100fe676377f282f1e9c2125fc6e9de3ecf500d'
+          upload_one '471D08C1-C52A-4CEB-9D26-858A671E3441.png' 'impossible-clear/thank-you-for-praying.png' '58be8bc4f21cb2f3f745b180b53778a32ab95c0034390a1d73cd953e42bdc327'
