@@ -9,6 +9,7 @@ on:
       - 'cloudflare/worker-v2.js'
       - 'cloudflare/tsconfig.v3.json'
       - 'tests/cloudflare_gateway_contract.test.mjs'
+      - 'tests/cloudflare_websocket_cors_contract.test.mjs'
       - '.github/workflows/build-cloudflare-v3.yml'
   workflow_dispatch:
 
@@ -37,7 +38,9 @@ jobs:
           done
 
       - name: Run Cloudflare gateway contract tests
-        run: node tests/cloudflare_gateway_contract.test.mjs
+        run: |
+          node tests/cloudflare_gateway_contract.test.mjs
+          node tests/cloudflare_websocket_cors_contract.test.mjs
 
       - name: Reject hidden trigger leakage from new v3 gateway modules
         run: |
