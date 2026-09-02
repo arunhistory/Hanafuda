@@ -226,7 +226,8 @@ export class HanafudaCpuSession {
             return json({ ok: false, code: "MODE_SESSION_MISSING" }, 409);
         const oldGameId = String(await this.state.storage.get("gameId") ?? ""), koiEnabled = (await this.state.storage.get("koiEnabled")) === true, testOnly = (await this.state.storage.get("developer")) === true;
         const forcedRounds = Number(await this.state.storage.get("forcedRounds") ?? 6);
-        const created = await engineCall(this.env, { op: "create_internal", rounds: forcedRounds, cpuProfile: 3, firstDealer: -1, koiEnabled });
+        const challengeCpu = testOnly ? { cpuProfile: 0 } : { cpuProfile: 3 };
+        const created = await engineCall(this.env, { op: "create_internal", rounds: forcedRounds, ...challengeCpu, firstDealer: -1, koiEnabled });
         if (!created.ok || !created.data?.ok || !created.data?.gameId)
             return json({ ok: false, code: "CHALLENGE_ENGINE_CREATE_FAILED" }, 502);
         let modeId;
