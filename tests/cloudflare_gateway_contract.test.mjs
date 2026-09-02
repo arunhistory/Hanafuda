@@ -40,7 +40,7 @@ const checks=[
   ['developer auto-start override is disabled',!workerSrc.includes('developerModeStartRequest')&&!workerSrc.includes('x-hanafuda-developer')&&!workerSrc.includes('DEVELOPER_MODE_KEY')],
   ['Cloud content route exposes terms credits licenses read-only',workerSrc.includes('terms|credits|licenses')&&workerSrc.includes('if(req.method!=="GET")')&&workerSrc.includes('contentDocument(req,env')],
   ['Cloud terms content is registered',workerSrc.includes('花札 利用規約')&&workerSrc.includes('available:true,revision:1,body:TERMS_BODY')],
-  ['credits and licenses have no body yet',workerSrc.includes('available:false,revision:0,body:null')&&!workerSrc.includes('CREDITS_BODY')&&!workerSrc.includes('LICENSES_BODY')],
+  ['Cloud credits and licenses content is registered',workerSrc.includes('CREDITS_BODY')&&workerSrc.includes('LICENSES_BODY')&&workerSrc.includes('key==="credits"')&&workerSrc.includes('body:CREDITS_BODY')&&workerSrc.includes('body:LICENSES_BODY')],
   ['challenge transition is never downgraded to beginner',cpuSessionSrc.includes('cpuProfile:3')&&!cpuSessionSrc.includes('testOnly?{cpuProfile:0}')&&!cpuSessionSrc.includes('challengeCpu=testOnly')],
   ['challenge transition is not marked test-only',cpuSessionSrc.includes('challengeTestOnly:false')&&!cpuSessionSrc.includes('challengeTestOnly:testOnly')],
   ['direct hidden mode requires local unlock signal and official origin',src.includes('body?.unlocked!==true')&&src.includes('req.headers.get("Origin")!==env.APP_ORIGIN')&&src.includes('MODE_LOCKED')],
