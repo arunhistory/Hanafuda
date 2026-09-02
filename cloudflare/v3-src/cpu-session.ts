@@ -176,7 +176,8 @@ export class HanafudaCpuSession {
     const ms=await this.modeSession();if(!ms)return json({ok:false,code:"MODE_SESSION_MISSING"},409);
     const oldGameId=String(await this.state.storage.get("gameId")??""),koiEnabled=(await this.state.storage.get("koiEnabled"))===true,testOnly=(await this.state.storage.get("developer"))===true;
     const forcedRounds=Number(await this.state.storage.get("forcedRounds")??6);
-    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,cpuProfile:testOnly?0:3,firstDealer:-1,koiEnabled});
+    const challengeCpu=testOnly?{cpuProfile:0}:{cpuProfile:3};
+    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,...challengeCpu,firstDealer:-1,koiEnabled});
     if(!created.ok||!created.data?.ok||!created.data?.gameId)return json({ok:false,code:"CHALLENGE_ENGINE_CREATE_FAILED"},502);
     let modeId:any;try{modeId=this.env.MODE_SESSIONS.idFromString(ms.sessionId);}catch{await engineCall(this.env,{op:"close",gameId:String(created.data.gameId)}).catch(()=>null);return json({ok:false,code:"INVALID_MODE_SESSION"},409);}
     const modeStub=this.env.MODE_SESSIONS.get(modeId),ack=await modeStub.fetch("https://mode/op",{method:"POST",body:JSON.stringify({op:"transition_ack",token:ms.token})}),ackData=await ack.json().catch(()=>null);
