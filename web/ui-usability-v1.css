@@ -28,11 +28,17 @@
 .room-code-label{font-size:.86rem;font-weight:700;letter-spacing:.08em;color:var(--cream)}
 .room-code-value{font-size:clamp(2rem,7vw,3.4rem);line-height:1;letter-spacing:.18em;font-variant-numeric:tabular-nums;user-select:all}
 .room-code-help,.online-wait-rules{font-size:.9rem;opacity:.9;text-align:center}
+.invite-link-panel{width:min(640px,100%);display:grid;gap:8px;text-align:left}
+.invite-link-panel>label{font-size:.84rem;font-weight:700}
+.invite-link-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,auto);gap:10px;align-items:stretch}
+.invite-link-controls input{width:100%;min-width:0;min-height:46px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(15,9,7,.86);color:var(--cream);font:inherit;font-size:.8rem}
+.invite-link-controls button{min-height:46px;padding:9px 14px;font-weight:700;white-space:nowrap}
 .online-wait-hero>.danger{min-width:180px;min-height:48px}
 
 @media (max-width:720px){
   .settings-screen-expanded .settings-grid{grid-template-columns:minmax(100px,.34fr) minmax(0,1fr)}
   .audio-control-row{grid-template-columns:minmax(100px,1fr) 52px minmax(78px,auto);gap:8px}
+  .invite-link-controls{grid-template-columns:1fr}
 }
 
 html.mobile-webapp .site-footer{position:relative}
@@ -117,13 +123,18 @@ html.mobile-webapp .cpu-setup-expanded .screen-actions{margin-top:0}
 html.mobile-webapp .cpu-setup-expanded .screen-actions .primary{min-width:240px;min-height:52px;padding:10px 22px;font-size:.88rem}
 
 html.mobile-webapp .online-wait-screen{padding:10px 18px}
-html.mobile-webapp .online-wait-hero{width:min(94%,980px);gap:10px}
-html.mobile-webapp .online-wait-hero h1{font-size:1.25rem;margin:0}
-html.mobile-webapp .room-code-panel{width:min(620px,86vw);padding:14px 22px;gap:6px}
-html.mobile-webapp .room-code-value{font-size:clamp(2.1rem,6.6vw,3.2rem);letter-spacing:.22em}
-html.mobile-webapp .room-code-help,html.mobile-webapp .online-wait-rules{font-size:.78rem}
-html.mobile-webapp .online-wait-hero>p{margin:0;font-size:.78rem}
-html.mobile-webapp .online-wait-hero>.danger{min-width:220px;min-height:46px}
+html.mobile-webapp .online-wait-hero{width:min(94%,980px);gap:8px}
+html.mobile-webapp .online-wait-hero h1{font-size:1.18rem;margin:0}
+html.mobile-webapp .room-code-panel{width:min(620px,86vw);padding:12px 22px;gap:5px}
+html.mobile-webapp .room-code-value{font-size:clamp(2rem,6.2vw,3rem);letter-spacing:.22em}
+html.mobile-webapp .room-code-help,html.mobile-webapp .online-wait-rules{font-size:.74rem}
+html.mobile-webapp .invite-link-panel{width:min(780px,90vw);gap:5px}
+html.mobile-webapp .invite-link-panel>label{font-size:.72rem}
+html.mobile-webapp .invite-link-controls{grid-template-columns:minmax(0,1fr) 190px;gap:8px}
+html.mobile-webapp .invite-link-controls input{min-height:42px;font-size:.7rem;padding:7px 10px}
+html.mobile-webapp .invite-link-controls button{min-height:42px;font-size:.76rem;padding:7px 12px}
+html.mobile-webapp .online-wait-hero>p{margin:0;font-size:.74rem}
+html.mobile-webapp .online-wait-hero>.danger{min-width:220px;min-height:44px}
 
 html.mobile-webapp.compact-landscape .settings-screen-expanded .panel{padding:10px 16px}
 html.mobile-webapp.compact-landscape .settings-screen-expanded .audio-control-row{min-height:46px}
@@ -133,6 +144,7 @@ html.mobile-webapp.compact-landscape .cpu-setup-expanded .cpu-setup-panel{grid-t
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .setup-choice{min-height:40px;padding:5px 7px;font-size:.76rem}
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .round-choice{min-height:33px;padding:3px 2px}
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .screen-actions .primary{min-height:46px}
-html.mobile-webapp.compact-landscape .online-wait-hero{gap:6px}
-html.mobile-webapp.compact-landscape .room-code-panel{padding:10px 18px}
-html.mobile-webapp.compact-landscape .room-code-value{font-size:clamp(1.9rem,6vw,2.7rem)}
+html.mobile-webapp.compact-landscape .online-wait-hero{gap:5px}
+html.mobile-webapp.compact-landscape .room-code-panel{padding:8px 18px}
+html.mobile-webapp.compact-landscape .room-code-value{font-size:clamp(1.8rem,5.6vw,2.5rem)}
+html.mobile-webapp.compact-landscape .invite-link-controls input,html.mobile-webapp.compact-landscape .invite-link-controls button{min-height:38px}
