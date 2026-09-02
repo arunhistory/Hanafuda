@@ -3,9 +3,12 @@ const SETTINGS_KEY = "hanafuda.settings.v1";
 const UNLOCK_KEY = "hanafuda.impossible.unlocked.v1";
 
 type CpuMode = "beginner" | "amateur" | "pro" | "impossible";
-type UiScreen = "home" | "cpu-setup" | "online" | "settings" | "rules" | "yaku" | "match";
+type UiScreen = "home" | "cpu-setup" | "online" | "settings" | "terms" | "credits" | "licenses" | "rules" | "yaku" | "match";
 type Seat = 0 | 1;
 type FirstDealer = -1 | 0 | 1;
+
+type CloudContentKey = "terms" | "credits" | "licenses";
+type CloudContentDocument = {key:CloudContentKey;available:boolean;revision:number;body:unknown};
 
 type Settings = {
   mode: CpuMode;
@@ -160,6 +163,16 @@ function push(screen:UiScreen){stack.push(screen);render();signalTitleAudio();}
 function back(){if(stack.length>1)stack.pop();render();signalTitleAudio();}
 function goHome(){stack=["home"];modal=null;render();signalTitleAudio();}
 function escapeHtml(value:unknown){return String(value).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]!));}
+async function fetchCloudContent(key:CloudContentKey):Promise<CloudContentDocument>{
+  const response=await fetch(`${API_BASE}/v1/content/${key}`,{method:"GET",headers:{accept:"application/json"},cache:"no-store",credentials:"omit",redirect:"error"});
+  if(!response.ok)throw new Error(`CONTENT_HTTP_${response.status}`);
+  if(!(response.headers.get("content-type")??"").toLowerCase().includes("application/json"))throw new Error("CONTENT_INVALID_CONTENT_TYPE");
+  const value=await response.json() as Record<string,unknown>;
+  if(value.key!==key||typeof value.available!=="boolean")throw new Error("CONTENT_INVALID_RESPONSE");
+  const revision=Number(value.revision);
+  if(!Number.isSafeInteger(revision)||revision<0)throw new Error("CONTENT_INVALID_REVISION");
+  return {key,available:value.available,revision,body:value.body};
+}
 function modeLabel(mode:CpuMode){return mode==="beginner"?"初心者":mode==="amateur"?"アマチュア":mode==="pro"?"プロ":"人知不能";}
 function phaseLabel(s:Snapshot){
   if(session?.kind==="cpu"&&!matchInteractionReady)return "対局準備中";
