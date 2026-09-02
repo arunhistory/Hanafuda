@@ -1,0 +1,121 @@
+name: Final Impossible clear release validation
+
+on:
+  push:
+    branches:
+      - final-impossible-clear-release
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: final-impossible-clear-release
+          fetch-depth: 0
+
+      - name: Apply final clear release changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p=Path(path)
+              s=p.read_text()
+              if old not in s:
+                  raise SystemExit(f'pattern not found: {path}: {old[:80]!r}')
+              if s.count(old)!=1:
+                  raise SystemExit(f'pattern not unique: {path}: {s.count(old)}')
+              p.write_text(s.replace(old,new,1))
+
+          p=Path('web/src/final-result-fix-v1.ts')
+          s=p.read_text()
+          s=s.replace('    __hanafudaFinalResultFixVersion?:string;\n', '    __hanafudaFinalResultFixVersion?:string;\n')
+          s=s.replace('  let impossibleClearWarmScheduled=false;\n  const impossibleClearWarmImages:HTMLImageElement[]=[];\n', '  let impossibleClearWarmScheduled=false;\n  const impossibleClearWarmImages:HTMLImageElement[]=[];\n  let impossibleClearEntered=false;\n  let impossibleClearReturnTimer:number|null=null;\n  let impossibleClearReturnArmed=false;\n')
+          old='''  function renderImpossibleClear(){\n    if(!snapshot||!session)return baseRenderMatch();\n    removeTransientMatchOverlays();\n    app.classList.remove("final-result-mode");\n    app.classList.add("impossible-clear-mode");\n    app.innerHTML=`<main class="impossible-clear-screen" style="--impossible-clear-bg:url('${IMPOSSIBLE_CLEAR_BG_URL}')"><div class="impossible-clear-copy" aria-label="Congratulation. Thank You for Praying！"><img class="impossible-clear-title" src="${IMPOSSIBLE_CLEAR_TITLE_URL}" alt="Congratulation"><img class="impossible-clear-thanks" src="${IMPOSSIBLE_CLEAR_THANKS_URL}" alt="Thank You for Praying！"></div></main>`;\n  }\n'''
+          new='''  function clearImpossibleReturnFlow(){\n    if(impossibleClearReturnTimer!==null){window.clearTimeout(impossibleClearReturnTimer);impossibleClearReturnTimer=null;}\n    if(impossibleClearReturnArmed){document.removeEventListener("pointerup",onImpossibleClearPointer,true);impossibleClearReturnArmed=false;}\n  }\n\n  function onImpossibleClearPointer(event:PointerEvent){\n    if(!impossibleClearReturnArmed||!app.classList.contains("impossible-clear-mode"))return;\n    event.preventDefault();\n    event.stopPropagation();\n    clearImpossibleReturnFlow();\n    impossibleClearEntered=false;\n    runtimeWindow.goHome();\n  }\n\n  function armImpossibleReturnFlow(){\n    if(!app.classList.contains("impossible-clear-mode"))return;\n    const screen=app.querySelector<HTMLElement>(".impossible-clear-screen");\n    if(!screen)return;\n    if(!screen.querySelector(".impossible-clear-return-hint")){\n      screen.insertAdjacentHTML("beforeend",'<div class="impossible-clear-return-hint" role="status">画面を押せばゲームホーム画面に戻ります</div>');\n    }\n    if(!impossibleClearReturnArmed){\n      impossibleClearReturnArmed=true;\n      document.addEventListener("pointerup",onImpossibleClearPointer,true);\n    }\n  }\n\n  function renderImpossibleClear(){\n    if(!snapshot||!session)return baseRenderMatch();\n    removeTransientMatchOverlays();\n    app.classList.remove("final-result-mode");\n    app.classList.add("impossible-clear-mode");\n    app.innerHTML=`<main class="impossible-clear-screen" style="--impossible-clear-bg:url('${IMPOSSIBLE_CLEAR_BG_URL}')"><div class="impossible-clear-copy" aria-label="Congratulation. Thank You for Praying！"><img class="impossible-clear-title" src="${IMPOSSIBLE_CLEAR_TITLE_URL}" alt="Congratulation"><img class="impossible-clear-thanks" src="${IMPOSSIBLE_CLEAR_THANKS_URL}" alt="Thank You for Praying！"></div></main>`;\n    if(!impossibleClearEntered){\n      impossibleClearEntered=true;\n      emitAudioHook("impossible-clear");\n      clearImpossibleReturnFlow();\n      impossibleClearReturnTimer=window.setTimeout(()=>{impossibleClearReturnTimer=null;armImpossibleReturnFlow();},10_000);\n    }\n  }\n'''
+          if old not in s: raise SystemExit('renderImpossibleClear pattern missing')
+          s=s.replace(old,new,1)
+          s=s.replace('    app.classList.remove("final-result-mode","impossible-clear-mode");\n    const out=baseRenderMatch();\n', '    if(impossibleClearEntered){clearImpossibleReturnFlow();impossibleClearEntered=false;}\n    app.classList.remove("final-result-mode","impossible-clear-mode");\n    const out=baseRenderMatch();\n',1)
+          s=s.replace('  runtimeWindow.goHome=function(){app.classList.remove("final-result-mode","impossible-clear-mode");return baseGoHome();};\n\n  runtimeWindow.__hanafudaFinalResultFixVersion="5";\n', '  runtimeWindow.goHome=function(){clearImpossibleReturnFlow();impossibleClearEntered=false;app.classList.remove("final-result-mode","impossible-clear-mode");return baseGoHome();};\n\n  runtimeWindow.__hanafudaFinalResultFixVersion="6";\n',1)
+          p.write_text(s)
+
+          p=Path('web/final-result-fix-v1.css')
+          s=p.read_text()
+          anchor='.impossible-clear-thanks{width:min(74vw,1160px);animation-delay:.72s;}\n'
+          addition='''.impossible-clear-thanks{width:min(74vw,1160px);animation-delay:.72s;}\n.impossible-clear-return-hint{position:absolute;z-index:3;left:50%;bottom:clamp(22px,6vh,72px);transform:translateX(-50%);width:min(88vw,720px);padding:14px 22px;border:1px solid rgba(255,255,255,.56);border-radius:18px;background:rgba(9,5,7,.72);color:#fffdf7;text-align:center;font-weight:900;letter-spacing:.04em;line-height:1.45;box-shadow:0 12px 38px rgba(0,0,0,.34),inset 0 0 24px rgba(255,255,255,.06);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;animation:impossible-clear-return-hint-in .5s ease-out forwards;}\n'''
+          if anchor not in s: raise SystemExit('css anchor missing')
+          s=s.replace(anchor,addition,1)
+          s=s.replace('@keyframes impossible-clear-reveal{', '@keyframes impossible-clear-return-hint-in{from{opacity:0;transform:translate(-50%,12px) scale(.97)}to{opacity:1;transform:translate(-50%,0) scale(1)}}\n@keyframes impossible-clear-reveal{',1)
+          s=s.replace('html.mobile-webapp .impossible-clear-thanks{width:min(68vw,980px);max-height:34%;object-fit:contain;}\n', 'html.mobile-webapp .impossible-clear-thanks{width:min(68vw,980px);max-height:34%;object-fit:contain;}\nhtml.mobile-webapp .impossible-clear-return-hint{bottom:10px;width:min(82%,680px);padding:8px 14px;border-radius:12px;font-size:clamp(11px,2.4vh,15px);}\n',1)
+          s=s.replace('@media (prefers-reduced-motion:reduce){.impossible-clear-screen,.impossible-clear-screen::before,.impossible-clear-title,.impossible-clear-thanks{', '@media (prefers-reduced-motion:reduce){.impossible-clear-screen,.impossible-clear-screen::before,.impossible-clear-title,.impossible-clear-thanks,.impossible-clear-return-hint{',1)
+          p.write_text(s)
+
+          p=Path('tests/impossible_clear_screen_contract.test.mjs')
+          s=p.read_text()
+          marker="  ['thank-you image is Supabase hosted',ts.includes('thank-you-for-praying.png')],\n"
+          extra="""  ['thank-you image is Supabase hosted',ts.includes('thank-you-for-praying.png')],\n  ['special clear emits Supabase-managed congratulation audio hook',ts.includes('emitAudioHook(\"impossible-clear\")')],\n  ['return guidance waits exactly ten seconds',ts.includes('window.setTimeout')&&ts.includes('10_000')],\n  ['return popup text is exact',ts.includes('画面を押せばゲームホーム画面に戻ります')],\n  ['return is armed by full-screen pointer input only after guidance',ts.includes('document.addEventListener(\"pointerup\",onImpossibleClearPointer,true)')&&ts.includes('armImpossibleReturnFlow')],\n  ['return flow goes to the game home',ts.includes('runtimeWindow.goHome();')],\n  ['return flow is cleaned when leaving clear screen',ts.includes('clearImpossibleReturnFlow()')&&ts.includes('document.removeEventListener(\"pointerup\",onImpossibleClearPointer,true)')],\n  ['return popup has dedicated UI styling',css.includes('.impossible-clear-return-hint{')&&css.includes('impossible-clear-return-hint-in')],\n"""
+          if marker not in s: raise SystemExit('clear contract anchor missing')
+          s=s.replace(marker,extra,1)
+          p.write_text(s)
+
+          p=Path('cloudflare/v3-src/worker-v3.ts')
+          s=p.read_text()
+          start=s.find('// Developer test mode is activated only inside the server boundary.')
+          end=s.find('async function audioProfile',start)
+          if start<0 or end<0: raise SystemExit('developer worker block missing')
+          s=s[:start]+s[end:]
+          block='''    if(url.pathname==="/api/mode/start"&&req.method==="POST"){\n      try{return baseWorker.fetch(await developerModeStartRequest(req,env),env,ctx);}\n      catch{return new Response(JSON.stringify({ok:false,code:"DEVELOPER_MODE_UNAVAILABLE"}),{status:503,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});}\n    }\n'''
+          if block not in s: raise SystemExit('developer route block missing')
+          s=s.replace(block,'',1)
+          p.write_text(s)
+
+          p=Path('cloudflare/v3-src/cpu-session.ts')
+          s=p.read_text()
+          old='''    const forcedRounds=Number(await this.state.storage.get("forcedRounds")??6);\n    const challengeCpu=testOnly?{cpuProfile:0}:{cpuProfile:3};\n    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,...challengeCpu,firstDealer:-1,koiEnabled});\n'''
+          new='''    const forcedRounds=Number(await this.state.storage.get("forcedRounds")??6);\n    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,cpuProfile:3,firstDealer:-1,koiEnabled});\n'''
+          if old not in s: raise SystemExit('developer challenge cpu block missing')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('tests/cloudflare_gateway_contract.test.mjs')
+          s=p.read_text()
+          marker="  ['challenge creates private CPU profile only after transition',src.includes('cpuProfile:3')&&src.includes('CHALLENGE_ENGINE_CREATE_FAILED')],\n"
+          extra="""  ['challenge creates private CPU profile only after transition',src.includes('cpuProfile:3')&&src.includes('CHALLENGE_ENGINE_CREATE_FAILED')],\n  ['developer auto-start injection is disabled',!workerSrc.includes('developerModeStartRequest')&&!workerSrc.includes('x-hanafuda-developer')&&!workerSrc.includes('DEVELOPER_MODE_UNAVAILABLE')],\n  ['developer challenge no longer downgrades private CPU',!cpuSessionSrc.includes('cpuProfile:0')&&!cpuSessionSrc.includes('challengeCpu')&&cpuSessionSrc.includes('rounds:forcedRounds,cpuProfile:3')],\n"""
+          if marker not in s: raise SystemExit('cloudflare contract anchor missing')
+          s=s.replace(marker,extra,1)
+          p.write_text(s)
+          PY
+
+      - name: Compile web TypeScript
+        run: |
+          rm -rf /tmp/hanafuda-web-dist
+          npx --yes --package typescript@5.8.3 tsc -p web/tsconfig.json --outDir /tmp/hanafuda-web-dist
+
+      - name: Run clear screen contract
+        run: node tests/impossible_clear_screen_contract.test.mjs
+
+      - name: Compile Cloudflare v3
+        run: |
+          rm -rf /tmp/hanafuda-cf-dist
+          npx --yes --package typescript@5.8.3 tsc -p cloudflare/tsconfig.v3.json --outDir /tmp/hanafuda-cf-dist
+          for f in /tmp/hanafuda-cf-dist/*.js; do node --check "$f"; done
+
+      - name: Run Cloudflare contract
+        run: node tests/cloudflare_gateway_contract.test.mjs
+
+      - name: Ensure developer relaxations are absent
+        run: |
+          ! grep -q 'developerModeStartRequest' cloudflare/v3-src/worker-v3.ts
+          ! grep -q 'cpuProfile:0' cloudflare/v3-src/cpu-session.ts
+
+      - name: Commit validated source changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/src/final-result-fix-v1.ts web/final-result-fix-v1.css tests/impossible_clear_screen_contract.test.mjs cloudflare/v3-src/worker-v3.ts cloudflare/v3-src/cpu-session.ts tests/cloudflare_gateway_contract.test.mjs
+          git commit -m 'Finalize Impossible clear screen and disable developer relaxations'
+          git push origin HEAD:final-impossible-clear-release
