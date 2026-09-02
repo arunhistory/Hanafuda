@@ -25,6 +25,13 @@ jobs:
         run: |
           rm -rf web/dist
           npx --yes --package typescript@5.8.3 tsc -p web/tsconfig.json
+      - name: Copy audio driver WASM runtime
+        run: |
+          find web/src/audio-driver -type f -name '*.wasm' -print0 | while IFS= read -r -d '' f; do
+            target="web/dist/${f#web/src/}"
+            mkdir -p "$(dirname "$target")"
+            cp "$f" "$target"
+          done
       - name: Validate generated JavaScript syntax
         run: find web/dist -type f -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Run existing frontend contracts
