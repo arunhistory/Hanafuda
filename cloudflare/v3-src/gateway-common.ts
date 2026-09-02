@@ -5,6 +5,7 @@ export const ROOM_ALPHABET="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const json = (value:any,status=200)=>new Response(JSON.stringify(value),{status,headers:JSON_HEADERS});
 
 export function cors(response:Response,req:Request,env:any){
+  if(response.status===101||(response as any).webSocket)return response;
   const origin=req.headers.get("Origin");
   if(!origin||origin!==env.APP_ORIGIN)return response;
   const headers=new Headers(response.headers);
