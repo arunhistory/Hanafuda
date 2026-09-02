@@ -1,0 +1,30 @@
+.ad-bar{position:relative;overflow:hidden;background:#09090b;border-top:1px solid rgba(255,255,255,.16);isolation:isolate}
+.orikuro-ad{position:relative;z-index:1;height:100%;width:100%;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:4px clamp(10px,3vw,28px);color:#f7f6f2;text-decoration:none;overflow:hidden;background:linear-gradient(90deg,rgba(9,9,11,.98),rgba(14,14,18,.96) 44%,rgba(9,9,11,.98));box-shadow:inset 0 1px rgba(255,255,255,.04);transition:background .22s ease,filter .22s ease}
+.orikuro-ad::before{content:"";position:absolute;z-index:-2;inset:-80% -8%;background:radial-gradient(circle at 14% 50%,rgba(200,255,52,.26),transparent 20%),radial-gradient(circle at 54% 55%,rgba(143,108,255,.20),transparent 28%),radial-gradient(circle at 86% 45%,rgba(81,231,255,.20),transparent 22%);filter:blur(4px);transition:transform .35s ease,opacity .35s ease}
+.orikuro-ad::after{content:"";position:absolute;z-index:-1;top:0;bottom:0;width:32%;left:-36%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.08),rgba(200,255,52,.13),transparent);transform:skewX(-18deg);animation:orikuro-ad-scan 6s ease-in-out infinite}
+.orikuro-ad-symbol{width:36px;height:36px;object-fit:contain;display:block;background:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;box-shadow:0 0 0 1px rgba(200,255,52,.12),0 0 18px rgba(143,108,255,.18)}
+.orikuro-ad-copy{min-width:0;display:grid;align-content:center;line-height:1}
+.orikuro-ad-kicker{font-size:7px;font-weight:800;letter-spacing:.16em;color:rgba(247,246,242,.62);white-space:nowrap}
+.orikuro-ad-title{margin-top:3px;font-size:17px;line-height:1;font-weight:900;letter-spacing:-.05em;white-space:nowrap}
+.orikuro-ad-title::after{content:"";display:inline-block;width:22px;height:2px;margin-left:7px;vertical-align:middle;background:linear-gradient(90deg,#c8ff34,#51e7ff,#8f6cff);box-shadow:0 0 8px rgba(81,231,255,.38)}
+.orikuro-ad-tagline{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.02em;color:rgba(247,246,242,.76);text-align:center}
+.orikuro-ad-cta{justify-self:end;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:6px 9px;border:1px solid rgba(200,255,52,.58);border-radius:999px;font-size:8px;font-weight:900;letter-spacing:.12em;color:#eaffb5;background:rgba(200,255,52,.05);box-shadow:inset 0 0 14px rgba(200,255,52,.04);transition:background .2s ease,color .2s ease,border-color .2s ease,transform .2s ease}
+.orikuro-ad:hover{background:linear-gradient(90deg,rgba(12,12,15,.99),rgba(19,19,24,.98) 44%,rgba(11,11,14,.99));filter:saturate(1.12)}
+.orikuro-ad:hover::before{transform:scale(1.08);opacity:1}
+.orikuro-ad:hover .orikuro-ad-cta{background:#c8ff34;color:#09090b;border-color:#c8ff34;transform:translateX(2px)}
+.orikuro-ad:focus-visible{outline:2px solid #51e7ff;outline-offset:-3px}
+.orikuro-ad span{opacity:1}
+@keyframes orikuro-ad-scan{0%,68%{left:-36%;opacity:0}72%{opacity:1}88%{left:112%;opacity:1}92%,100%{left:112%;opacity:0}}
+@media(max-width:620px){.orikuro-ad{grid-template-columns:auto auto minmax(0,1fr);gap:8px;padding-inline:8px}.orikuro-ad-tagline{display:none}.orikuro-ad-cta{font-size:7px;padding:5px 8px}.orikuro-ad-symbol{width:34px;height:34px}.orikuro-ad-title{font-size:15px}.orikuro-ad-title::after{width:15px;margin-left:5px}}
+@media(max-width:390px){.orikuro-ad{gap:7px}.orikuro-ad-kicker{font-size:6px;letter-spacing:.11em}.orikuro-ad-title{font-size:14px}.orikuro-ad-cta{letter-spacing:.08em;padding-inline:7px}}
+@media(max-width:330px){.orikuro-ad-kicker{display:none}.orikuro-ad-title{margin-top:0}.orikuro-ad-cta{font-size:0}.orikuro-ad-cta span{font-size:13px}}
+html.mobile-webapp .orikuro-ad{gap:6px;padding:1px 8px}
+html.mobile-webapp .orikuro-ad-symbol{width:22px;height:22px;border-radius:5px}
+html.mobile-webapp .orikuro-ad-kicker{font-size:5px;letter-spacing:.1em}
+html.mobile-webapp .orikuro-ad-title{margin-top:1px;font-size:10px;letter-spacing:-.03em}
+html.mobile-webapp .orikuro-ad-title::after{width:10px;height:1px;margin-left:4px}
+html.mobile-webapp .orikuro-ad-cta{padding:2px 5px;font-size:6px;letter-spacing:.06em}
+html.mobile-webapp.compact-landscape .orikuro-ad-symbol{width:20px;height:20px}
+html.mobile-webapp.compact-landscape .orikuro-ad-title{font-size:9px}
+html.mobile-webapp.compact-landscape .orikuro-ad-cta{padding:1px 4px;font-size:5px}
+@media(prefers-reduced-motion:reduce){.orikuro-ad,.orikuro-ad::before,.orikuro-ad .orikuro-ad-cta{transition:none}.orikuro-ad::after{animation:none;display:none}}

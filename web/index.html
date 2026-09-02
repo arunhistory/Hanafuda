@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#170b0b">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mpuhgfbdkxmhynytwhzu.supabase.co; media-src 'self' https://mpuhgfbdkxmhynytwhzu.supabase.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://mpuhgfbdkxmhynytwhzu.supabase.co https://hanafuda-system.garigarimegane625.workers.dev wss://hanafuda-system.garigarimegane625.workers.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mpuhgfbdkxmhynytwhzu.supabase.co https://arunhistory.github.io; media-src 'self' https://mpuhgfbdkxmhynytwhzu.supabase.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://mpuhgfbdkxmhynytwhzu.supabase.co https://hanafuda-system.garigarimegane625.workers.dev wss://hanafuda-system.garigarimegane625.workers.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
   <title>花札 こいこい</title>
   <link rel="preload" as="image" href="https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/koikoi-text.png">
   <link rel="preload" as="image" href="https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/agari-text.png">
@@ -18,13 +18,24 @@
   <link rel="stylesheet" href="./mobile-overlay-fix-v1.css">
   <link rel="stylesheet" href="./final-result-fix-v1.css">
   <link rel="stylesheet" href="./initial-animation-performance-v1.css">
+  <link rel="stylesheet" href="./orikuro-ad.css">
 </head>
 <body>
   <div id="webapp-viewport" class="webapp-viewport">
     <div id="app" class="app-shell" aria-live="polite"></div>
     <footer class="site-footer">
       <div class="copyright">©ある〜ん</div>
-      <div class="ad-bar" id="ad-slot" role="complementary" aria-label="広告枠"><span>広告枠</span></div>
+      <div class="ad-bar" id="ad-slot" role="complementary" aria-label="広告">
+        <a class="orikuro-ad" href="https://arunhistory.github.io/Orikuro-test/index.html" target="_blank" rel="noopener noreferrer" aria-label="Original Create Project オリクロ公式サイトを開く">
+          <img class="orikuro-ad-symbol" src="https://arunhistory.github.io/Orikuro-test/assets/oc-symbol-user.jpg" alt="">
+          <span class="orikuro-ad-copy">
+            <span class="orikuro-ad-kicker">ORIGINAL CREATE PROJECT</span>
+            <strong class="orikuro-ad-title">オリクロ</strong>
+          </span>
+          <span class="orikuro-ad-tagline">自由をカタチに未来をつくる</span>
+          <span class="orikuro-ad-cta">PROJECT SITE <span aria-hidden="true">↗</span></span>
+        </a>
+      </div>
     </footer>
   </div>
   <div id="future-common-pages" hidden>
