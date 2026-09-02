@@ -31,12 +31,26 @@ jobs:
             sha256sum "$f"
             python3 -c 'import struct,sys; b=open(sys.argv[1],"rb").read(33); assert b[:8]==b"\x89PNG\r\n\x1a\n"; w,h=struct.unpack(">II",b[16:24]); print(f"PNG_DIMENSIONS={w}x{h} COLOR_TYPE={b[25]}")' "$f"
           done
-      - name: Compute normalized pixel hashes
+      - name: Compute perceptual hashes
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq imagemagick >/dev/null
-          for f in 471D08C1-C52A-4CEB-9D26-858A671E3441.png ADA663A4-FE66-4A57-9975-A8FC1ED17BDF.png C5DF80CE-2E35-4AC7-899D-004CE0740BF8.png; do
-            echo "=== PIXEL64 $f ==="
-            convert "$f" -background white -alpha background -alpha off -resize 64x64\! -colorspace sRGB rgb:- | sha256sum
-          done
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+from PIL import Image
+files=['471D08C1-C52A-4CEB-9D26-858A671E3441.png','ADA663A4-FE66-4A57-9975-A8FC1ED17BDF.png','C5DF80CE-2E35-4AC7-899D-004CE0740BF8.png']
+def ahash(path,size=16):
+    im=Image.open(path).convert('L').resize((size,size))
+    vals=list(im.getdata()); avg=sum(vals)/len(vals); z=0
+    for v in vals:z=(z<<1)|(1 if v>=avg else 0)
+    return z
+def dhash(path,size=16):
+    im=Image.open(path).convert('L').resize((size+1,size)); pix=list(im.getdata()); z=0
+    for y in range(size):
+        row=pix[y*(size+1):(y+1)*(size+1)]
+        for x in range(size):z=(z<<1)|(1 if row[x]>row[x+1] else 0)
+    return z
+for f in files:
+    print(f'PHASH_FILE={f}')
+    print(f'AHASH={ahash(f):064x}')
+    print(f'DHASH={dhash(f):064x}')
+PY
