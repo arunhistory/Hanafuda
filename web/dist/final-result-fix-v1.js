@@ -12,6 +12,9 @@
     let finalBgWarmImage = null;
     let impossibleClearWarmScheduled = false;
     const impossibleClearWarmImages = [];
+    let impossibleClearActive = false;
+    let impossibleClearReturnEnabled = false;
+    let impossibleClearReturnTimer = null;
     function removeTransientMatchOverlays() {
         app.querySelectorAll(".modal-layer,.settlement-layer,.dramatic-callout-layer,.supabase-effect-layer,.fx-layer").forEach(el => el.remove());
     }
@@ -49,6 +52,37 @@
             }
         });
     }
+    function revealImpossibleClearReturnHint() {
+        if (!impossibleClearActive)
+            return;
+        impossibleClearReturnEnabled = true;
+        const screen = app.querySelector(".impossible-clear-screen");
+        screen?.classList.add("return-enabled");
+        const hint = app.querySelector(".impossible-clear-return-hint");
+        if (hint) {
+            hint.classList.add("is-visible");
+            hint.setAttribute("aria-hidden", "false");
+        }
+    }
+    function beginImpossibleClear() {
+        if (impossibleClearActive)
+            return;
+        impossibleClearActive = true;
+        impossibleClearReturnEnabled = false;
+        emitAudioHook("impossible-clear");
+        impossibleClearReturnTimer = window.setTimeout(() => {
+            impossibleClearReturnTimer = null;
+            revealImpossibleClearReturnHint();
+        }, 10000);
+    }
+    function endImpossibleClear() {
+        if (impossibleClearReturnTimer !== null) {
+            window.clearTimeout(impossibleClearReturnTimer);
+            impossibleClearReturnTimer = null;
+        }
+        impossibleClearActive = false;
+        impossibleClearReturnEnabled = false;
+    }
     function isImpossibleSpecialVictory(s) {
         return hiddenFirstEncounter === true && session?.kind === "cpu" && session.mode === "impossible" && s.totalRounds === 6 && s.matchWinner === playerSeat();
     }
@@ -62,9 +96,13 @@
         if (!snapshot || !session)
             return baseRenderMatch();
         removeTransientMatchOverlays();
+        beginImpossibleClear();
         app.classList.remove("final-result-mode");
         app.classList.add("impossible-clear-mode");
-        app.innerHTML = `<main class="impossible-clear-screen" style="--impossible-clear-bg:url('${IMPOSSIBLE_CLEAR_BG_URL}')"><div class="impossible-clear-copy" aria-label="Congratulation. Thank You for Praying！"><img class="impossible-clear-title" src="${IMPOSSIBLE_CLEAR_TITLE_URL}" alt="Congratulation"><img class="impossible-clear-thanks" src="${IMPOSSIBLE_CLEAR_THANKS_URL}" alt="Thank You for Praying！"></div></main>`;
+        const screenState = impossibleClearReturnEnabled ? " return-enabled" : "";
+        const hintState = impossibleClearReturnEnabled ? " is-visible" : "";
+        const ariaHidden = impossibleClearReturnEnabled ? "false" : "true";
+        app.innerHTML = `<main class="impossible-clear-screen${screenState}" style="--impossible-clear-bg:url('${IMPOSSIBLE_CLEAR_BG_URL}')"><div class="impossible-clear-copy" aria-label="Congratulation. Thank You for Praying！"><img class="impossible-clear-title" src="${IMPOSSIBLE_CLEAR_TITLE_URL}" alt="Congratulation"><img class="impossible-clear-thanks" src="${IMPOSSIBLE_CLEAR_THANKS_URL}" alt="Thank You for Praying！"></div><div class="impossible-clear-return-hint${hintState}" role="status" aria-live="polite" aria-hidden="${ariaHidden}">画面を押せばゲームホーム画面に戻ります</div></main>`;
     }
     function renderDedicatedFinalResult() {
         if (!snapshot || !session)
@@ -88,8 +126,10 @@
         if (snapshot?.phase === 6) {
             if (isImpossibleSpecialVictory(snapshot))
                 return renderImpossibleClear();
+            endImpossibleClear();
             return renderDedicatedFinalResult();
         }
+        endImpossibleClear();
         app.classList.remove("final-result-mode", "impossible-clear-mode");
         const out = baseRenderMatch();
         if (snapshot && matchInteractionReady)
@@ -131,9 +171,17 @@
                 renderMatch();
         }
     };
+    app.addEventListener("click", event => {
+        if (!impossibleClearActive || !impossibleClearReturnEnabled)
+            return;
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest(".impossible-clear-screen"))
+            return;
+        runtimeWindow.goHome();
+    });
     const baseGoHome = goHome;
-    runtimeWindow.goHome = function () { app.classList.remove("final-result-mode", "impossible-clear-mode"); return baseGoHome(); };
-    runtimeWindow.__hanafudaFinalResultFixVersion = "5";
+    runtimeWindow.goHome = function () { endImpossibleClear(); app.classList.remove("final-result-mode", "impossible-clear-mode"); return baseGoHome(); };
+    runtimeWindow.__hanafudaFinalResultFixVersion = "6";
     void finalBgWarmImage;
     void impossibleClearWarmImages;
 })();
