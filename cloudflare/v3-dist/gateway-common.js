@@ -4,6 +4,8 @@ export const ONLINE_ACTIVE_PHASES = new Set([1, 2, 3, 4]);
 export const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: JSON_HEADERS });
 export function cors(response, req, env) {
+    if (response.status === 101 || response.webSocket)
+        return response;
     const origin = req.headers.get("Origin");
     if (!origin || origin !== env.APP_ORIGIN)
         return response;
