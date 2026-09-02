@@ -174,15 +174,14 @@ export class HanafudaCpuSession {
     if((await this.state.storage.get("closed"))===true)return json({ok:false,code:"SESSION_CLOSED"},410);
     if((await this.state.storage.get("pendingTransition"))!==true)return json({ok:false,code:"NO_PENDING_TRANSITION"},409);
     const ms=await this.modeSession();if(!ms)return json({ok:false,code:"MODE_SESSION_MISSING"},409);
-    const oldGameId=String(await this.state.storage.get("gameId")??""),koiEnabled=(await this.state.storage.get("koiEnabled"))===true,testOnly=(await this.state.storage.get("developer"))===true;
+    const oldGameId=String(await this.state.storage.get("gameId")??""),koiEnabled=(await this.state.storage.get("koiEnabled"))===true;
     const forcedRounds=Number(await this.state.storage.get("forcedRounds")??6);
-    const challengeCpu=testOnly?{cpuProfile:0}:{cpuProfile:3};
-    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,...challengeCpu,firstDealer:-1,koiEnabled});
+    const created=await engineCall(this.env,{op:"create_internal",rounds:forcedRounds,cpuProfile:3,firstDealer:-1,koiEnabled});
     if(!created.ok||!created.data?.ok||!created.data?.gameId)return json({ok:false,code:"CHALLENGE_ENGINE_CREATE_FAILED"},502);
     let modeId:any;try{modeId=this.env.MODE_SESSIONS.idFromString(ms.sessionId);}catch{await engineCall(this.env,{op:"close",gameId:String(created.data.gameId)}).catch(()=>null);return json({ok:false,code:"INVALID_MODE_SESSION"},409);}
     const modeStub=this.env.MODE_SESSIONS.get(modeId),ack=await modeStub.fetch("https://mode/op",{method:"POST",body:JSON.stringify({op:"transition_ack",token:ms.token})}),ackData=await ack.json().catch(()=>null);
     if(!ack.ok||ackData?.mode!=="impossible"){await engineCall(this.env,{op:"close",gameId:String(created.data.gameId)}).catch(()=>null);return json({ok:false,code:"TRANSITION_ACK_FAILED"},ack.status||502);}
-    await this.state.storage.put({mode:"impossible",rounds:forcedRounds,gameId:String(created.data.gameId),version:Number(created.data.version),pendingTransition:false,pendingModeTransition:null,forcedRounds,challenge:true,challengeTestOnly:testOnly,unlockGranted:false,developer:false,ready:false,readyPayload:null,transitionedAt:Date.now()});
+    await this.state.storage.put({mode:"impossible",rounds:forcedRounds,gameId:String(created.data.gameId),version:Number(created.data.version),pendingTransition:false,pendingModeTransition:null,forcedRounds,challenge:true,challengeTestOnly:false,unlockGranted:false,developer:false,ready:false,readyPayload:null,transitionedAt:Date.now()});
     if(oldGameId)await engineCall(this.env,{op:"close",gameId:oldGameId}).catch(()=>null);
     const events=[{actor:"system",snapshot:created.data.snapshot,version:Number(created.data.version),actionEvent:null}];
     const finalEvent=events[events.length-1];
