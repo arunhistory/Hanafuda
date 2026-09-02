@@ -1,0 +1,118 @@
+.settings-screen-expanded .panel{
+  width:min(980px,100%);
+  min-height:min(62vh,520px);
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:18px;
+}
+.settings-screen-expanded .settings-grid{
+  grid-template-columns:minmax(130px,.34fr) minmax(0,1fr);
+  gap:16px 20px;
+  align-content:center;
+  flex:1;
+}
+.settings-screen-expanded .check-row{min-height:48px;gap:12px}
+.settings-screen-expanded .check-row input[type="checkbox"]{width:26px;height:26px}
+.audio-control-row{display:grid;grid-template-columns:minmax(140px,1fr) 58px minmax(88px,auto);align-items:center;gap:12px;min-height:52px}
+.audio-control-row input[type="range"]{width:100%;min-width:0;min-height:34px;touch-action:manipulation}
+.audio-control-row output{min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
+.audio-mute-button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,#3c3024,#1d1711);color:var(--cream);font:inherit;cursor:pointer}
+.audio-mute-button.selected{background:linear-gradient(180deg,#7f291b,#4a130f);border-color:rgba(255,226,160,.72);box-shadow:inset 0 0 0 1px rgba(255,226,160,.18)}
+.settings-screen-expanded .screen-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:0}
+.settings-screen-expanded .screen-actions button{min-height:52px;font-weight:700}
+
+@media (max-width:720px){
+  .settings-screen-expanded .settings-grid{grid-template-columns:minmax(100px,.34fr) minmax(0,1fr)}
+  .audio-control-row{grid-template-columns:minmax(100px,1fr) 52px minmax(78px,auto);gap:8px}
+}
+
+html.mobile-webapp .site-footer{position:relative}
+html.mobile-webapp .copyright{
+  display:block;
+  position:absolute;
+  right:5px;
+  bottom:3px;
+  z-index:8;
+  height:auto;
+  line-height:1.15;
+  padding:2px 5px;
+  border-radius:5px;
+  background:rgba(11,5,5,.82);
+  font-size:.55rem;
+  white-space:nowrap;
+}
+html.mobile-webapp .ad-bar{padding-right:76px}
+
+html.mobile-webapp .settings-screen-expanded .panel{
+  width:min(96%,1180px);
+  max-width:none;
+  min-height:0;
+  max-height:none;
+  flex:1;
+  padding:14px 20px;
+  gap:10px;
+  overflow:auto;
+}
+html.mobile-webapp .settings-screen-expanded .settings-grid{
+  grid-template-columns:minmax(105px,.24fr) minmax(0,1fr);
+  gap:11px 18px;
+  align-content:space-evenly;
+  min-height:0;
+}
+html.mobile-webapp .settings-screen-expanded .settings-grid label{font-size:.86rem}
+html.mobile-webapp .settings-screen-expanded .check-row{min-height:48px;font-size:.86rem}
+html.mobile-webapp .settings-screen-expanded .check-row input[type="checkbox"]{width:28px;height:28px}
+html.mobile-webapp .settings-screen-expanded .audio-control-row{grid-template-columns:minmax(150px,1fr) 58px 100px;gap:12px;min-height:52px}
+html.mobile-webapp .settings-screen-expanded .audio-control-row input[type="range"]{min-height:42px}
+html.mobile-webapp .settings-screen-expanded .audio-mute-button{min-height:48px;padding:8px 14px;font-size:.82rem}
+html.mobile-webapp .settings-screen-expanded .screen-actions{grid-template-columns:repeat(3,minmax(130px,1fr));gap:12px;margin-top:4px}
+html.mobile-webapp .settings-screen-expanded .screen-actions button{min-height:52px;padding:10px 16px;font-size:.84rem}
+
+html.mobile-webapp .cpu-setup-expanded .cpu-setup-panel{
+  width:min(96%,1180px);
+  max-width:none;
+  max-height:none;
+  min-height:0;
+  flex:1;
+  display:grid;
+  grid-template-rows:minmax(48px,1fr) minmax(82px,1.45fr) minmax(48px,1fr) minmax(48px,1fr) auto;
+  gap:8px;
+  padding:12px 18px;
+  overflow:auto;
+}
+html.mobile-webapp .cpu-setup-expanded .setup-row{
+  display:grid;
+  grid-template-columns:minmax(100px,.18fr) minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  min-height:0;
+}
+html.mobile-webapp .cpu-setup-expanded .setup-row>strong{font-size:.82rem;white-space:nowrap}
+html.mobile-webapp .cpu-setup-expanded .setup-choice-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
+  gap:8px;
+  min-width:0;
+  align-items:stretch;
+}
+html.mobile-webapp .cpu-setup-expanded .round-choice-row{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+html.mobile-webapp .cpu-setup-expanded .dealer-choice-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+html.mobile-webapp .cpu-setup-expanded .setup-choice{
+  min-height:46px;
+  padding:7px 9px;
+  border-radius:10px;
+  font-size:.82rem;
+}
+html.mobile-webapp .cpu-setup-expanded .round-choice{min-height:38px;padding:5px 3px}
+html.mobile-webapp .cpu-setup-expanded .screen-actions{margin-top:0}
+html.mobile-webapp .cpu-setup-expanded .screen-actions .primary{min-width:240px;min-height:52px;padding:10px 22px;font-size:.88rem}
+
+html.mobile-webapp.compact-landscape .settings-screen-expanded .panel{padding:10px 16px}
+html.mobile-webapp.compact-landscape .settings-screen-expanded .audio-control-row{min-height:46px}
+html.mobile-webapp.compact-landscape .settings-screen-expanded .audio-mute-button{min-height:42px}
+html.mobile-webapp.compact-landscape .settings-screen-expanded .screen-actions button{min-height:46px}
+html.mobile-webapp.compact-landscape .cpu-setup-expanded .cpu-setup-panel{grid-template-rows:minmax(42px,1fr) minmax(72px,1.4fr) minmax(42px,1fr) minmax(42px,1fr) auto;gap:6px;padding:8px 14px}
+html.mobile-webapp.compact-landscape .cpu-setup-expanded .setup-choice{min-height:40px;padding:5px 7px;font-size:.76rem}
+html.mobile-webapp.compact-landscape .cpu-setup-expanded .round-choice{min-height:33px;padding:3px 2px}
+html.mobile-webapp.compact-landscape .cpu-setup-expanded .screen-actions .primary{min-height:46px}
