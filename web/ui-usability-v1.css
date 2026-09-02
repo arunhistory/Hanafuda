@@ -22,6 +22,14 @@
 .settings-screen-expanded .screen-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:0}
 .settings-screen-expanded .screen-actions button{min-height:52px;font-weight:700}
 
+.online-wait-screen{display:grid;place-items:center;padding:20px}
+.online-wait-hero{width:min(760px,96%);display:grid;justify-items:center;gap:16px}
+.room-code-panel{width:min(560px,100%);display:grid;justify-items:center;gap:8px;padding:20px 24px;border:1px solid rgba(255,226,160,.58);border-radius:16px;background:rgba(25,14,10,.9);box-shadow:0 10px 30px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.03)}
+.room-code-label{font-size:.86rem;font-weight:700;letter-spacing:.08em;color:var(--cream)}
+.room-code-value{font-size:clamp(2rem,7vw,3.4rem);line-height:1;letter-spacing:.18em;font-variant-numeric:tabular-nums;user-select:all}
+.room-code-help,.online-wait-rules{font-size:.9rem;opacity:.9;text-align:center}
+.online-wait-hero>.danger{min-width:180px;min-height:48px}
+
 @media (max-width:720px){
   .settings-screen-expanded .settings-grid{grid-template-columns:minmax(100px,.34fr) minmax(0,1fr)}
   .audio-control-row{grid-template-columns:minmax(100px,1fr) 52px minmax(78px,auto);gap:8px}
@@ -108,6 +116,15 @@ html.mobile-webapp .cpu-setup-expanded .round-choice{min-height:38px;padding:5px
 html.mobile-webapp .cpu-setup-expanded .screen-actions{margin-top:0}
 html.mobile-webapp .cpu-setup-expanded .screen-actions .primary{min-width:240px;min-height:52px;padding:10px 22px;font-size:.88rem}
 
+html.mobile-webapp .online-wait-screen{padding:10px 18px}
+html.mobile-webapp .online-wait-hero{width:min(94%,980px);gap:10px}
+html.mobile-webapp .online-wait-hero h1{font-size:1.25rem;margin:0}
+html.mobile-webapp .room-code-panel{width:min(620px,86vw);padding:14px 22px;gap:6px}
+html.mobile-webapp .room-code-value{font-size:clamp(2.1rem,6.6vw,3.2rem);letter-spacing:.22em}
+html.mobile-webapp .room-code-help,html.mobile-webapp .online-wait-rules{font-size:.78rem}
+html.mobile-webapp .online-wait-hero>p{margin:0;font-size:.78rem}
+html.mobile-webapp .online-wait-hero>.danger{min-width:220px;min-height:46px}
+
 html.mobile-webapp.compact-landscape .settings-screen-expanded .panel{padding:10px 16px}
 html.mobile-webapp.compact-landscape .settings-screen-expanded .audio-control-row{min-height:46px}
 html.mobile-webapp.compact-landscape .settings-screen-expanded .audio-mute-button{min-height:42px}
@@ -116,3 +133,6 @@ html.mobile-webapp.compact-landscape .cpu-setup-expanded .cpu-setup-panel{grid-t
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .setup-choice{min-height:40px;padding:5px 7px;font-size:.76rem}
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .round-choice{min-height:33px;padding:3px 2px}
 html.mobile-webapp.compact-landscape .cpu-setup-expanded .screen-actions .primary{min-height:46px}
+html.mobile-webapp.compact-landscape .online-wait-hero{gap:6px}
+html.mobile-webapp.compact-landscape .room-code-panel{padding:10px 18px}
+html.mobile-webapp.compact-landscape .room-code-value{font-size:clamp(1.9rem,6vw,2.7rem)}
