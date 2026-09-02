@@ -13,7 +13,7 @@ function cancelRandomMatch(renderAfter=true){
 }
 
 async function createOnlineRoom(){
-  if(busy)return;busy=true;try{const rules=onlineRulesFromUi(),r=await api("/api/online/create",{rules});if(!r.ok||!r.data?.ok)throw new Error(r.data?.code||"ROOM_CREATE_FAILED");toast(`ルームコード: ${r.data.roomCode}`);await startOnlineSession(r.data.roomCode,r.data.hostToken,0,rules,null);}catch(e){toast(e instanceof Error?e.message:"部屋作成に失敗しました");}finally{busy=false;}
+  if(busy)return;busy=true;try{const rules=onlineRulesFromUi(),r=await api("/api/online/create",{rules});if(!r.ok||!r.data?.ok)throw new Error(r.data?.code||"ROOM_CREATE_FAILED");await startOnlineSession(r.data.roomCode,r.data.hostToken,0,rules,null);}catch(e){toast(e instanceof Error?e.message:"部屋作成に失敗しました");}finally{busy=false;}
 }
 async function inspectOnlineRoom(){
   if(matchmakingSocket)return;const input=app.querySelector<HTMLInputElement>("#room-code");if(!input)return;const code=input.value.trim().toUpperCase();
@@ -45,10 +45,13 @@ function randomOnline(){
   ws.onerror=()=>{if(matchmakingSocket===ws)toast("マッチング通信でエラーが発生しました。");};
   ws.onclose=()=>{if(matchmakingSocket!==ws)return;matchmakingSocket=null;busy=false;if(!matched)toast("マッチングを終了しました。");if(currentScreen()==="online")void render();};
 }
+function waitingRoomHtml(code:string,rules:{rounds:number;koiEnabled:boolean}){
+  return `<main class="${screenClass("online-wait-screen")}"><section class="hero online-wait-hero"><h1>対戦相手を待っています</h1><div class="room-code-panel" aria-label="作成したルームコード"><span class="room-code-label">ルームコード</span><strong class="room-code-value">${escapeHtml(code)}</strong><span class="room-code-help">このコードを相手に伝えてください</span></div><p class="online-wait-rules">${rules.rounds}局 / こいこい ${rules.koiEnabled?"あり":"なし"}</p><p>相手が参加するまで、この画面にルームコードを表示し続けます。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;
+}
 async function startOnlineSession(code:string,token:string,seat:Seat,rules:{rounds:number;koiEnabled:boolean},initial:any){
   stopOnlineWarning();
   const provisional:OnlineSession={kind:"online",roomCode:code,token,seat,version:Number(initial?.version??-1),epoch:String(initial?.epoch??""),rules,socket:null};session=provisional;snapshot=initial?.snapshot??null;roundHistory=[];currentRound=-1;stack=["home","online","match"];
-  connectOnlineSocket(provisional);if(snapshot){emitAudioHook("match-start",{mode:"normal"});renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=`<main class="${screenClass()}"><section class="hero"><h1>待機中</h1><p>ルームコード ${escapeHtml(code)}</p><p>相手の参加と接続を待っています。</p><button class="danger" data-action="wait-cancel">退出</button></section></main>`;app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
+  connectOnlineSocket(provisional);if(snapshot){emitAudioHook("match-start",{mode:"normal"});renderMatch();await animateNewRoundIfNeeded(true);}else{app.innerHTML=waitingRoomHtml(code,rules);app.querySelector<HTMLElement>("[data-action='wait-cancel']")!.onclick=()=>void closeMatch(true);}
 }
 function connectOnlineSocket(s:OnlineSession){
   const url=new URL(API_BASE.replace(/^http/,"ws")+"/api/online/connect");url.searchParams.set("room",s.roomCode);url.searchParams.set("token",s.token);const ws=new WebSocket(url);s.socket=ws;
