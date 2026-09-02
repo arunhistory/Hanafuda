@@ -29,14 +29,7 @@ jobs:
             echo "=== $f ==="
             file "$f"
             sha256sum "$f"
-            python3 - "$f" <<'PY'
-import struct,sys
-p=sys.argv[1]
-b=open(p,'rb').read(33)
-assert b[:8]==b'\x89PNG\r\n\x1a\n'
-w,h=struct.unpack('>II',b[16:24])
-print(f'PNG_DIMENSIONS={w}x{h} COLOR_TYPE={b[25]}')
-PY
+            python3 -c 'import struct,sys; b=open(sys.argv[1],"rb").read(33); assert b[:8]==b"\x89PNG\r\n\x1a\n"; w,h=struct.unpack(">II",b[16:24]); print(f"PNG_DIMENSIONS={w}x{h} COLOR_TYPE={b[25]}")' "$f"
           done
       - name: OCR text assets
         run: |
