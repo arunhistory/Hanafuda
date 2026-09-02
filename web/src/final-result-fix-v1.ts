@@ -7,30 +7,54 @@
     __hanafudaFinalResultFixVersion?:string;
   };
   const baseRenderMatch=renderMatch;
+  const SUPABASE_ASSET_ROOT="https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-assets/impossible-clear/";
   const FINAL_BG_URL="https://mpuhgfbdkxmhynytwhzu.supabase.co/storage/v1/object/public/hanafuda-effects/settlement-bg.png";
+  const IMPOSSIBLE_CLEAR_BG_URL=SUPABASE_ASSET_ROOT+"rainbow-clear-bg.png";
+  const IMPOSSIBLE_CLEAR_TITLE_URL=SUPABASE_ASSET_ROOT+"congratulation.png";
+  const IMPOSSIBLE_CLEAR_THANKS_URL=SUPABASE_ASSET_ROOT+"thank-you-for-praying.png";
   let koiChoiceCommitted=false;
   let finalBgWarmScheduled=false;
   let finalBgWarmImage:HTMLImageElement|null=null;
+  let impossibleClearWarmScheduled=false;
+  const impossibleClearWarmImages:HTMLImageElement[]=[];
 
   function removeTransientMatchOverlays(){
     app.querySelectorAll(".modal-layer,.settlement-layer,.dramatic-callout-layer,.supabase-effect-layer,.fx-layer").forEach(el=>el.remove());
   }
 
+  function scheduleIdle(callback:()=>void){
+    if(typeof runtimeWindow.requestIdleCallback==="function")runtimeWindow.requestIdleCallback(callback,{timeout:5000});
+    else window.setTimeout(callback,1200);
+  }
+
   function warmFinalBackgroundWhenIdle(){
     if(finalBgWarmScheduled)return;
     finalBgWarmScheduled=true;
-    const warm=()=>{
+    scheduleIdle(()=>{
       const img=new Image();
       finalBgWarmImage=img;
       img.decoding="async";
       img.src=FINAL_BG_URL;
       if(typeof img.decode==="function")void img.decode().catch(()=>{});
-    };
-    if(typeof runtimeWindow.requestIdleCallback==="function"){
-      runtimeWindow.requestIdleCallback(warm,{timeout:5000});
-    }else{
-      window.setTimeout(warm,1200);
-    }
+    });
+  }
+
+  function warmImpossibleClearAssetsWhenIdle(){
+    if(impossibleClearWarmScheduled)return;
+    impossibleClearWarmScheduled=true;
+    scheduleIdle(()=>{
+      for(const src of [IMPOSSIBLE_CLEAR_BG_URL,IMPOSSIBLE_CLEAR_TITLE_URL,IMPOSSIBLE_CLEAR_THANKS_URL]){
+        const img=new Image();
+        impossibleClearWarmImages.push(img);
+        img.decoding="async";
+        img.src=src;
+        if(typeof img.decode==="function")void img.decode().catch(()=>{});
+      }
+    });
+  }
+
+  function isImpossibleSpecialVictory(s:Snapshot){
+    return hiddenFirstEncounter===true&&session?.kind==="cpu"&&session.mode==="impossible"&&s.totalRounds===6&&s.matchWinner===playerSeat();
   }
 
   function finalResultTitle(s:Snapshot){
@@ -39,9 +63,18 @@
     return winner===playerSeat()?"勝利":"敗北";
   }
 
+  function renderImpossibleClear(){
+    if(!snapshot||!session)return baseRenderMatch();
+    removeTransientMatchOverlays();
+    app.classList.remove("final-result-mode");
+    app.classList.add("impossible-clear-mode");
+    app.innerHTML=`<main class="impossible-clear-screen" style="--impossible-clear-bg:url('${IMPOSSIBLE_CLEAR_BG_URL}')"><div class="impossible-clear-copy" aria-label="Congratulation. Thank You for Praying！"><img class="impossible-clear-title" src="${IMPOSSIBLE_CLEAR_TITLE_URL}" alt="Congratulation"><img class="impossible-clear-thanks" src="${IMPOSSIBLE_CLEAR_THANKS_URL}" alt="Thank You for Praying！"></div></main>`;
+  }
+
   function renderDedicatedFinalResult(){
     if(!snapshot||!session)return baseRenderMatch();
     removeTransientMatchOverlays();
+    app.classList.remove("impossible-clear-mode");
     app.classList.add("final-result-mode");
     const s=snapshot;
     const [myScore,oppScore]=perspectiveScores(s);
@@ -57,10 +90,14 @@
   }
 
   runtimeWindow.renderMatch=function(){
-    if(snapshot?.phase===6)return renderDedicatedFinalResult();
-    app.classList.remove("final-result-mode");
+    if(snapshot?.phase===6){
+      if(isImpossibleSpecialVictory(snapshot))return renderImpossibleClear();
+      return renderDedicatedFinalResult();
+    }
+    app.classList.remove("final-result-mode","impossible-clear-mode");
     const out=baseRenderMatch();
     if(snapshot&&matchInteractionReady)warmFinalBackgroundWhenIdle();
+    if(hiddenFirstEncounter)warmImpossibleClearAssetsWhenIdle();
     if(koiChoiceCommitted){
       app.querySelectorAll(".modal-layer").forEach(layer=>{if(layer.querySelector(".koi-choice"))layer.remove();});
     }
@@ -87,8 +124,9 @@
   };
 
   const baseGoHome=goHome;
-  runtimeWindow.goHome=function(){app.classList.remove("final-result-mode");return baseGoHome();};
+  runtimeWindow.goHome=function(){app.classList.remove("final-result-mode","impossible-clear-mode");return baseGoHome();};
 
-  runtimeWindow.__hanafudaFinalResultFixVersion="4";
+  runtimeWindow.__hanafudaFinalResultFixVersion="5";
   void finalBgWarmImage;
+  void impossibleClearWarmImages;
 })();
