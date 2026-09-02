@@ -43,9 +43,27 @@ function audioVolumeRow(channel:'bgm'|'se',label:string,volume:number){
   return `<label for="${channel}-volume">${label}</label><div class="check-row" style="gap:10px"><input id="${channel}-volume" data-audio-volume="${channel}" type="range" min="0" max="100" step="1" value="${percent}" aria-label="${label}音量" style="flex:1;min-width:0"><output id="${channel}-volume-value" for="${channel}-volume" style="min-width:4ch;text-align:right">${percent}%</output></div>`;
 }
 
-renderSettingsScreen=()=>{
-  app.innerHTML=`<main class="${screenClass()}">${topbar('設定')}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations?'checked':''}><span>通常演出をスキップ</span></div>${audioVolumeRow('bgm','BGM',audioUserSettings.bgmVolume)}${audioVolumeRow('se','SE',audioUserSettings.seVolume)}</div><div class="screen-actions"><button class="secondary" data-nav="terms">利用規約</button><button class="secondary" data-nav="credits">クレジット</button><button class="secondary" data-nav="licenses">ライセンス</button></div></section></main>`;
-};
+function patchAudioSettingsUi(){
+  if(currentScreen()!=='settings')return;
+  const main=app.querySelector<HTMLElement>('main');
+  const grid=main?.querySelector<HTMLElement>('.settings-grid');
+  if(!main||!grid)return;
+
+  main.querySelector<HTMLElement>('[data-nav="rules"]')?.remove();
+  if(grid.querySelector('[data-audio-volume]'))return;
+
+  const labels=[...grid.querySelectorAll<HTMLLabelElement>('label')];
+  const audioLabel=labels.find(label=>label.textContent?.trim()==='音響');
+  const audioNotice=audioLabel?.nextElementSibling;
+  if(audioNotice?.classList.contains('notice'))audioNotice.remove();
+  audioLabel?.remove();
+
+  grid.insertAdjacentHTML('beforeend',audioVolumeRow('bgm','BGM',audioUserSettings.bgmVolume)+audioVolumeRow('se','SE',audioUserSettings.seVolume));
+}
+
+const settingsUiObserver=new MutationObserver(()=>patchAudioSettingsUi());
+settingsUiObserver.observe(app,{childList:true,subtree:true});
+patchAudioSettingsUi();
 
 document.addEventListener('input',event=>{
   const input=event.target instanceof HTMLInputElement?event.target:null;
