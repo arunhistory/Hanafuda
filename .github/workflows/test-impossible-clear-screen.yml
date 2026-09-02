@@ -7,6 +7,7 @@ on:
     paths:
       - 'web/src/final-result-fix-v1.ts'
       - 'web/final-result-fix-v1.css'
+      - '_config.yml'
       - 'tests/impossible_clear_screen_contract.test.mjs'
       - '.github/workflows/test-impossible-clear-screen.yml'
   workflow_dispatch:
@@ -34,6 +35,8 @@ jobs:
           done
       - name: Validate generated JavaScript syntax
         run: find web/dist -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run impossible clear screen contract
+        run: node tests/impossible_clear_screen_contract.test.mjs
       - name: Run existing frontend contracts
         run: |
           node tests/web_frontend_contract.test.mjs
@@ -45,8 +48,6 @@ jobs:
           node tests/mobile_match_visibility_and_cpu_capture.test.mjs
           node tests/pregame_gate_contract.test.mjs
           node tests/pages_publication_contract.test.mjs
-      - name: Run impossible clear screen contract
-        run: node tests/impossible_clear_screen_contract.test.mjs
       - name: Reject secrets and hidden trigger details
         run: |
           if grep -R -E 'DEVELOPER_MODE_KEY|x-hanafuda-developer|SUPABASE_SERVICE_ROLE_KEY|playerTotal|cpuTotal|should_force_impossible' web; then
