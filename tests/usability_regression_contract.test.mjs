@@ -6,6 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const audio=read('web/src/settings-audio-v1.ts');
 const recovery=read('web/src/regression-recovery-v1.ts');
+const online=read('web/src/online.ts');
 const css=read('web/ui-usability-v1.css');
 const html=read('web/index.html');
 
@@ -15,6 +16,8 @@ const checks=[
   ['dealer choices restore random player and opponent',recovery.includes("regressionDealerButton(-1,'ランダム')")&&recovery.includes("regressionDealerButton(0,'あなたが親')")&&recovery.includes("regressionDealerButton(1,'相手が親')")],
   ['selected dealer is sent to CPU start',recovery.includes('firstDealer:settings.firstDealer')&&recovery.includes('/api/cpu/start')],
   ['online recovery is event driven and not polling',recovery.includes("addEventListener('error'")&&recovery.includes("addEventListener('close'")&&recovery.includes('/api/online/status')&&!recovery.includes('setInterval(')],
+  ['created room code is persistent rather than toast-only',online.includes('function waitingRoomHtml')&&online.includes('room-code-value')&&online.includes('相手が参加するまで、この画面にルームコードを表示し続けます。')&&!online.includes('toast(`ルームコード:')],
+  ['persistent room code is prominent on mobile',css.includes('.room-code-panel')&&css.includes('.room-code-value')&&css.includes('html.mobile-webapp .room-code-panel')],
   ['mobile copyright is visible',html.includes('©ある〜ん')&&css.includes('html.mobile-webapp .copyright')&&css.includes('display:block;')],
   ['mobile settings controls are expanded',css.includes('html.mobile-webapp .settings-screen-expanded .panel')&&css.includes('min-height:52px')&&css.includes('grid-template-columns:repeat(3,minmax(130px,1fr))')],
   ['mobile CPU setup controls are expanded',css.includes('html.mobile-webapp .cpu-setup-expanded .cpu-setup-panel')&&css.includes('grid-template-columns:repeat(6,minmax(0,1fr))')&&css.includes('min-height:46px')],
