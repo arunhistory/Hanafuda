@@ -5,6 +5,9 @@ async function render(){
   else if(screen==="cpu-setup")renderCpuSetup();
   else if(screen==="online")renderOnline();
   else if(screen==="settings")renderSettingsScreen();
+  else if(screen==="terms")await renderCloudDocumentScreen("terms","利用規約");
+  else if(screen==="credits")await renderCloudDocumentScreen("credits","クレジット");
+  else if(screen==="licenses")await renderCloudDocumentScreen("licenses","ライセンス");
   else if(screen==="rules")renderRules();
   else if(screen==="yaku")renderYakuScreen();
   else if(screen==="match")renderMatch();
@@ -36,7 +39,33 @@ function renderOnline(){
 }
 
 function renderSettingsScreen(){
-  app.innerHTML=`<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button></div></section></main>`;
+  app.innerHTML=`<main class="${screenClass()}">${topbar("設定")}<section class="panel"><div class="settings-grid"><label for="skip-animations">通常演出</label><div class="check-row"><input id="skip-animations" type="checkbox" ${settings.skipNormalAnimations?"checked":""}><span>通常演出をスキップ</span></div><label>音響</label><div class="notice">BGM / SE は現在の画面・メニュー・人知不能演出に連動します。</div></div><div class="screen-actions"><button class="secondary" data-nav="rules">詳細ルール</button><button class="secondary" data-nav="terms">利用規約</button><button class="secondary" data-nav="credits">クレジット</button><button class="secondary" data-nav="licenses">ライセンス</button></div></section></main>`;
+}
+
+async function renderCloudDocumentScreen(key:CloudContentKey,title:string){
+  const expected=key as UiScreen;
+  app.innerHTML=`<main class="${screenClass()}">${topbar(title)}<section class="panel rules-copy"><div id="cloud-content-state" class="notice">読み込み中…</div></section></main>`;
+  try{
+    const documentValue=await fetchCloudContent(key);
+    if(currentScreen()!==expected)return;
+    const state=app.querySelector<HTMLElement>("#cloud-content-state");
+    if(!state)return;
+    if(!documentValue.available){state.textContent="現在、本文は未登録です。";return;}
+    if(typeof documentValue.body!=="string"){state.textContent="本文を取得できませんでした。";return;}
+    const container=document.createElement("div");
+    container.className="cloud-document-body";
+    const paragraphBreak=String.fromCharCode(10)+String.fromCharCode(10);
+    for(const block of documentValue.body.split(paragraphBreak)){
+      const p=document.createElement("p");
+      p.textContent=block;
+      container.append(p);
+    }
+    state.replaceWith(container);
+  }catch{
+    if(currentScreen()!==expected)return;
+    const state=app.querySelector<HTMLElement>("#cloud-content-state");
+    if(state)state.textContent="本文を取得できませんでした。";
+  }
 }
 
 function renderRules(){
