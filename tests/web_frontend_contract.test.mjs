@@ -20,7 +20,7 @@ const js=jsFiles.filter(x=>fs.existsSync(path.join(root,'web','dist',x))).map(x=
 
 const checks=[
   ['web app has no manifest or service worker',!html.includes('manifest')&&!ts.includes('serviceWorker')],
-  ['footer copyright is directly above ad slot',/class="copyright">©ある〜ん<\/div>\s*<div class="ad-bar"/.test(html)],
+  ['footer copyright is directly above ad slot',/class="copyright">©ある〜ん・由咲るい<\/div>\s*<div class="ad-bar"/.test(html)],
   ['ad bar reserves safe-area-aware layout',css.includes('--footer-height')&&css.includes('env(safe-area-inset-bottom)')],
   ['responsive portrait and landscape rules exist',css.includes('@media (max-width:720px)')&&css.includes('@media (orientation:landscape)')],
   ['settings are compact and scroll-safe',css.includes('.settings-grid')&&css.includes('max-height:min(78dvh,720px);overflow:auto')],
