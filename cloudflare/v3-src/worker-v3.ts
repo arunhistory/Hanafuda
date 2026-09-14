@@ -30,10 +30,10 @@ This website uses music and sound effect materials provided by MaouDamashii, Mom
 Music: MaouDamashii / Momijiba Music
 Sound Effects: SoundReality / Jurij from Pixabay
 
-Created by ある〜ん
+Created by ある〜ん・由咲るい
 Development Support: ChatGPT
 
-Except for third-party materials separately credited above, all original content, design, text, game content, and other original materials on this website are © ある〜ん.`;
+Except for third-party materials separately credited above, all original content, design, text, game content, and other original materials on this website are © ある〜ん・由咲るい.`;
 const LICENSES_BODY=`LICENSES
 
 This website uses music and sound effect materials provided by MaouDamashii, Momijiba Music, and Pixabay (SoundReality / Jurij) in accordance with the respective terms of use and licenses provided by each rights holder.
@@ -49,7 +49,7 @@ Music materials are used in accordance with the Momijiba Music Terms of Use.
 Pixabay / SoundReality / Jurij
 Sound effect materials are used in accordance with the Pixabay Content License.
 
-Except for the third-party materials identified above, all copyrights and other intellectual property rights in the original content of this website belong to ある〜ん.
+Except for the third-party materials identified above, all copyrights and other intellectual property rights in the original content of this website belong to ある〜ん・由咲るい.
 
 Unauthorized reproduction, redistribution, modification, or use of the original content of this website is prohibited except where permitted by applicable law or expressly authorized by the rights holder.`;
 
